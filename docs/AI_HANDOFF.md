@@ -28,7 +28,7 @@ M0, M1, M2, and M3 were externally reviewed and passed. M5 is **NOT STARTED**.
   `4ae226a048a65fed67fd7b8ab6a8feee9ec4c696`
 - M3 implementation commit:
   `f5836e2fb0fd57d03babe6c3c3647db06fd0c269`
-- M4 completion commit: record the commit that contains this handoff update.
+- M4 implementation/evidence commit: `c6308b1`
 
 ## M0 authority that M1 used
 
