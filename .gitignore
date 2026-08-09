@@ -1,0 +1,65 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+env/
+
+# Build outputs
+build/
+dist/
+out/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+*.o
+*.obj
+*.so
+*.a
+*.dll
+*.exe
+*.xclbin
+*.elf
+
+# MLIR / LLVM / AIE generated artifacts
+*.mlir.tmp
+*.bc
+*.ll
+*.map
+*.log
+
+# Benchmark and runtime artifacts
+artifacts/
+benchmark-results/local/
+profiles/
+traces/
+
+# Models / large binary inputs
+models/
+weights/
+*.bin
+*.gguf
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+config.local.*
+*.pem
+*.key
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Misc
+*.swp
+*.swo
+*~
