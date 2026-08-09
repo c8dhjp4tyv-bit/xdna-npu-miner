@@ -56,6 +56,7 @@ complete.
 - M4 implementation/evidence commit: `c6308b1`
 - M5 implementation/evidence commit: `bd9a349`
 - M6 implementation/evidence checkpoint: `c600094`.
+- M6 post-recovery validation/evidence checkpoint: `75e0a78`.
 
 ## M0 authority that M1 used
 
