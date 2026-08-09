@@ -2,7 +2,7 @@
   "schema_version": 1,
   "milestone": "M3",
   "status": "PASS",
-  "captured_utc": "2026-08-09T16:50:25Z",
+  "captured_utc": "2026-08-09T19:47:44Z",
   "toolchain": {
     "device_name": "RyzenAI-npu1",
     "architecture": "aie2",
@@ -21,9 +21,9 @@
     "xclbin": "/home/umutcagand/xdna-npu-miner/build/xdna-k1/xdna_k1.xclbin",
     "instructions": "/home/umutcagand/xdna-npu-miner/build/xdna-k1/xdna_k1.insts",
     "manifest": "/home/umutcagand/xdna-npu-miner/build/xdna-k1/xdna_k1.manifest",
-    "xclbin_sha256": "e4f07119c52d1136045bcff7ddd79cf322f5639ad361f129db25d0bb647b3fc7",
+    "xclbin_sha256": "b23b7ffb0c8d0dd43d3a06b4761c45ddd6c65eeca8a21caf97243b720ae5da8f",
     "instructions_sha256": "633b2f8b6075892b61f8f86136d013921be1605ce3c74e86d797e8d10f6a4f7a",
-    "uuid": "8e1b4ae5-7811-4641-fa48-99bfeb489071",
+    "uuid": "76c84c8b-77d1-7313-a278-dd0a4743f1a8",
     "kernel": "MLIR_AIE",
     "target_column_count": 1
   },

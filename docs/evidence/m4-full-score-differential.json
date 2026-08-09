@@ -3,12 +3,12 @@
   "milestone":"M4",
   "status":"PASS",
   "toolchain":{"device":"RyzenAI-npu1","architecture":"aie2","bdf":"0000:06:00.1","driver":"7.2.0-0.rc5.260731.8ba098e6.443.vanilla.fc45.x86_64","firmware":"1.5.5.391","xrt":"2.26.0","mlir_aie":"57d7494e99c214f5f53b328a0ed43a99e759e835","peano":"llvm-aie 21.0.0.2026072001+ce8c0f8f"},
-  "artifact":{"xclbin_sha256":"0dbd4f44e33224a6df774ea0df1a3954acd2b57b710f97b101f7ea3b10ce943c","instruction_sha256":"cc811e1751208451a5979e117c91dc238809403602c58b098d1acd55edc3a5d6","uuid":"20ddef20-d111-cc35-0dc6-2d4b4802edb9","kernel":"MLIR_AIE","target_columns":1},
+  "artifact":{"xclbin_sha256":"72b8f621c1ea0cf8af58bb009d2536450650f678348ba15687375307c9fee952","instruction_sha256":"cc811e1751208451a5979e117c91dc238809403602c58b098d1acd55edc3a5d6","uuid":"e1046815-71f6-37d3-893d-745f2ae30a48","kernel":"MLIR_AIE","target_columns":1},
   "contracts":{"state":"uint8[64], reset per window, device-local across ticks","lut":"46x32 bytes, 27 logical trits","topology":"64x3 uint32 + 46 rows + 18 inputs","input":"uint8 trits, 18 per row","result_status":"uint32 score, status, ticks, feed count","persistent_buffers":false},
   "test_tiers":{"repeated_tick":1000,"one_window":100,"multi_window":1000,"fixed":100,"random":1000,"full_score":11,"production_shaped":1,"full_candidate":2},
   "dispatch":{"physical_dispatches":13460,"successful_dispatches":13460,"runtime_failures":0,"h2d":26920,"d2h":13460},
   "differential":{"score_runs":213,"windows_compared":12460,"exact_matches":4313,"mismatches":0,"timeout_matches":34,"finite_score_matches":3279,"candidate_score_calls":202,"candidate_window_comparisons":1212},
   "verification":{"cpu_recomputation_enabled":true,"npu_only_authorization":false},
   "regressions":{"m1":"PASS","m2":"PASS","m3":"PASS","negative_paths":"PASS"},
-  "diagnostics":{"validation_duration_seconds":45,"speedup_claim":false,"profitability_claim":false}
+  "diagnostics":{"validation_duration_seconds":46,"speedup_claim":false,"profitability_claim":false}
 }

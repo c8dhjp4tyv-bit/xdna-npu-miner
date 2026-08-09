@@ -15,7 +15,7 @@
   "artifact": {
     "xclbin": "/home/umutcagand/xdna-npu-miner/build/xdna-smoke/xdna_smoke.xclbin",
     "instructions": "/home/umutcagand/xdna-npu-miner/build/xdna-smoke/xdna_smoke.insts",
-    "uuid": "2a4f5f1f-3f1e-33ce-3f3f-56d4cf90be92",
+    "uuid": "3c9d76b5-2420-8a31-6b3c-8508cc7f1026",
     "kernel": "MLIR_AIE"
   },
   "workload": {
