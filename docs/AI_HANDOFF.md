@@ -19,8 +19,10 @@ complete.
 
 - Recovery date: 2026-08-09.
 - Branch: `main`.
-- HEAD: `62a84d5d8674a1a74c1b7348e1fa41c85348e026` (`record M5 handoff
-  commit`), also `origin/main`.
+- Recovery HEAD before M6 work: `62a84d5d8674a1a74c1b7348e1fa41c85348e026`
+  (`record M5 handoff commit`), also `origin/main`.
+- Current M6 checkpoint commit: `c600094` (`m6: add direct-node protocol
+  boundary`).
 - Working tree: four modified, unstaged evidence JSON files:
   `docs/evidence/m2-xdna-smoke.json`,
   `docs/evidence/m3-k1-differential.json`,
@@ -28,7 +30,7 @@ complete.
   `docs/evidence/m5-batching-four-column.json`.
 - Staged files: none.
 - Recovered commits: the M0–M5 commit chain through `62a84d5`; no separate M6
-  commit was found in `git log --all` or the reflog.
+  commit existed before this session. The new M6 checkpoint is `c600094`.
 - `git fsck --full`: five dangling objects (two trees and three blobs) only;
   no missing or corrupt object was reported. No conflict markers, editor
   temporary files, or M6 files were found.
@@ -54,8 +56,7 @@ complete.
   `f5836e2fb0fd57d03babe6c3c3647db06fd0c269`
 - M4 implementation/evidence commit: `c6308b1`
 - M5 implementation/evidence commit: `bd9a349`
-- M6 recovery checkpoint: uncommitted in the current working tree; no M6
-  commit existed before this session.
+- M6 implementation/evidence checkpoint: `c600094`.
 
 ## M0 authority that M1 used
 
