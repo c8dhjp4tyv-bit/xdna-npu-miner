@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "purpose": "M2 hardware-validation reproduction record; not a portable support claim",
+  "captured_utc": "2026-08-09T15:54:46Z",
+  "system": {
+    "os": {
+      "value": "Fedora Linux 45 (KDE Plasma Desktop Edition) Prerelease",
+      "classification": "INFORMATIONAL",
+      "source": "cat /etc/os-release"
+    },
+    "kernel": {
+      "value": "7.2.0-0.rc5.260731.8ba098e6.443.vanilla.fc45.x86_64",
+      "classification": "INFORMATIONAL",
+      "source": "uname -r"
+    },
+    "cpu": {
+      "value": "AMD Ryzen 7 250 w/ Radeon 780M Graphics",
+      "classification": "INFORMATIONAL",
+      "source": "lscpu"
+    }
+  },
+  "hardware": {
+    "device_name": "RyzenAI-npu1",
+    "architecture": "aie2",
+    "bdf": "0000:06:00.1",
+    "device_node": "/dev/accel/accel0",
+    "xrt_topology": "6x5",
+    "available_columns": 4,
+    "verified_smoke_columns": 1,
+    "identity_source": "xrt-smi examine plus project-owned xdna_probe"
+  },
+  "dependencies": {
+    "amdxdna": {
+      "value": "7.2.0-0.rc5.260731.8ba098e6.443.vanilla.fc45.x86_64",
+      "classification": "REQUIRED_EXACT",
+      "scope": "M2 recorded hardware run",
+      "source": "xrt-smi examine"
+    },
+    "npu_firmware": {
+      "value": "1.5.5.391",
+      "classification": "REQUIRED_EXACT",
+      "scope": "M2 recorded hardware run",
+      "source": "xrt-smi examine"
+    },
+    "xrt": {
+      "version": "2.26.0",
+      "hash": "8bf2fc4c090540dcf7872243ab67779ae74ef5e3",
+      "classification": "REQUIRED_EXACT",
+      "scope": "M2 recorded hardware run",
+      "source": "xrt-smi --version"
+    },
+    "mlir_aie_source": {
+      "repository": "https://github.com/Xilinx/mlir-aie",
+      "commit": "57d7494e99c214f5f53b328a0ed43a99e759e835",
+      "classification": "REQUIRED_EXACT",
+      "scope": "M2 smoke artifact build",
+      "source": "git -C /home/umutcagand/mlir-aie rev-parse HEAD"
+    },
+    "mlir_aie_wheel": {
+      "value": "1.3.4",
+      "classification": "REQUIRED_EXACT",
+      "scope": "M2 smoke artifact build",
+      "source": "python -m pip show mlir_aie"
+    },
+    "iron_python": {
+      "value": "CPython 3.12.13",
+      "classification": "COMPATIBLE_RANGE",
+      "range": "Python 3.11 through 3.14 per the selected MLIR-AIE setup",
+      "source": "the project-selected ironenv interpreter"
+    },
+    "peano": {
+      "value": "llvm-aie 21.0.0.2026072001+ce8c0f8f",
+      "commit": "ce8c0f8f",
+      "classification": "REQUIRED_EXACT",
+      "scope": "M2 smoke artifact build",
+      "source": "python -m pip show llvm-aie"
+    },
+    "host_compiler": {
+      "value": "GCC 16.1.1",
+      "classification": "INFORMATIONAL",
+      "source": "c++ --version"
+    },
+    "cmake": {
+      "value": "4.3.0",
+      "classification": "INFORMATIONAL",
+      "source": "cmake --version"
+    }
+  },
+  "artifact": {
+    "generator": "src/xdna/smoke_program.py",
+    "build_command": "./scripts/build-xdna-smoke.sh",
+    "target": "npu / XDNA1 / AIE2",
+    "columns": 1,
+    "kernel": "MLIR_AIE",
+    "xclbin_uuid": "2a4f5f1f-3f1e-33ce-3f3f-56d4cf90be92",
+    "xclbin_sha256": "ea6eb7bd4b5c1fb6a8c6b38b6e6e5d00f3f451405fbb5019d220d1b6c708d9f9",
+    "instructions_sha256": "0d1a294349a2b0876089911e0ba72ab708b11fd4da8866908e3aafa4ac92f838",
+    "workload": "int32[32], out[i] = 3 * in[i] + 7",
+    "identity_note": "xclbin UUID and container hash are recorded for this build; the MLIR-AIE generator may assign a new UUID/hash on a later rebuild"
+  },
+  "reference_environment_note": {
+    "related_repository": "c8dhjp4tyv-bit/hawkpoint-npu-llm",
+    "related_recorded_kernel": "7.2.0-0.rc5.260729.fc02acf6.441.vanilla.fc45.x86_64",
+    "current_kernel_is_different": true,
+    "action": "The current host was inventoried and used without changing the working stack."
+  }
+}

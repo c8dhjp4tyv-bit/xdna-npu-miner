@@ -206,9 +206,39 @@ this repository.
   Hawk Point environment.
 - **License:** Apache-2.0 with LLVM exception files as applicable to the
   repository; verify exact third-party notices when importing a dependency.
-- **Reuse decision:** Reference/dependency candidate, not yet a target
-  dependency. M2 must reproduce the environment check and make an explicit
-  dependency decision.
+- **Reuse decision:** Selected external runtime/toolchain dependency for the
+  M2 smoke, pinned in `runtime-pins.json`; no MLIR-AIE source is copied into
+  this repository. Exact third-party notices remain a release/legal review
+  item before redistribution.
+
+### Source S-007 — M2 current host/runtime validation
+
+- **Purpose:** Project-owned record of the physical runtime used for the M2
+  acceptance smoke; this is not a portable hardware-support guarantee.
+- **Host:** Fedora Linux 45 prerelease, kernel/amdxdna
+  `7.2.0-0.rc5.260731.8ba098e6.443.vanilla.fc45.x86_64`, AMD Ryzen 7 250 with
+  Radeon 780M.
+- **Device:** XRT-opened `RyzenAI-npu1`, AIE2, BDF `0000:06:00.1`,
+  `/dev/accel/accel0`; `xrt-smi examine` reports topology `6x5` and four
+  available columns.
+- **Runtime pins:** firmware `1.5.5.391`; XRT `2.26.0`, hash
+  `8bf2fc4c090540dcf7872243ab67779ae74ef5e3`; MLIR-AIE commit
+  `57d7494e99c214f5f53b328a0ed43a99e759e835`; `mlir_aie` `1.3.4`; CPython
+  `3.12.13`; `llvm-aie 21.0.0.2026072001+ce8c0f8f`.
+- **Project artifacts:** `src/xdna/smoke_program.py` compiled one AIE2 column
+  into an `MLIR_AIE` XCLBIN and instruction stream. The artifact UUID and
+  hashes are recorded in `runtime-pins.json` and
+  `docs/evidence/m2-xdna-smoke.json`.
+- **Validation commands:** `./scripts/verify-xdna1.sh`,
+  `./scripts/build-xdna-smoke.sh`, and
+  `./scripts/run-xdna-smoke.sh --iterations 100`.
+- **Observed result:** 100 physical XRT dispatches, 100 completions, 100 exact
+  CPU-oracle matches, zero mismatches, zero runtime failures, 200 H2D and 100
+  D2H synchronizations. This is correctness/dispatch evidence, not a
+  performance measurement.
+- **Source/reuse decision:** XRT and MLIR-AIE are external runtime/toolchain
+  dependencies selected from the installed environment. No source was copied
+  from `hawkpoint-npu-llm`; the related repository remains reference-only.
 
 ## Current Qubic algorithm facts
 

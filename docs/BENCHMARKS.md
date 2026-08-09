@@ -97,10 +97,19 @@ inputs and must state whether it measured K1, K2, K3, or a fused composition.
 
 ## Current evidence
 
-M0 executed no benchmark. All numeric performance cells above are intentionally
-unmeasured. The next agent must not infer a performance claim from the static
-operation counts in `docs/ARCHITECTURE.md` or from the related
-`hawkpoint-npu-llm` project.
+M0 and M1 executed no benchmark. M2 executed a correctness smoke only: the
+current physical `RyzenAI-npu1`/AIE2 device completed 100 one-column XRT
+dispatches for `int32[32]`, with 100 exact CPU-oracle matches, zero mismatches,
+zero runtime failures, 200 explicit H2D synchronizations, and 100 explicit D2H
+synchronizations. The machine-readable record is
+`docs/evidence/m2-xdna-smoke.json` and the stack identity is in
+`runtime-pins.json`.
+
+This is dispatch evidence, not a benchmark. No timing, throughput, speedup,
+power, energy, active-four-column claim, or profitability value was recorded.
+The table above remains intentionally unmeasured. Do not infer a performance
+claim from the static operation counts in `docs/ARCHITECTURE.md`, from the
+smoke dispatch count, or from the related `hawkpoint-npu-llm` project.
 
 ## Profitability
 

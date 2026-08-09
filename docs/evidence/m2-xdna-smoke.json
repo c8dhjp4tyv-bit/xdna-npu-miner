@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "milestone": "M2",
+  "hardware": {
+    "status": "SUPPORTED_XDNA1",
+    "device_name": "RyzenAI-npu1",
+    "architecture": "aie2",
+    "bdf": "0000:06:00.1",
+    "device_node": "/dev/accel/accel0",
+    "firmware_version": "1.5.5.391",
+    "xrt_version": "2.26.0",
+    "xrt_hash": "8bf2fc4c090540dcf7872243ab67779ae74ef5e3",
+    "amdxdna_version": "7.2.0-0.rc5.260731.8ba098e6.443.vanilla.fc45.x86_64"
+  },
+  "artifact": {
+    "xclbin": "/home/umutcagand/xdna-npu-miner/build/xdna-smoke/xdna_smoke.xclbin",
+    "instructions": "/home/umutcagand/xdna-npu-miner/build/xdna-smoke/xdna_smoke.insts",
+    "uuid": "2a4f5f1f-3f1e-33ce-3f3f-56d4cf90be92",
+    "kernel": "MLIR_AIE"
+  },
+  "workload": {
+    "element_type": "int32",
+    "element_count": 32,
+    "byte_count": 128,
+    "alignment_bytes": 4,
+    "transform": "out[i] = 3 * in[i] + 7",
+    "iterations": 100
+  },
+  "dispatch": {
+    "requested": 100,
+    "completed": 100,
+    "output_mismatches": 0,
+    "runtime_failures": 0,
+    "xrt_dispatches": 100,
+    "xrt_completed_dispatches": 100,
+    "explicit_h2d_syncs": 200,
+    "explicit_d2h_syncs": 100
+  },
+  "evidence": {
+    "hardware_context_created": true,
+    "xrt_kernel_wait_completed": true,
+    "input_dependent_exact_outputs": true,
+    "silent_cpu_fallback": false
+  }
+}

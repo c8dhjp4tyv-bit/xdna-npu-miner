@@ -227,6 +227,48 @@ greater than that count. This prevents a partial score result from being
 treated as a complete candidate result. The timeout sentinel remains exactly
 `0xffffffff`.
 
+## D-020 — M2 uses a standalone XRT host boundary and one-column smoke
+
+**Status:** Accepted for M2
+
+The runtime foundation is owned by this repository under `src/xdna/` and uses
+the project-selected MLIR-AIE/IRON artifact plus the XRT C++ host API. It does
+not depend on `hawkpoint-npu-llm`. The first artifact uses one AIE2 column and
+the non-mining transform `out[i] = 3 * in[i] + 7` over 32 `int32` values.
+
+Reason: M2 proves real allocation, synchronization, hardware-context creation,
+device arithmetic, completion, and exact host verification with the smallest
+auditable workload. Four-column mapping and BPP9000 compute are later gates,
+not prerequisites to a truthful runtime smoke.
+
+## D-021 — Capability success requires physical identity and pinned versions
+
+**Status:** Accepted for M2
+
+`SUPPORTED_XDNA1` requires an XRT-opened device whose identity is corroborated
+by `xrt-smi` as `RyzenAI-npu1`/AIE2 with firmware and XRT version evidence.
+`runtime-pins.json` records the current observed stack, and
+`scripts/verify-xdna1.sh` returns `RUNTIME_VERSION_MISMATCH` when those pins do
+not match. An environment variable, device node, compilation result, or
+successful CPU calculation is not sufficient evidence.
+
+Reason: the related environment used a different kernel suffix, so silently
+inheriting its pin would not establish the current machine's identity.
+
+## D-022 — M3 starts with K1, but M2 does not implement it
+
+**Status:** Accepted for the M2-to-M3 handoff
+
+The first M3 primitive is one recurrent LUT tick over independent
+candidate/window lanes: 64-byte state, 46 rows of 32-byte LUT storage, and
+three `uint32_t` neighbors per updated neuron. It is selected because the
+state/LUT layout is explicit, topology is reusable, outer lanes are
+independent, and host round trips can be avoided. M2 implements no recurrent
+tick, LUT, scoring, mutation, or BPP9000 device behavior.
+
+Reason: selecting the boundary from verified runtime constraints is required;
+implementing the kernel before the M2 evidence gate would collapse milestones.
+
 ## Historical decisions retained
 
 The original bootstrap decisions remain valid:

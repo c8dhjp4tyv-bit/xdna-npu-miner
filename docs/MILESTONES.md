@@ -5,7 +5,7 @@ when every acceptance criterion passes and `docs/AI_HANDOFF.md` is updated.
 Static hypotheses, configured offload, and plausible source code are not
 evidence.
 
-**Current milestone:** M1 — CPU golden reference
+**Current milestone:** M2 — XDNA1 runtime foundation
 **Current status:** COMPLETE
 **M0 status:** COMPLETE
 
@@ -150,7 +150,7 @@ revision, and the first M2 runtime-smoke task. Do not begin M3.
 
 ### Status
 
-**NOT STARTED**
+**COMPLETE**
 
 ### Objective
 
@@ -185,6 +185,28 @@ buffer sync/stride checks, runtime mismatch checks, and actual dispatch evidence
   not count.
 - Missing hardware fails with a classified diagnostic and no false NPU result.
 
+### M2 result
+
+The current Hawk Point host positively identifies `RyzenAI-npu1` / `aie2` at
+`0000:06:00.1`, with `/dev/accel/accel0`, firmware `1.5.5.391`, XRT `2.26.0`,
+and the current amdxdna/kernel pin recorded in `runtime-pins.json`. The
+project-owned Iron/MLIR-AIE artifact is one-column `MLIR_AIE` code for the
+non-mining transform `out[i] = 3 * in[i] + 7` over `int32[32]`. The acceptance
+run completed 100 physical XRT dispatches with 100 exact CPU-oracle matches,
+zero mismatches, zero runtime failures, 200 explicit H2D synchronizations, and
+100 explicit D2H synchronizations. Evidence is saved at
+`docs/evidence/m2-xdna-smoke.json`.
+
+The negative selector, missing-artifact, invalid-artifact, invalid-buffer, and
+zero-iteration paths fail closed with classified nonzero exits. No second-
+generation device is present for a physical wrong-generation test; the probe
+rejects known incompatible identity strings. Context/execution/output-mismatch
+error paths are typed but were not artificially induced on the healthy device.
+
+No BPP9000 NPU kernel, networking, production crypto, speedup, or profitability
+claim was added. Four-column execution was not claimed; one column is the only
+verified artifact mapping.
+
 ### Non-goals
 
 BPP9000 scoring, network integration, multi-column performance, and
@@ -196,6 +218,10 @@ Record device/stack identity, commands, dispatch evidence, failure behavior,
 and the exact primitive selected for M3.
 
 ## M3 — First NPU compute kernel
+
+### Status
+
+**NOT STARTED**
 
 ### Objective
 

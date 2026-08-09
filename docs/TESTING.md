@@ -1,8 +1,9 @@
 # Testing Strategy
 
-Testing is correctness-first. M1 now provides the scalar CPU oracle and its
-deterministic corpus. XDNA execution and performance remain outside this
-milestone and may only be evaluated against this exact reference later.
+Testing is correctness-first. M1 provides the scalar CPU oracle and its
+deterministic corpus. M2 now verifies a tiny standalone XDNA1/AIE2 dispatch
+against an exact CPU oracle; BPP9000 XDNA work and performance remain outside
+this milestone.
 
 ## Authoritative behavior under test
 
@@ -148,6 +149,62 @@ Verify on the target machine:
 
 A configured NPU mode without dispatch evidence is a failed test, not a pass.
 
+The project-owned commands are:
+
+```bash
+./scripts/verify-xdna1.sh
+./scripts/build-xdna-smoke.sh
+./scripts/run-xdna-smoke.sh --iterations 1
+./scripts/run-xdna-smoke.sh --iterations 100
+python3 -m json.tool docs/evidence/m2-xdna-smoke.json
+```
+
+The verified host reports `RyzenAI-npu1`, `aie2`, BDF `0000:06:00.1`,
+firmware `1.5.5.391`, XRT `2.26.0`, and the current amdxdna/kernel string in
+`runtime-pins.json`. The artifact is an Iron/MLIR-AIE one-column `MLIR_AIE`
+program computing `out[i] = 3 * in[i] + 7` for 32 `int32` values. The
+100-dispatch run completed 100 XRT kernel waits with 100 exact matches, zero
+mismatches, zero runtime failures, 200 explicit H2D synchronizations, and 100
+explicit D2H synchronizations. The JSON record also states
+`hardware_context_created: true` and `silent_cpu_fallback: false`.
+
+The smoke buffer contract is exactly 32 `int32` elements, 128 bytes, 4-byte
+alignment, host-contiguous input/output, explicit input and sentinel-output
+H2D sync before dispatch, and explicit output D2H sync after completion. Pure
+contract tests cover valid, zero-length, wrong-count, wrong-byte-count, and
+misaligned cases. Each dispatch reuses allocated BOs but rewrites both input
+and output before synchronization, so stale output cannot satisfy a match.
+
+M2 does not claim four-column execution, timing, throughput, speedup, power,
+or profitability.
+
+### 6a. M2 negative and fail-closed tests
+
+These commands are expected to return nonzero:
+
+```bash
+./build/xdna_probe --selector 99
+./scripts/verify-xdna1.sh --selector 99
+./build/xdna_smoke --xclbin build/xdna-smoke/xdna_smoke.xclbin \
+  --insts build/xdna-smoke/xdna_smoke.insts --selector 99
+./build/xdna_smoke --xclbin /does/not/exist --insts /does/not/exist
+./build/xdna_smoke --xclbin build/xdna-smoke/SHA256SUMS \
+  --insts build/xdna-smoke/xdna_smoke.insts
+./build/xdna_smoke --xclbin build/xdna-smoke/xdna_smoke.xclbin \
+  --insts build/xdna-smoke/xdna_smoke.insts --elements 31
+./build/xdna_smoke --xclbin build/xdna-smoke/xdna_smoke.xclbin \
+  --insts build/xdna-smoke/xdna_smoke.insts --iterations 0
+```
+
+Observed classifications are respectively `DEVICE_OPEN_FAILED`, fail-closed
+capability failure, `DEVICE_OPEN_FAILED`, `ARTIFACT_MISSING`,
+`ARTIFACT_INVALID`, `INVALID_BUFFER`, and `INVALID_ARGUMENT`. A physical
+wrong-generation device is not present, so that status is covered by identity
+rejection logic but not by a live second-device run. Context-creation,
+device-execution, synchronization, and output-mismatch failures have typed
+paths; they were not fabricated on a healthy device. No failure path invokes
+the CPU transform or prints NPU success.
+
 ### 7. Kernel and full differential gates (M3/M4)
 
 M3 must compare the first selected primitive against the scalar oracle for all
@@ -217,6 +274,11 @@ production_digest=7c1da1028b9ecdbae54616654606185e62076ff7b69e209ecbf3d23f6a2fed
 The corpus summary is a committed expected value, not a performance result.
 The tests were run twice during M1 verification; both runs produced the same
 summary values.
+
+The M2 contract test is included in `ctest` and reports five assertions. The
+hardware evidence file is machine-readable and is intentionally a record of
+the current host, not a portable support claim. The exact project-owned pins
+are in `runtime-pins.json`.
 
 ## Security-oriented tests
 
