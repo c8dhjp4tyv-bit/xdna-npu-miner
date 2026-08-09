@@ -40,12 +40,14 @@ submission remain unexercised. Do not start M7 or Qatum work.
   boundary`).
 - M6 post-recovery checkpoints: `75e0a78` and `9e5342f` (pushed before this
   continuation).
-- The current continuation has regenerated the M2–M5 evidence records and
-  added the optional production-crypto source/tests/docs; these changes are
-  being committed as the next M6 checkpoint.
-- Staged files: none.
-- Recovered commits: the M0–M5 commit chain through `62a84d5`; no separate M6
-  commit existed before this session. The new M6 checkpoint is `c600094`.
+- The current continuation regenerated the M2–M5 evidence records and added
+  the optional production-crypto source/tests/docs; the implementation and
+  evidence are committed in `8ef85c2`.
+- No source or evidence files remain staged before this handoff finalization.
+- Recovered commits: the M0–M5 commit chain through `62a84d5`; the original
+  recovered M6 checkpoint was `c600094`, followed by the post-recovery
+  validation checkpoint `9e5342f` and the production-crypto/KAT checkpoint
+  `8ef85c2`.
 - `git fsck --full`: five dangling objects (two trees and three blobs) only;
   no missing or corrupt object was reported. No conflict markers, editor
   temporary files, or M6 files were found.
@@ -73,8 +75,7 @@ submission remain unexercised. Do not start M7 or Qatum work.
 - M5 implementation/evidence commit: `bd9a349`
 - M6 implementation/evidence checkpoint: `c600094`.
 - M6 post-recovery validation/evidence checkpoint: `75e0a78`.
-- M6 production-crypto/KAT checkpoint: this continuation; commit hash is
-  recorded after the final commit is created.
+- M6 production-crypto/KAT checkpoint: `8ef85c2`.
 
 ## M0 authority that M1 used
 
