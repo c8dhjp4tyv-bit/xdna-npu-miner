@@ -23,7 +23,8 @@ M0 and M1 were externally reviewed and passed. M3 is **NOT STARTED**.
   `323e2bcdc6885ceb4c6ec3ce65af7e651b3e85bb`
 - M1 handoff commit:
   `749311c16bf40604aab7521625a58f859e6a9d75`
-- M2 completion commit: pending final commit
+- M2 completion commit:
+  `4ae226a048a65fed67fd7b8ab6a8feee9ec4c696`
 
 ## M0 authority that M1 used
 
