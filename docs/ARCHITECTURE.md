@@ -20,9 +20,10 @@ or implementation is pinned and independently reviewed.
 No NPU kernel is being implemented in M0.
 
 M1 added the CPU reference layer described below. M2 now provides a standalone
-XRT/IRON runtime foundation and one-column deterministic hardware smoke. The
-M2 artifact is infrastructure proof only; the BPP9000 XDNA compute boundary
-remains unimplemented until M3.
+XRT/IRON runtime foundation and one-column deterministic hardware smoke. M3
+now adds the first BPP9000 XDNA compute boundary: one isolated K1 recurrent LUT
+tick. Full scoring, mutation, networking, and four-column mapping remain later
+milestones.
 
 ## System boundary
 
@@ -86,7 +87,7 @@ The M1 implementation uses these standalone source boundaries:
 | `src/bpp9000/reference` | Scalar BPP9000 oracle, LUT, recurrent state, window/full scoring, candidate control | None |
 | `src/bpp9000/random` | Seed-aware injectable root/mutation draw boundary and deterministic fixture source | None |
 | `xdna/runtime` | Device/version discovery, XRT buffers, dispatch and evidence | Execute selected deterministic buffers |
-| `xdna/bpp9000` | Pack batches, synchronize, validate output shape/status | Recurrent LUT/tick primitive or fused score |
+| `xdna/k1` and `xdna/runtime` | Pack one K1 tick, synchronize, validate output shape/status | One isolated recurrent LUT/tick primitive |
 | verification | Recompute candidate with the CPU oracle before submission | Never authorizes a share by itself |
 | benchmark | Timestamp, workload identity, transfer/telemetry accounting | Report actual dispatch/kernel timing |
 
@@ -114,6 +115,52 @@ device arithmetic, completion, reuse, and fail-closed errors, not performance
 or four-column utilization. Evidence is written to
 `docs/evidence/m2-xdna-smoke.json`; project-owned stack pins are in
 `runtime-pins.json`.
+
+## M3 K1 isolated recurrent tick
+
+M3 is **COMPLETE** for the first isolated deterministic BPP9000 primitive. The
+M1 scalar `recurrent_tick` is the trusted CPU oracle. The physical runtime
+path in `src/xdna/runtime.cpp` only validates, packs, synchronizes, dispatches,
+waits for `ERT_CMD_STATE_COMPLETED`, reads back, and validates the device
+output; it never computes the expected state or silently falls back to CPU.
+
+The logical K1 input/output contract is:
+
+```text
+previous_state:  uint8[64]          trits 0, 1, 2; 2 = UNKNOWN
+lut:             uint8[46][32]      entries 0..26 logical; 27..31 padding
+neighbors:       uint32[64][3]      serialized topology rows
+updated_neurons: uint32[46]         ascending non-input rows
+next_state:      uint8[64]          logical output prefix
+```
+
+For each updated row, the device reads all three values from `previous_state`,
+forms `first + 3*second + 9*third`, reads `lut[row][index]`, and writes that
+row of `next_state`. The 18 neurons absent from `updated_neurons` are copied
+unchanged. This is simultaneous double-buffer semantics, not in-place
+recurrent mutation.
+
+The physical one-column AIE2 artifact uses a single 2,528-byte aligned input
+arena and a 96-byte output BO:
+
+| Region | Device offset | Size | Logical meaning |
+|---|---:|---:|---|
+| state | 0 | 96 bytes | 64-byte state plus unused padding |
+| LUT | 96 | 1,472 bytes | 46 rows × 32 bytes |
+| neighbors | 1,568 | 768 bytes | 64 rows × 3 `uint32_t` |
+| updated rows | 2,336 | 192 bytes | 46 logical words plus 2 pad words |
+| output | separate BO | 96 bytes | 64-byte next-state prefix |
+
+The combined arena was chosen because the one-column compiler/AIE shim
+rejected the initial independent-stream design for exceeding its DMA channel
+budget. This is a device-placement constraint only; the host logical
+schema remains explicit and is tested through pack/unpack and padding-isolation
+cases. Each isolated tick performs two H2D synchronizations (input arena and
+sentinel output) and one D2H synchronization.
+
+M3 verified one column only. State is not retained on the device across host
+dispatches, and no full-window score, mutation loop, candidate batch, or
+four-column performance experiment is part of this milestone.
 
 ### M1 CPU API and storage contract
 

@@ -51,8 +51,11 @@ namespace {
 
 } // namespace
 
-XdnaRuntime::XdnaRuntime(const SmokeArtifact& artifact, const std::string& selector)
+XdnaRuntime::XdnaRuntime(const SmokeArtifact& artifact,
+                         const std::string& selector,
+                         WorkloadKind workload)
     : artifact_(artifact),
+      workload_(workload),
       capability_(probe_device(selector)),
       device_(),
       xclbin_(),
@@ -62,6 +65,9 @@ XdnaRuntime::XdnaRuntime(const SmokeArtifact& artifact, const std::string& selec
       instruction_bo_(),
       input_bo_(),
       output_bo_(),
+      k1_input_bo_(),
+      k1_next_state_bo_(),
+      k1_device_input_(),
       kernel_name_(),
       artifact_uuid_(),
       counters_()
@@ -81,6 +87,21 @@ XdnaRuntime::XdnaRuntime(const SmokeArtifact& artifact, const std::string& selec
             ErrorCode::ArtifactMissing,
             "instruction artifact is missing: " + artifact_path_message(artifact_.instructions));
     }
+    if (workload_ == WorkloadKind::K1) {
+        if (!std::filesystem::is_regular_file(artifact_.manifest)) {
+            throw RuntimeError(
+                ErrorCode::ArtifactMissing,
+                "K1 artifact manifest is missing: " + artifact_path_message(artifact_.manifest));
+        }
+        std::ifstream manifest(artifact_.manifest);
+        std::string marker;
+        if (!manifest || !std::getline(manifest, marker)
+            || marker != "artifact_kind=xdna-npu-miner-m3-k1-v1") {
+            throw RuntimeError(
+                ErrorCode::ArtifactInvalid,
+                "K1 artifact manifest does not identify the project K1 artifact");
+        }
+    }
 
     bool context_setup_started = false;
     try {
@@ -96,10 +117,13 @@ XdnaRuntime::XdnaRuntime(const SmokeArtifact& artifact, const std::string& selec
         if (found == kernels.end()) {
             throw RuntimeError(ErrorCode::ArtifactInvalid, "xclbin has no MLIR_AIE kernel");
         }
-        if (found->get_num_args() < 5U) {
+        const std::size_t required_kernel_args = 5U;
+        if (found->get_num_args() < required_kernel_args) {
             throw RuntimeError(
                 ErrorCode::ArtifactInvalid,
-                "MLIR_AIE kernel has fewer than the required opcode/instruction/input/output arguments");
+                workload_ == WorkloadKind::K1
+                    ? "K1 MLIR_AIE kernel has fewer than the required opcode/instruction/input/output arguments"
+                    : "MLIR_AIE kernel has fewer than the required opcode/instruction/input/output arguments");
         }
 
         kernel_name_ = found->get_name();
@@ -118,21 +142,46 @@ XdnaRuntime::XdnaRuntime(const SmokeArtifact& artifact, const std::string& selec
             instructions_.size() * sizeof(std::uint32_t),
             XCL_BO_FLAGS_CACHEABLE,
             kernel_.group_id(1));
-        input_bo_ = xrt::bo(
-            device_,
-            kSmokeBufferBytes,
-            XRT_BO_FLAGS_HOST_ONLY,
-            kernel_.group_id(3));
-        output_bo_ = xrt::bo(
-            device_,
-            kSmokeBufferBytes,
-            XRT_BO_FLAGS_HOST_ONLY,
-            kernel_.group_id(4));
+        if (workload_ == WorkloadKind::Smoke) {
+            input_bo_ = xrt::bo(
+                device_,
+                kSmokeBufferBytes,
+                XRT_BO_FLAGS_HOST_ONLY,
+                kernel_.group_id(3));
+            output_bo_ = xrt::bo(
+                device_,
+                kSmokeBufferBytes,
+                XRT_BO_FLAGS_HOST_ONLY,
+                kernel_.group_id(4));
 
-        if (instruction_bo_.size() < instructions_.size() * sizeof(std::uint32_t)
-            || input_bo_.size() < kSmokeBufferBytes
-            || output_bo_.size() < kSmokeBufferBytes) {
-            throw RuntimeError(ErrorCode::ArtifactInvalid, "XRT allocated a buffer smaller than its logical contract");
+            if (instruction_bo_.size() < instructions_.size() * sizeof(std::uint32_t)
+                || input_bo_.size() < kSmokeBufferBytes
+                || output_bo_.size() < kSmokeBufferBytes) {
+                throw RuntimeError(
+                    ErrorCode::ArtifactInvalid,
+                    "XRT allocated a smoke buffer smaller than its logical contract");
+            }
+        } else {
+            const K1DeviceLayout layout = k1_default_layout();
+            k1_input_bo_ = xrt::bo(
+                device_,
+                layout.input_buffer_bytes,
+                XRT_BO_FLAGS_HOST_ONLY,
+                kernel_.group_id(3));
+            k1_next_state_bo_ = xrt::bo(
+                device_,
+                layout.state_stride_bytes,
+                XRT_BO_FLAGS_HOST_ONLY,
+                kernel_.group_id(4));
+            k1_device_input_.assign(layout.input_buffer_bytes, 0xA5U);
+
+            if (instruction_bo_.size() < instructions_.size() * sizeof(std::uint32_t)
+                || k1_input_bo_.size() < layout.input_buffer_bytes
+                || k1_next_state_bo_.size() < layout.state_stride_bytes) {
+                throw RuntimeError(
+                    ErrorCode::ArtifactInvalid,
+                    "XRT allocated a K1 buffer smaller than its logical/device contract");
+            }
         }
 
         auto* instruction_map = instruction_bo_.map<std::uint32_t*>();
@@ -249,6 +298,92 @@ void XdnaRuntime::dispatch(std::span<const std::int32_t> input,
         throw RuntimeError(
             ErrorCode::SynchronizationFailed,
             "XRT buffer synchronization or dispatch failed: " + exception_message(error));
+    }
+}
+
+void XdnaRuntime::dispatch_k1(K1PackedBuffers& buffers, const K1DeviceLayout& layout)
+{
+    if (workload_ != WorkloadKind::K1) {
+        throw RuntimeError(ErrorCode::InvalidArgument, "K1 dispatch requested from a non-K1 runtime");
+    }
+    try {
+        validate_k1_packed_input(buffers, layout);
+    } catch (const K1ContractError& error) {
+        throw RuntimeError(ErrorCode::InvalidBuffer, std::string("K1 buffer contract rejected: ") + error.what());
+    }
+
+    try {
+        if (k1_device_input_.size() != layout.input_buffer_bytes) {
+            throw RuntimeError(ErrorCode::InvalidBuffer, "K1 runtime input arena does not match its layout");
+        }
+        auto* input_map = k1_input_bo_.map<bpp9000::Byte*>();
+        auto* next_state_map = k1_next_state_bo_.map<bpp9000::Byte*>();
+
+        std::fill(k1_device_input_.begin(), k1_device_input_.end(), static_cast<bpp9000::Byte>(0xA5U));
+        std::memcpy(k1_device_input_.data() + layout.state_device_offset,
+                    buffers.previous_state.data(),
+                    buffers.previous_state.size() * sizeof(bpp9000::Byte));
+        std::memcpy(k1_device_input_.data() + layout.lut_device_offset,
+                    buffers.lut.data(),
+                    buffers.lut.size() * sizeof(bpp9000::Byte));
+        std::memcpy(k1_device_input_.data() + layout.neighbors_device_offset,
+                    buffers.neighbors.data(),
+                    buffers.neighbors.size() * sizeof(std::uint32_t));
+        std::memcpy(k1_device_input_.data() + layout.updated_device_offset,
+                    buffers.updated_neurons.data(),
+                    buffers.updated_neurons.size() * sizeof(std::uint32_t));
+        std::fill(next_state_map,
+                  next_state_map + buffers.next_state.size(),
+                  static_cast<bpp9000::Byte>(0x5AU));
+
+        std::memcpy(input_map, k1_device_input_.data(), k1_device_input_.size());
+        k1_input_bo_.sync(XCL_BO_SYNC_BO_TO_DEVICE, k1_device_input_.size(), 0U);
+        k1_next_state_bo_.sync(XCL_BO_SYNC_BO_TO_DEVICE, buffers.next_state.size(), 0U);
+        counters_.h2d_syncs += 2U;
+        ++counters_.dispatches;
+
+        const std::uint32_t opcode = 3U;
+        ert_cmd_state status = ERT_CMD_STATE_ERROR;
+        try {
+            xrt::run run = kernel_(
+                opcode,
+                instruction_bo_,
+                instructions_.size(),
+                k1_input_bo_,
+                k1_next_state_bo_);
+            status = run.wait();
+        } catch (const std::exception& error) {
+            throw RuntimeError(
+                ErrorCode::DeviceExecutionFailed,
+                "XRT K1 kernel dispatch failed: " + exception_message(error));
+        }
+        if (status != ERT_CMD_STATE_COMPLETED) {
+            throw RuntimeError(
+                ErrorCode::DeviceExecutionFailed,
+                "XRT K1 run did not complete; status="
+                    + std::to_string(static_cast<unsigned int>(status)));
+        }
+        ++counters_.completed_dispatches;
+
+        k1_next_state_bo_.sync(XCL_BO_SYNC_BO_FROM_DEVICE, buffers.next_state.size(), 0U);
+        ++counters_.d2h_syncs;
+        std::memcpy(
+            buffers.next_state.data(),
+            next_state_map,
+            buffers.next_state.size() * sizeof(bpp9000::Byte));
+        try {
+            validate_k1_output(buffers.next_state, layout);
+        } catch (const K1ContractError& error) {
+            throw RuntimeError(
+                ErrorCode::DeviceExecutionFailed,
+                std::string("K1 device returned an invalid output: ") + error.what());
+        }
+    } catch (const RuntimeError&) {
+        throw;
+    } catch (const std::exception& error) {
+        throw RuntimeError(
+            ErrorCode::SynchronizationFailed,
+            "XRT K1 buffer synchronization or dispatch failed: " + exception_message(error));
     }
 }
 

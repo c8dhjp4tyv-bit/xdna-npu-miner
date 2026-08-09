@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "milestone": "M3",
+  "status": "PASS",
+  "captured_utc": "2026-08-09T16:50:25Z",
+  "toolchain": {
+    "device_name": "RyzenAI-npu1",
+    "architecture": "aie2",
+    "bdf": "0000:06:00.1",
+    "device_node": "/dev/accel/accel0",
+    "amdxdna_version": "7.2.0-0.rc5.260731.8ba098e6.443.vanilla.fc45.x86_64",
+    "firmware_version": "1.5.5.391",
+    "xrt_version": "2.26.0",
+    "xrt_hash": "8bf2fc4c090540dcf7872243ab67779ae74ef5e3",
+    "mlir_aie_source_commit": "57d7494e99c214f5f53b328a0ed43a99e759e835",
+    "mlir_aie_wheel": "1.3.4",
+    "iron_python": "CPython 3.12.13",
+    "peano": "llvm-aie 21.0.0.2026072001+ce8c0f8f"
+  },
+  "artifact": {
+    "xclbin": "/home/umutcagand/xdna-npu-miner/build/xdna-k1/xdna_k1.xclbin",
+    "instructions": "/home/umutcagand/xdna-npu-miner/build/xdna-k1/xdna_k1.insts",
+    "manifest": "/home/umutcagand/xdna-npu-miner/build/xdna-k1/xdna_k1.manifest",
+    "xclbin_sha256": "e4f07119c52d1136045bcff7ddd79cf322f5639ad361f129db25d0bb647b3fc7",
+    "instructions_sha256": "633b2f8b6075892b61f8f86136d013921be1605ce3c74e86d797e8d10f6a4f7a",
+    "uuid": "8e1b4ae5-7811-4641-fa48-99bfeb489071",
+    "kernel": "MLIR_AIE",
+    "target_column_count": 1
+  },
+  "k1_logical_contract": {
+    "previous_state_bytes": 64,
+    "lut_rows": 46,
+    "lut_logical_entries": 27,
+    "lut_row_stride_bytes": 32,
+    "neighbors_rows": 64,
+    "neighbors_per_row": 3,
+    "updated_neurons": 46,
+    "trit_domain": [0,1,2],
+    "unknown_value": 2,
+    "simultaneous_previous_state_reads": true,
+    "input_roles": "the 18 neurons absent from updated_neurons are copied/held"
+  },
+  "k1_device_contract": {
+    "combined_input_device_bytes": 2528,
+    "state_offset": 0,
+    "lut_offset": 96,
+    "neighbors_offset": 1568,
+    "updated_neurons_offset": 2336,
+    "state_device_bytes": 96,
+    "state_logical_bytes": 64,
+    "lut_device_bytes": 1472,
+    "neighbors_device_bytes": 768,
+    "updated_neurons_logical_bytes": 184,
+    "updated_neurons_device_bytes": 192,
+    "output_device_bytes": 96,
+    "padding_is_semantically_unused": true,
+    "h2d_syncs_per_dispatch": 2,
+    "d2h_syncs_per_dispatch": 1
+  },
+  "corpus": {
+    "generator_version": "m3-k1-v1",
+    "edge_cases": 37,
+    "fixed_cases": 100,
+    "random_cases": 1000,
+    "random_seed": 5562880460839399681,
+    "random_case_identity": "generator_version + random_seed + case_index"
+  },
+  "dispatch": {
+    "physical_dispatches": 1139,
+    "successful_dispatches": 1139,
+    "exact_logical_matches": 1139,
+    "logical_mismatches": 0,
+    "runtime_failures": 0,
+    "explicit_h2d_syncs": 2278,
+    "explicit_d2h_syncs": 1139,
+    "hardware_context_created": true,
+    "silent_cpu_fallback": false
+  },
+  "required_matrix": {
+    "all_zero": true,
+    "all_one": true,
+    "all_unknown": true,
+    "mixed_pattern": true,
+    "every_k3_combination_27": true,
+    "same_neighbor_reuse": true,
+    "distinct_neighbors": true,
+    "external_input_roles": true,
+    "output_signal_roles": true,
+    "previous_state_isolation": true,
+    "padded_buffer_round_trip": true,
+    "repeated_deterministic_dispatch": true
+  },
+  "regressions": {
+    "m1_status": "PASS",
+    "m2_status": "PASS",
+    "negative_paths_status": "PASS"
+  },
+  "performance": {
+    "speedup_claim": false,
+    "profitability_claim": false,
+    "timing_recorded": false
+  }
+}

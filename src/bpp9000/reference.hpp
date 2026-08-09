@@ -60,6 +60,7 @@ public:
     explicit RecurrentState(const Task& task);
 
     void reset_unknown();
+    void load_current(std::span<const Byte> state);
     void set_input(std::size_t neuron, Trit value);
     void set_all_inputs_unknown();
     void tick(const Task& task, const Lut& lut);
@@ -74,6 +75,13 @@ private:
     std::vector<Byte> next_;
     std::vector<bool> input_mask_;
 };
+
+// Primitive-level CPU oracle used by later device differential tests. This is
+// the same double-buffered RecurrentState::tick path used by the M1 scorer;
+// it only exposes arbitrary previous-state loading for an isolated tick.
+[[nodiscard]] std::vector<Byte> recurrent_tick(const Task& task,
+                                               std::span<const Byte> previous_state,
+                                               const Lut& lut);
 
 struct WindowResult {
     ScoreResult score{};

@@ -88,7 +88,7 @@ int main(int argc, char** argv)
 
     try {
         xdna::runtime::XdnaRuntime runtime(
-            xdna::runtime::SmokeArtifact{options.xclbin, options.instructions},
+            xdna::runtime::SmokeArtifact{options.xclbin, options.instructions, {}},
             options.selector);
         if (options.elements != xdna::runtime::kSmokeElementCount) {
             throw xdna::runtime::RuntimeError(

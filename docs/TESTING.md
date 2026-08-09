@@ -1,9 +1,9 @@
 # Testing Strategy
 
 Testing is correctness-first. M1 provides the scalar CPU oracle and its
-deterministic corpus. M2 now verifies a tiny standalone XDNA1/AIE2 dispatch
-against an exact CPU oracle; BPP9000 XDNA work and performance remain outside
-this milestone.
+deterministic corpus. M2 verifies the standalone XDNA1/AIE2 runtime boundary;
+M3 now verifies one physical BPP9000 K1 recurrent tick against the exact M1
+oracle. Full scoring and performance remain outside this milestone.
 
 ## Authoritative behavior under test
 
@@ -205,7 +205,39 @@ device-execution, synchronization, and output-mismatch failures have typed
 paths; they were not fabricated on a healthy device. No failure path invokes
 the CPU transform or prints NPU success.
 
-### 7. Kernel and full differential gates (M3/M4)
+### 7. M3 K1 physical differential tests
+
+M3 uses `src/bpp9000/reference.cpp::recurrent_tick` as the trusted CPU
+expected-output path and `xdna_k1_differential` for the physical XRT path. The
+host contract is 64 state trits, 46 LUT rows with 32-byte storage stride and
+27 logical entries, a 64×3 `uint32_t` neighbor array, and 46 ascending
+updated-neuron rows. Logical outputs are the first 64 bytes of the 96-byte
+device output. State and output padding, LUT padding entries 27..31, repeated
+identical dispatches, and alternate padding are explicitly tested.
+
+The complete acceptance command is:
+
+```bash
+./scripts/run-m3-validation.sh
+```
+
+The final physical run exercised 37 edge cases, 100 fixed cases, and 1,000
+seeded random cases from generator `m3-k1-v1`, random seed
+`5562880460839399681`, for 1,139 physical dispatches. It reported 1,139 exact
+logical matches, zero logical mismatches, zero runtime failures, 2,278 H2D
+synchronizations, and 1,139 D2H synchronizations. The saved evidence is
+`docs/evidence/m3-k1-differential.json`; a mismatch would be written as a JSON
+record under `build/m3-mismatches/` with vector identity, generator seed/index,
+logical inputs, expected/actual state, differing indices, and artifact
+metadata. The same command also reruns the M1 corpus, M2 100-dispatch smoke,
+and missing-artifact, invalid-selector, and wrong-manifest negative paths.
+
+M3 proves one isolated physical tick per host dispatch. It does not prove
+device-resident multi-tick state, full-window scoring, mutation/search,
+multi-candidate batching, four-column execution, timing, throughput, or
+profitability.
+
+### 8. Full differential gates (M4)
 
 M3 must compare the first selected primitive against the scalar oracle for all
 boundary cases and a deterministic random corpus. M4 must compare full scores
@@ -223,7 +255,7 @@ and timeout/status for at least:
 The exact counts are acceptance gates for the initial implementation; a later
 milestone may expand them but may not reduce them without a recorded decision.
 
-### 8. Protocol/integration tests (M6/M7)
+### 9. Protocol/integration tests (M6/M7)
 
 The direct-node test boundary is the required first M6 integration path:
 
@@ -242,7 +274,7 @@ sufficiently complete protocol revision or implementation is pinned and
 independently reviewed; never invent pool frames. Never log private signing
 seeds or access tokens.
 
-### 9. Endurance/recovery tests (M10)
+### 10. Endurance/recovery tests (M10)
 
 Exercise epoch/seed changes, reconnects, device errors, queue restarts, bounded
 memory, graceful stop, and submission rejection. A release endurance run must
@@ -279,6 +311,17 @@ The M2 contract test is included in `ctest` and reports five assertions. The
 hardware evidence file is machine-readable and is intentionally a record of
 the current host, not a portable support claim. The exact project-owned pins
 are in `runtime-pins.json`.
+
+The M3-specific contract test is also included in `ctest` and reports 52
+assertions. The full physical validation command above rebuilds the K1
+artifact, validates the current pinned XDNA stack, regenerates the M1 corpus,
+reruns M2, checks expected negative failures, and writes machine-readable K1
+evidence. Validate that record with:
+
+```bash
+python3 -m json.tool docs/evidence/m3-k1-differential.json
+git diff --check
+```
 
 ## Security-oriented tests
 

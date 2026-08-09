@@ -269,6 +269,43 @@ tick, LUT, scoring, mutation, or BPP9000 device behavior.
 Reason: selecting the boundary from verified runtime constraints is required;
 implementing the kernel before the M2 evidence gate would collapse milestones.
 
+## D-023 — M3 K1 is an exact one-tick, one-column physical primitive
+
+**Status:** Accepted for M3
+
+M3 implements only one isolated recurrent LUT tick. The logical contract is
+the M1 contract: 64 unsigned state trits, 46 LUT rows with 32-byte storage
+stride and 27 logical entries, 64×3 serialized neighbor indices, and 46
+ascending updated-neuron rows. The 18 neurons absent from the updated list are
+held; updated rows read the prior state and commit to a separate next-state
+buffer. `2` remains UNKNOWN and is never reinterpreted as signed `-1`.
+
+The artifact uses one AIE2 column and the host performs exact CPU/NPU
+differential comparison. A physical dispatch is not a score, mutation step,
+full-window result, or performance benchmark. M3 completion does not authorize
+networking, submission, or CPU fallback.
+
+Reason: this is the smallest useful BPP9000 device computation that can be
+audited against the already verified scalar oracle and physically demonstrated
+without guessing protocol behavior.
+
+## D-024 — K1 uses one combined aligned input arena; state residency waits for M4
+
+**Status:** Accepted for M3
+
+The K1 artifact packs state, LUT, neighbors, and updated-neuron rows into one
+2,528-byte aligned input arena at offsets `0`, `96`, `1,568`, and `2,336`, with
+a 96-byte output BO and 64-byte logical output. The initial independent-input
+artifact shape was rejected by the one-column AIE compiler/shim because it
+exceeded the available DMA channel budget. Combining the fields preserves the
+logical M1 schema and is covered by padding-isolation tests.
+
+The host deliberately transfers and returns one isolated tick per dispatch;
+it does not claim device-resident recurrent state. Persistent multi-tick state,
+candidate batching, four-column mapping, and full score composition are
+deferred to M4/M5 where their synchronization and correctness contracts can
+be measured.
+
 ## Historical decisions retained
 
 The original bootstrap decisions remain valid:

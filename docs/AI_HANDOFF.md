@@ -5,14 +5,15 @@ engineering agent.
 
 ## Current milestone
 
-**M2 — XDNA1 runtime foundation and hardware dispatch smoke**
+**M3 — first XDNA1 BPP9000 K1 recurrent-tick kernel**
 
 ## Status
 
-**COMPLETE** — the physical acceptance run, negative paths, documentation, and
-final repository checks pass on the current host.
+**COMPLETE** — the physical K1 differential acceptance run, M1/M2 regressions,
+negative paths, documentation, and final repository checks pass on the current
+host.
 
-M0 and M1 were externally reviewed and passed. M3 is **NOT STARTED**.
+M0, M1, and M2 were externally reviewed and passed. M4 is **NOT STARTED**.
 
 ## Branch and commits
 
@@ -25,6 +26,7 @@ M0 and M1 were externally reviewed and passed. M3 is **NOT STARTED**.
   `749311c16bf40604aab7521625a58f859e6a9d75`
 - M2 completion commit:
   `4ae226a048a65fed67fd7b8ab6a8feee9ec4c696`
+- M3 implementation commit: recorded after the focused checkpoint is created.
 
 ## M0 authority that M1 used
 
@@ -112,6 +114,27 @@ CPU matches with zero output mismatches and zero runtime failures. It recorded
 `hawkpoint-npu-llm` checkout was reference-only; its old `...441...` kernel
 pin differs from the current host's `...443...` stack, which was not changed.
 
+## Completed M3 work
+
+- Extended the M1 reference with `RecurrentState::load_current` and the public
+  `recurrent_tick` oracle. It retains the scalar double-buffered semantics:
+  input roles are held, updated rows read the previous state, and the next
+  state is committed simultaneously.
+- Added the typed K1 host contract under `src/xdna/k1.hpp` and `k1.cpp`:
+  exact logical lengths, trit/topology validation, 32-byte LUT stride,
+  deterministic pack/unpack, padding isolation, and exact mismatch indices.
+- Added the clean-room AIE2 kernel in `src/xdna/k1_kernel.cc`. It performs
+  only one physical recurrent LUT tick and never computes a CPU expected
+  result or silently falls back to CPU.
+- Added the one-column Iron/MLIR-AIE artifact generator and
+  `scripts/build-xdna-k1.sh`. The device input is one 2,528-byte aligned arena:
+  state at offset 0, LUT at 96, neighbors at 1,568, and updated rows at 2,336;
+  the output BO is 96 bytes with a 64-byte logical prefix. This layout was
+  selected after the compiler rejected the independent-stream shape because of
+  the one-column DMA channel budget.
+- Added `xdna_k1_differential`, deterministic edge/fixed/random vectors,
+  mismatch JSON capture, and `scripts/run-m3-validation.sh`.
+
 ## Upstream cross-check result
 
 The implementation was checked against the M0-derived facts from the pinned
@@ -152,6 +175,20 @@ M2 also changed or added:
   `docs/TESTING.md`, `docs/ARCHITECTURE.md`, `docs/DECISIONS.md`,
   `docs/BENCHMARKS.md`, and `docs/UPSTREAM.md`.
 
+M3 also changed or added:
+
+- `src/bpp9000/reference.hpp` and `src/bpp9000/reference.cpp` for the K1
+  oracle boundary;
+- `src/xdna/k1.hpp`, `src/xdna/k1.cpp`, `src/xdna/k1_kernel.cc`,
+  `src/xdna/k1_program.py`, and the K1 runtime additions;
+- `tests/k1_vectors.hpp`, `tests/k1_vectors.cpp`,
+  `tests/k1_contract_tests.cpp`, and `tests/k1_differential.cpp`;
+- `scripts/build-xdna-k1.sh`, `scripts/run-m3-validation.sh`, and
+  `docs/evidence/m3-k1-differential.json`;
+- the M3 updates to `docs/AI_HANDOFF.md`, `docs/MILESTONES.md`,
+  `docs/ARCHITECTURE.md`, `docs/TESTING.md`, `docs/DECISIONS.md`, and
+  `docs/BENCHMARKS.md`.
+
 ## Tests and exact results
 
 Commands:
@@ -190,17 +227,34 @@ python3 -m json.tool docs/evidence/m2-xdna-smoke.json
 
 The capability probe and artifact build pass. The one-dispatch smoke and the
 100-dispatch run both report `NPU SMOKE PASS`; the evidence JSON validates.
-The final M2 completion SHA is recorded above once the focused checkpoint is
-created.
+The M2 completion SHA is recorded above.
+
+M3 commands and exact results:
+
+```bash
+./scripts/run-m3-validation.sh
+python3 -m json.tool docs/evidence/m3-k1-differential.json
+git diff --check
+```
+
+The final differential run exercised 37 edge cases, 100 fixed cases, and
+1,000 seeded random cases with generator `m3-k1-v1` and seed
+`5562880460839399681`. It completed 1,139 physical K1 dispatches with 1,139
+successful dispatches and exact logical matches, zero mismatches, zero runtime
+failures, 2,278 H2D synchronizations, and 1,139 D2H synchronizations. The
+machine-readable record is `docs/evidence/m3-k1-differential.json`.
 
 ## Hardware tests actually executed
 
 The physical XDNA1/AIE2 path was exercised on the current host. `xrt-smi`
 reported `RyzenAI-npu1`, firmware `1.5.5.391`, XRT `2.26.0`, and the current
-amdxdna/kernel string recorded in `runtime-pins.json`. The generated artifact
-was loaded into an XRT hardware context and dispatched 100 times. No live
-Qubic node, network adapter, production K12 provider, or four-column workload
-was exercised.
+amdxdna/kernel string recorded in `runtime-pins.json`. The generated K1
+artifact was loaded into an XRT hardware context and dispatched 1,139 times
+with exact output comparison against M1. The final artifact used one AIE2
+column, kernel `MLIR_AIE`, xclbin UUID
+`8e1b4ae5-7811-4641-fa48-99bfeb489071`, and the hashes recorded in the
+evidence JSON. No live Qubic node, network adapter, production K12 provider,
+state-resident multi-tick workload, or four-column workload was exercised.
 
 ## Known limitations and unresolved behavior
 
@@ -214,7 +268,8 @@ was exercised.
 3. Qatum/pool wire behavior remains unresolved and deferred. M1 does not
    depend on Qatum, QLI, or any pool.
 4. No performance number, NPU activity, throughput, speedup, energy, or
-   profitability claim exists.
+   profitability claim exists. M3 records physical dispatch counters only;
+   it is not a timing or throughput benchmark.
 5. Optional ASAN/UBSAN builds were attempted but the development image lacks
    the linker runtimes (`libasan.so.8.0.0` and `libubsan.so.1.0.0`). The normal
    warning-clean build and complete test suite pass.
@@ -222,6 +277,9 @@ was exercised.
    `WRONG_XDNA_GENERATION` run was not available. Forced device-execution,
    context-creation, and output-mismatch failures were not manufactured on the
    healthy device; their typed fail-closed paths are implemented.
+7. M3 proves one isolated tick per host dispatch. State is not retained on the
+   device across ticks, and no full-window score, mutation loop, batching, or
+   four-column mapping is implemented.
 
 ## Architectural decisions to preserve
 
@@ -236,6 +294,9 @@ was exercised.
 - M2's smoke artifact is one-column `int32[32]` arithmetic only. It proves the
   runtime boundary and is not a BPP9000 kernel, mining benchmark, or four-column
   utilization result.
+- M3's K1 artifact is one-column isolated recurrent compute only. Its exact
+  logical contract and combined device arena are recorded in the M3 evidence;
+  do not treat its dispatch count as a performance result.
 - Direct-node integration is the first future protocol path. Qatum is optional
   and must wait for a stable authoritative wire specification.
 
@@ -247,23 +308,23 @@ was exercised.
   crypto code, or upstream task bytes.
 - Do not replace the fixture random/digest seams with an unreviewed crypto
   implementation while calling M1 complete.
-- Do not add AVX/SIMD, GPU, BPP9000 device kernels, network, Qatum, pool,
-  signing, or production mining-loop code while completing M2.
+- Do not add AVX/SIMD, GPU, network, Qatum, pool, signing, or production
+  mining-loop code while completing M3.
 - Do not claim the production-shaped corpus is the canonical task or a
   production performance benchmark.
 - Do not claim four-column execution, throughput, speedup, power, or
-  profitability from the M2 smoke.
-- Do not begin M3 until this M2 checkpoint is committed and the user asks for
-  the next milestone.
+  profitability from the M2 smoke or M3 K1 dispatch counts.
+- Do not redo the M3 K1 differential run unless source, toolchain, artifact, or
+  contract changes require it.
 
-## Exact next task: M3 K1 recurrent tick
+## Exact next task: M4 full CPU/NPU correctness path
 
-After M2 is complete, implement only the first M3 primitive: one isolated
-recurrent LUT tick for independent candidate/window lanes. Use the M1-shaped
-contract of `state[64] uint8_t`, `LUT[46][32] uint8_t`,
-`neighbors[46][3] uint32_t`, optional input trits, and exact next-state output.
-Keep state device-resident across ticks where possible, start with one column,
-and differential-test against the M1 CPU reference. Do not implement K1 in M2.
+M4 may compose the verified K1 primitive into a full-window or justified fused
+score path while retaining the M1 scalar oracle as the submission authority.
+It must add state reset/feed/settling, timeout and score reduction semantics,
+multiple candidates/batches, and saved exact mismatch artifacts. Do not begin
+network integration, pool work, four-column tuning, or performance optimization
+as part of M4.
 
 ## Resume commands
 
@@ -277,4 +338,5 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
 cmake --build build -j2
 ctest --test-dir build --output-on-failure
 ./scripts/generate_corpus.sh build
+./scripts/run-m3-validation.sh
 ```

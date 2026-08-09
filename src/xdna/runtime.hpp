@@ -1,6 +1,7 @@
 #pragma once
 
 #include "xdna/device.hpp"
+#include "xdna/k1.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -20,6 +21,14 @@ namespace xdna::runtime {
 struct SmokeArtifact {
     std::filesystem::path xclbin;
     std::filesystem::path instructions;
+    std::filesystem::path manifest;
+};
+
+using K1Artifact = SmokeArtifact;
+
+enum class WorkloadKind {
+    Smoke,
+    K1,
 };
 
 struct RuntimeCounters {
@@ -31,7 +40,9 @@ struct RuntimeCounters {
 
 class XdnaRuntime final {
 public:
-    XdnaRuntime(const SmokeArtifact& artifact, const std::string& selector = "0");
+    XdnaRuntime(const SmokeArtifact& artifact,
+                const std::string& selector = "0",
+                WorkloadKind workload = WorkloadKind::Smoke);
 
     XdnaRuntime(const XdnaRuntime&) = delete;
     XdnaRuntime& operator=(const XdnaRuntime&) = delete;
@@ -40,6 +51,11 @@ public:
 
     void dispatch(std::span<const std::int32_t> input,
                   std::span<std::int32_t> output);
+
+    // Dispatches one already validated/packed K1 input. The method performs
+    // only host validation, H2D, physical XRT execution, D2H, and output
+    // validation; it never computes the CPU expected result.
+    void dispatch_k1(K1PackedBuffers& buffers, const K1DeviceLayout& layout = {});
 
     [[nodiscard]] const CapabilityReport& capability() const noexcept
     {
@@ -71,6 +87,7 @@ private:
     static std::vector<std::uint32_t> load_instructions(const std::filesystem::path& path);
 
     SmokeArtifact artifact_;
+    WorkloadKind workload_;
     CapabilityReport capability_;
     xrt::device device_;
     xrt::xclbin xclbin_;
@@ -80,6 +97,9 @@ private:
     xrt::bo instruction_bo_;
     xrt::bo input_bo_;
     xrt::bo output_bo_;
+    xrt::bo k1_input_bo_;
+    xrt::bo k1_next_state_bo_;
+    std::vector<bpp9000::Byte> k1_device_input_;
     std::string kernel_name_;
     std::string artifact_uuid_;
     RuntimeCounters counters_;

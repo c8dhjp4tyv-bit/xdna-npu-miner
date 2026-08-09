@@ -5,7 +5,7 @@ when every acceptance criterion passes and `docs/AI_HANDOFF.md` is updated.
 Static hypotheses, configured offload, and plausible source code are not
 evidence.
 
-**Current milestone:** M2 — XDNA1 runtime foundation
+**Current milestone:** M3 — first XDNA1 BPP9000 K1 recurrent-tick kernel
 **Current status:** COMPLETE
 **M0 status:** COMPLETE
 
@@ -144,7 +144,8 @@ optimization.
 ### Handoff requirement
 
 Record the CPU API, vector IDs/hashes, exact test command/output, task source
-revision, and the first M2 runtime-smoke task. Do not begin M3.
+revision, and the first M2 runtime-smoke task. M2 must pass before any M3 work
+begins.
 
 ## M2 — XDNA1 runtime foundation
 
@@ -221,7 +222,7 @@ and the exact primitive selected for M3.
 
 ### Status
 
-**NOT STARTED**
+**COMPLETE**
 
 ### Objective
 
@@ -254,6 +255,31 @@ for the selected primitive, padded-layout round trips, and dispatch evidence.
 - Kernel timing is recorded only as an unqualified measurement, never as a
   speedup claim.
 
+### M3 result
+
+The selected primitive is the isolated BPP9000 K1 recurrent tick. The host
+contract is exact: 64 logical `uint8_t` state trits, 46 LUT rows with 32-byte
+storage stride and 27 logical entries per row, 64×3 `uint32_t` neighbors, and
+46 ascending updated-neuron rows. Input roles are the 18 neurons absent from
+the updated list and are copied unchanged; every updated row reads the prior
+state buffer and selects one LUT entry with the unsigned base-3 index
+`first + 3*second + 9*third`.
+
+The physical artifact is a clean-room one-column AIE2/MLIR-AIE program. Its
+single aligned input arena is 2,528 bytes with state/LUT/neighbors/updated-row
+offsets `0/96/1568/2336`; the output BO is 96 bytes with a 64-byte logical
+prefix. Padding is initialized and verified as semantically unused. The
+combined arena was required by the one-column AIE DMA channel limit; it is not
+a change to the logical M1 contract.
+
+The final physical run used generator `m3-k1-v1`, 37 edge cases, 100 fixed
+cases, and 1,000 random cases from seed `5562880460839399681`. It completed
+1,139 physical dispatches, 1,139 exact logical matches, zero mismatches, and
+zero runtime failures. It recorded 2,278 H2D and 1,139 D2H synchronizations.
+M1 and M2 regressions and the missing-artifact, invalid-device-selector, and
+wrong-manifest negative paths all passed. Evidence is in
+`docs/evidence/m3-k1-differential.json`.
+
 ### Non-goals
 
 Full candidate mutation search, live networking, and optimization based on
@@ -262,9 +288,16 @@ unverified throughput.
 ### Handoff requirement
 
 Record kernel shape, datatype, tile/buffer placement, correctness corpus,
-dispatch evidence, and the exact scope for M4.
+dispatch evidence, and the exact scope for M4. **M3 handoff result:** this is
+one isolated tick per host dispatch; state residency across ticks, full scoring,
+mutation, batching, four columns, networking, and performance remain outside
+M3.
 
 ## M4 — Full CPU/NPU correctness path
+
+### Status
+
+**NOT STARTED**
 
 ### Objective
 

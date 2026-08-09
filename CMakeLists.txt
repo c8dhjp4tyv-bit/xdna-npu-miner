@@ -39,6 +39,7 @@ add_test(NAME bpp9000_reference_tests COMMAND bpp9000_tests)
 
 add_library(xdna_contract
     src/xdna/buffers.cpp
+    src/xdna/k1.cpp
 )
 
 target_include_directories(xdna_contract PUBLIC src)
@@ -64,6 +65,39 @@ target_compile_options(xdna_contract_tests PRIVATE
 )
 
 add_test(NAME xdna_contract_tests COMMAND xdna_contract_tests)
+
+add_library(k1_test_support
+    tests/k1_vectors.cpp
+)
+target_include_directories(k1_test_support PUBLIC
+    src
+    tests
+)
+target_link_libraries(k1_test_support PUBLIC
+    bpp9000_reference
+    xdna_contract
+)
+target_compile_options(k1_test_support PRIVATE
+    -Wall
+    -Wextra
+    -Wpedantic
+    -Wconversion
+    -Wshadow
+    -Werror
+)
+
+add_executable(k1_contract_tests tests/k1_contract_tests.cpp)
+target_link_libraries(k1_contract_tests PRIVATE k1_test_support)
+target_compile_options(k1_contract_tests PRIVATE
+    -Wall
+    -Wextra
+    -Wpedantic
+    -Wconversion
+    -Wshadow
+    -Werror
+)
+
+add_test(NAME k1_contract_tests COMMAND k1_contract_tests)
 
 set(XRT_ROOT "$ENV{XILINX_XRT}" CACHE PATH "XRT installation root")
 if(NOT XRT_ROOT)
@@ -125,6 +159,23 @@ if(XRT_INCLUDE_DIR AND XRT_COREUTIL_LIBRARY)
     add_executable(xdna_smoke src/xdna/smoke_main.cpp)
     target_link_libraries(xdna_smoke PRIVATE xdna_runtime)
     target_compile_options(xdna_smoke PRIVATE
+        -Wall
+        -Wextra
+        -Wpedantic
+        -Wconversion
+        -Wshadow
+        -Werror
+        -Wno-conversion
+        -Wno-ignored-qualifiers
+        -Wno-shadow
+    )
+
+    add_executable(xdna_k1_differential tests/k1_differential.cpp)
+    target_link_libraries(xdna_k1_differential PRIVATE
+        k1_test_support
+        xdna_runtime
+    )
+    target_compile_options(xdna_k1_differential PRIVATE
         -Wall
         -Wextra
         -Wpedantic

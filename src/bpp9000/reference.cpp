@@ -124,6 +124,42 @@ void validate_lut_storage(const Lut& lut)
     }
 }
 
+void require_recurrent_contract(const Task& task, const Lut& lut)
+{
+    const TaskShape& shape = task.header.shape;
+    if (task.header.magic != kTaskMagic) {
+        throw TaskError(TaskErrorCode::BadMagic, "recurrent tick requires a validated task header magic");
+    }
+    if (task.header.version != kTaskVersion) {
+        throw TaskError(TaskErrorCode::BadVersion, "recurrent tick requires a validated task header");
+    }
+    if (shape.population == 0U || shape.neighbors != 3U) {
+        throw TaskError(TaskErrorCode::BadDimensions, "recurrent tick requires a nonzero population and K=3");
+    }
+    if (task.topology.input_neurons.size() != shape.input_trits
+        || task.topology.neighbors.size()
+            != static_cast<std::size_t>(shape.population) * static_cast<std::size_t>(shape.neighbors)) {
+        throw TaskError(TaskErrorCode::InvalidTopology, "recurrent tick requires complete topology vectors");
+    }
+
+    std::vector<bool> seen(shape.population, false);
+    for (const std::uint32_t neuron : task.topology.input_neurons) {
+        if (neuron >= shape.population || seen[neuron]) {
+            throw TaskError(TaskErrorCode::InvalidTopology, "recurrent tick requires unique input roles");
+        }
+        seen[neuron] = true;
+    }
+    for (const std::uint32_t neighbor : task.topology.neighbors) {
+        if (neighbor >= shape.population) {
+            throw TaskError(TaskErrorCode::InvalidTopology, "recurrent tick requires in-range neighbors");
+        }
+    }
+    if (lut.population() != shape.population) {
+        throw TaskError(TaskErrorCode::InvalidTopology, "recurrent tick LUT population does not match task");
+    }
+    validate_lut_storage(lut);
+}
+
 } // namespace
 
 bool is_valid_score(const ScoreResult& result, std::uint64_t window_count) noexcept
@@ -263,6 +299,20 @@ void RecurrentState::reset_unknown()
     std::fill(next_.begin(), next_.end(), trit_to_byte(Trit::Unknown));
 }
 
+void RecurrentState::load_current(std::span<const Byte> state)
+{
+    if (state.size() != current_.size()) {
+        throw TaskError(TaskErrorCode::BadLength, "recurrent state length does not match the population");
+    }
+    for (const Byte value : state) {
+        if (!is_valid_trit_byte(value)) {
+            throw TaskError(TaskErrorCode::InvalidDomainValue, "recurrent state contains an invalid trit");
+        }
+    }
+    std::copy(state.begin(), state.end(), current_.begin());
+    std::copy(state.begin(), state.end(), next_.begin());
+}
+
 void RecurrentState::set_input(std::size_t neuron, Trit value)
 {
     if (neuron >= input_mask_.size() || !input_mask_[neuron] || !is_valid_trit_byte(trit_to_byte(value))) {
@@ -298,6 +348,20 @@ void RecurrentState::tick(const Task& task, const Lut& lut)
         next_[neuron] = trit_to_byte(lut.at_neuron(neuron, lut_index(first, second, third)));
     }
     current_.swap(next_);
+}
+
+std::vector<Byte> recurrent_tick(const Task& task,
+                                 std::span<const Byte> previous_state,
+                                 const Lut& lut)
+{
+    require_recurrent_contract(task, lut);
+    if (previous_state.size() != task.header.shape.population) {
+        throw TaskError(TaskErrorCode::BadLength, "recurrent state length does not match the population");
+    }
+    RecurrentState state(task);
+    state.load_current(previous_state);
+    state.tick(task, lut);
+    return state.current();
 }
 
 WindowResult score_window(const Task& task,

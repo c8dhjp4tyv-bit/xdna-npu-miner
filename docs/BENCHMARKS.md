@@ -1,8 +1,9 @@
 # Benchmark Protocol
 
-M0 defines measurement methodology only. No benchmark was run and no
-throughput, latency, power, NPU-activity, speedup, or work/Joule value may be
-invented.
+M0 defines measurement methodology. M1 and M2 established correctness
+evidence, and M3 established physical K1 dispatch evidence. No throughput,
+latency, power, NPU-activity, speedup, or work/Joule value may be inferred
+from those correctness runs.
 
 ## Workload identity
 
@@ -102,14 +103,21 @@ current physical `RyzenAI-npu1`/AIE2 device completed 100 one-column XRT
 dispatches for `int32[32]`, with 100 exact CPU-oracle matches, zero mismatches,
 zero runtime failures, 200 explicit H2D synchronizations, and 100 explicit D2H
 synchronizations. The machine-readable record is
-`docs/evidence/m2-xdna-smoke.json` and the stack identity is in
-`runtime-pins.json`.
+`docs/evidence/m2-xdna-smoke.json`.
 
-This is dispatch evidence, not a benchmark. No timing, throughput, speedup,
-power, energy, active-four-column claim, or profitability value was recorded.
-The table above remains intentionally unmeasured. Do not infer a performance
-claim from the static operation counts in `docs/ARCHITECTURE.md`, from the
-smoke dispatch count, or from the related `hawkpoint-npu-llm` project.
+M3 executed a correctness differential only: the same physical device
+completed 1,139 one-column K1 XRT dispatches over 37 edge, 100 fixed, and
+1,000 seeded-random logical cases. All 1,139 outputs matched the M1 scalar
+`recurrent_tick` oracle exactly; there were zero mismatches and zero runtime
+failures, with 2,278 H2D and 1,139 D2H synchronizations. The machine-readable
+record is `docs/evidence/m3-k1-differential.json`; the stack and artifact pins
+are recorded in that file and `runtime-pins.json`.
+
+These are dispatch/correctness records, not benchmarks. No timing, throughput,
+speedup, power, energy, active-four-column claim, or profitability value was
+recorded. The table above remains intentionally unmeasured. Do not infer a
+performance claim from the static operation counts in `docs/ARCHITECTURE.md`,
+from either dispatch count, or from the related `hawkpoint-npu-llm` project.
 
 ## Profitability
 
