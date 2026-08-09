@@ -20,8 +20,8 @@ STARTED**.
 - Branch: `main`
 - M0 completion commit:
   `057ee66c679a7ff89c1b90abefb72384184159e5`
-- M1 implementation/checkpoint commit: record the exact SHA with
-  `git rev-parse HEAD` after the final M1 checkpoint.
+- M1 implementation/checkpoint commit:
+  `323e2bcdc6885ceb4c6ec3ce65af7e651b3e85bb`
 
 ## M0 authority that M1 used
 
