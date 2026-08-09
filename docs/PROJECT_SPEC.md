@@ -25,7 +25,11 @@ protocols belong in adapters; they are not part of the mining/scoring core.
 
 ## Current milestone
 
-**M1 — CPU golden reference — NOT STARTED**
+**M1 — CPU golden reference — COMPLETE**
+
+M1 is implemented as a standalone scalar C++20/CMake reference. It is the
+correctness oracle for later kernels; the K12/random2 and network boundaries
+remain injected/deferred and no NPU or networking path is part of M1.
 
 ## Current algorithm contract
 

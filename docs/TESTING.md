@@ -1,8 +1,8 @@
 # Testing Strategy
 
-Testing is correctness-first. M0 defines the oracle and boundary; M1 will
-implement the scalar CPU reference; only then may XDNA execution or performance
-be evaluated.
+Testing is correctness-first. M1 now provides the scalar CPU oracle and its
+deterministic corpus. XDNA execution and performance remain outside this
+milestone and may only be evaluated against this exact reference later.
 
 ## Authoritative behavior under test
 
@@ -39,7 +39,7 @@ silently replace the production fixture.
 
 ### 2. CPU golden-reference tests (M1)
 
-The M1 reference should expose pure, fixed-width APIs equivalent to:
+The M1 reference exposes pure, fixed-width C++ APIs equivalent to:
 
 ```text
 load_task(bytes) -> validated Bpp9000Task
@@ -49,7 +49,7 @@ is_valid_score(score) -> bool
 is_good_score(score, threshold) -> bool
 ```
 
-The minimum scalar components are:
+The implemented scalar components are:
 
 - validated task parser/unpacker;
 - deterministic random2 pool/draw helper with an injectable small test pool;
@@ -59,7 +59,10 @@ The minimum scalar components are:
 - mutation and accept/rollback control;
 - canonical nonce validation;
 - `uint32_t` score/timeout predicates;
-- deterministic vector generation and vector serialization.
+- deterministic vector generation and vector serialization;
+- a seed-aware random2/K12 draw seam with explicit 64-byte padded draw sizes;
+- a `CandidateResult` containing the initial/best score, current/best LUT,
+  mutation records, accept/rollback decisions, and score-call count.
 
 M1 must favor readability and independent control flow over speed. Do not add
 AVX merely because upstream core has AVX2/AVX512 paths. The CPU oracle must not
@@ -67,17 +70,24 @@ call the future NPU backend.
 
 ### 3. Deterministic vector strategy
 
-Use two vector tiers:
+Use two vector tiers, both generated without upstream task bytes:
 
 1. **Small generated vectors:** fixed tiny dimensions satisfying the same
    semantic constraints (especially `K=3`, `M=1` for full-path tests), fixed
    topology, fixed packed trits, fixed public key, mining seed, and nonce.
    Include a one-window/no-settle case and a bounded-settle case.
-2. **Production-shaped vectors:** the canonical task header/hash metadata and
-   selected fixed public-key/seed/nonce cases. A full 8,760-row score may be
-   expensive, but any checked-in result must be reproducible from the exact
-   commit, input bytes, and command. Do not substitute Qiner's example hashes
-   for the core production task.
+2. **Production-shaped vectors:** independently generated 44,744-byte fixtures
+   with `N=18, M=1, T=8760, P=64, K=3`, fixed topology/data metadata, and
+   selected windows. M1 verifies all ten fixtures through parsing and one
+   complete 672-sample window; it does not claim ten full production scores.
+   The canonical production task remains source-pinned but is not committed.
+   Do not substitute Qiner's example hashes for the core production task.
+
+The task parser accepts an injected `BlockDigestProvider`. M1's
+`DeterministicFixtureDigest` is a non-cryptographic test fingerprint only; it
+exists to exercise header metadata and block-integrity failure paths. The
+production KangarooTwelve implementation is deliberately deferred to a
+reviewed future boundary and is not silently substituted by the fixture.
 
 Cross-check scalar behavior against the upstream core reference test semantics
 and Qiner's current reference miner behavior without copying implementation
@@ -184,18 +194,29 @@ and expected zero silent correctness errors.
 
 ## Verification commands
 
-The current repository has no build system, source, or executable tests. M0
-verification is therefore document/source audit only:
+M1 uses a standalone C++20/CMake build and a dependency-free test executable:
 
 ```bash
-git status -sb
-git branch --show-current
-git log --oneline -15
-git diff --check
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build -j2
+ctest --test-dir build --output-on-failure
+./build/bpp9000_tests
+./scripts/generate_corpus.sh build
 ```
 
-M1 must add a reproducible test command and record it in this file and
-`docs/AI_HANDOFF.md`. No M1 code was started during M0.
+The passing M1 executable reports 8 test groups and 361 assertions. The
+standalone corpus command reports 100 generated cases and 10
+production-shaped cases with generator version `m1-v1` and these reproducible
+fixture-summary digests:
+
+```text
+generated_digest=2979889feed3352b3c12831a301a357b6c9099f3de80b955f152c53bca2f8c03
+production_digest=7c1da1028b9ecdbae54616654606185e62076ff7b69e209ecbf3d23f6a2fede1
+```
+
+The corpus summary is a committed expected value, not a performance result.
+The tests were run twice during M1 verification; both runs produced the same
+summary values.
 
 ## Security-oriented tests
 

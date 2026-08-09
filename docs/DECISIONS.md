@@ -176,6 +176,57 @@ Future agents must re-check current upstream revisions before implementing
 network-facing behavior because Qubic mining is actively changing. No
 Anti-Military-licensed upstream source may be copied into this repository.
 
+## D-016 — C++20 standalone scalar implementation
+
+**Status:** Accepted for M1
+
+The CPU oracle is a small standard-library-only C++20 library built with
+CMake. It uses fixed-width integers and explicit byte serialization. The M1
+reference has no compiler intrinsics, SIMD, AVX, NPU, network, or external
+runtime dependency.
+
+Reason: later CPU/NPU differential tests need a readable implementation whose
+state and byte boundaries can be audited without inheriting an upstream
+implementation structure.
+
+## D-017 — K12/random2 remains an injectable boundary in M1
+
+**Status:** Accepted for M1
+
+The candidate API requires a seed-aware `CandidateRandomSource` for root-LUT
+bytes and mutation words. The interface records explicit draw order and
+64-byte padding, matching the documented production boundary. M1 supplies
+only a deterministic fixture source; it does not implement or copy
+KangarooTwelve, random2, or Qubic crypto code. A reviewed production provider
+must be selected before network-facing use.
+
+Reason: M1's acceptance gate is scorer correctness and reproducibility, while
+the upstream crypto implementation is Anti-Military licensed and the target
+project has not completed a file-level crypto/license selection.
+
+## D-018 — Corpus tiers and production-shaped scope
+
+**Status:** Accepted for M1
+
+The committed corpus is generated from metadata and deterministic generators,
+not from Qubic or Qiner task bytes. One hundred small cases run the full
+candidate search and assert 101 score calls. Ten production-shaped cases use
+the exact production dimensions and serialized length, parse/hash-check their
+independent fixture metadata, and run one complete production-width window.
+This avoids claiming an impractical ten-fold full production benchmark while
+still exercising production layout and recurrent semantics. The canonical
+production task remains an external, hash-verified input.
+
+## D-019 — Canonical score predicates include completion metadata
+
+**Status:** Accepted for M1
+
+`is_valid_score` requires a settled, non-timeout score whose evaluated-window
+count equals the caller's expected window count and whose failure count is no
+greater than that count. This prevents a partial score result from being
+treated as a complete candidate result. The timeout sentinel remains exactly
+`0xffffffff`.
+
 ## Historical decisions retained
 
 The original bootstrap decisions remain valid:

@@ -19,6 +19,9 @@ or implementation is pinned and independently reviewed.
 
 No NPU kernel is being implemented in M0.
 
+M1 adds only the CPU reference layer described below. The XDNA1/NPU side of
+the boundary remains unimplemented until M2/M3.
+
 ## System boundary
 
 ```text
@@ -71,15 +74,15 @@ system information and locally generated candidate nonces.
 
 ## Responsibilities and module boundaries
 
-These are design boundaries, not implemented directories yet.
+The M1 implementation uses these standalone source boundaries:
 
 | Area | CPU responsibility | NPU responsibility |
 |---|---|---|
-| `qubic/task` | Parse 96-byte header/topology/data; validate dimensions, trits, hashes | None |
+| `src/bpp9000/task` | Parse/serialize the 96-byte header/topology/data; validate dimensions, trits, hashes | None |
 | `qubic/epoch` | Request/parse system info; track epoch, tick, 32-byte seed, threshold; invalidate stale work | None |
 | `qubic/network` | 8-byte frame, signatures, gamma/encryption, reconnect, submission | None |
-| `cpu/reference` | Scalar BPP9000 oracle and candidate control | None |
-| `cpu/search` | Candidate nonce generation, mutation seed orchestration, accept/rollback | None |
+| `src/bpp9000/reference` | Scalar BPP9000 oracle, LUT, recurrent state, window/full scoring, candidate control | None |
+| `src/bpp9000/random` | Seed-aware injectable root/mutation draw boundary and deterministic fixture source | None |
 | `xdna/runtime` | Device/version discovery, XRT/IRON buffers, dispatch and evidence | Execute selected deterministic buffers |
 | `xdna/bpp9000` | Pack batches, synchronize, validate output shape/status | Recurrent LUT/tick primitive or fused score |
 | verification | Recompute candidate with the CPU oracle before submission | Never authorizes a share by itself |
@@ -88,6 +91,26 @@ These are design boundaries, not implemented directories yet.
 A future pool adapter must sit beside the direct-node network adapter. It must
 not alter the CPU/NPU compute contract. Pool-specific proprietary protocols
 are adapters at this boundary, not part of the mining/scoring core.
+
+### M1 CPU API and storage contract
+
+`parse_task(bytes, options)` requires exact magic/version, explicit
+little-endian fields, checked block lengths, role/index bounds, valid packed
+base-3 bytes, no trailing bytes, and an injected digest provider when hash
+metadata is present. `serialize_task` regenerates the canonical byte layout
+without relying on native struct padding.
+
+`Lut` stores only logical entries 0..26 in explicit 32-byte rows; padding is
+zeroed. `RecurrentState` owns separate current/next byte buffers. Each tick
+copies input state to the next buffer and computes every non-input neuron from
+the previous buffer using `t0 + 3*t1 + 9*t2`. `score_window` and `score_lut`
+return exact uint32 scores or `0xffffffff` on timeout. `score_candidate` keeps
+mutation/rollback on the CPU and reports all 101 score calls for the default
+100-step search.
+
+M1's `DeterministicFixtureDigest` and `DeterministicFixtureRandom` are test
+seams, not production cryptography. Production K12/random2 integration must
+be independently reviewed and supplied behind the same interface.
 
 ## Protocol scope boundary
 

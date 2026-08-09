@@ -6,7 +6,7 @@ Static hypotheses, configured offload, and plausible source code are not
 evidence.
 
 **Current milestone:** M1 — CPU golden reference
-**Current status:** NOT STARTED
+**Current status:** COMPLETE
 **M0 status:** COMPLETE
 
 ## M0 — Repository bootstrap, research, and technical specification
@@ -78,7 +78,7 @@ scope, and the instruction not to redo the source audit or start M2.
 
 ### Status
 
-**NOT STARTED**
+**COMPLETE**
 
 ### Objective
 
@@ -101,6 +101,14 @@ M0 documents and source pins. No NPU or live network dependency.
 - reproducible small vectors and production-shaped metadata vectors;
 - readable unit and golden tests.
 
+M1 implementation is under `src/bpp9000/` with a C++20/CMake library and
+`tests/test_main.cpp`. The public reference boundary includes `parse_task`,
+`serialize_task`, `score_window`, `score_lut`, `score_candidate`,
+`mutate_lut`, `rollback_mutation`, `is_canonical_nonce`,
+`is_valid_score`, and `is_good_score`. The random2/K12-dependent draws are
+explicitly injected through a seed-aware `CandidateRandomSource`; M1 uses only
+the deterministic fixture implementation.
+
 ### Tests
 
 Run the complete parser and correctness matrix in `docs/TESTING.md`:
@@ -111,16 +119,22 @@ core reference test/Qiner behavior without copying code.
 
 ### Measurable acceptance criteria
 
-- Clean build and one documented test command pass on the supported Fedora
+- Clean CMake configure/build and the documented test command pass on the
   development environment.
 - The same fixed vector produces byte-identical score/state output on two
   independent runs.
 - All required edge cases pass with zero unexplained failures.
-- At least 100 generated and 10 production-shaped deterministic cases are
-  reproducible from committed input/corpus metadata.
+- 100 generated and 10 production-shaped deterministic cases are reproducible
+  from committed generator logic, metadata, and summary digests.
 - Full BPP9000 score semantics, including 101 calls and timeout
   `0xffffffff`, are covered by tests.
 - No AVX/NPU/network code is required for completion.
+
+**M1 result:** COMPLETE. The build/test suite reports 8 groups and 361
+assertions with zero failures. The corpus reports 100 generated cases and 10
+production-shaped cases under generator `m1-v1`. No upstream task bytes or
+Anti-Military-licensed implementation code was copied. No benchmark or
+speedup claim was made.
 
 ### Non-goals
 
@@ -133,6 +147,10 @@ Record the CPU API, vector IDs/hashes, exact test command/output, task source
 revision, and the first M2 runtime-smoke task. Do not begin M3.
 
 ## M2 — XDNA1 runtime foundation
+
+### Status
+
+**NOT STARTED**
 
 ### Objective
 

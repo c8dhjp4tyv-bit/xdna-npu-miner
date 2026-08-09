@@ -9,214 +9,195 @@ engineering agent.
 
 ## Status
 
-**NOT STARTED**
+**COMPLETE**
 
-Direct-node algorithm, task, epoch/seed/threshold, scoring, validation,
-licensing, CPU/NPU boundary, correctness contract, and benchmark method are
-documented. M0 is **COMPLETE**. Official Qubic sources conflict about Qatum's
-status, but the direct Qubic-node path is canonical and the conflict is not an
-M0 blocker. M1 through M5 have zero dependency on Qatum or any mining pool;
-M6 starts with direct-node integration. Do not invent a Qatum wire contract.
-
-M0 contains no mining, network, CPU scorer, NPU runtime, or kernel
-implementation.
+M0 was externally reviewed and passed. M1 now provides the standalone scalar
+CPU correctness oracle for pinned Qubic BPP9000 behavior. M2 is **NOT
+STARTED**.
 
 ## Branch and commits
 
 - Branch: `main`
-- Bootstrap baseline before M0 edits:
-  `b2fecb0ffa7761a9099f984cf8d3d51d458b06c`
-- M0 cleanup commit: current `HEAD`; use `git rev-parse HEAD` for its exact
-  SHA (the final session report records it).
+- M0 completion commit:
+  `057ee66c679a7ff89c1b90abefb72384184159e5`
+- M1 implementation/checkpoint commit: record the exact SHA with
+  `git rev-parse HEAD` after the final M1 checkpoint.
 
-## Exact work completed
+## M0 authority that M1 used
 
-- Recovered the already bootstrapped repository; it was not recreated.
-- Read, in the requested order, `AGENTS.md`, all M0 governance/specification
-  documents, `docs/AGENT_PROMPTS.md`, and `README.md` before editing.
-- Inspected branch, status, directory placeholders, and the last 15 commits.
-- Pinned current active Qubic BPP9000 to core
-  `v1.301.3 / a83f935406cd006b5b1a94971139e74d410ecb6d`.
-- Pinned current Qiner reference miner to
-  `v1.302.3 / 11fb18a6f4944bb55fe103d3f263cb5d31e00200`.
-- Pinned QLI client documentation to
-  `v3.7.2 / 9a01902342240c69b19d9cceb637ea68916a3d2c`.
-- Inspected official Qubic mining/pool/FAQ documentation and recorded that
-  official sources conflict: the current FAQ says Qatum is in development,
-  while an older official blog says it launched and the ecosystem entry labels
-  it live.
-- Inspected the related Hawk Point XDNA1 repository at
-  `15f3352779e944ccd202b2e166e40e197a1de759` and MLIR-AIE at
-  `57d7494e99c214f5f53b328a0ed43a99e759e835` as environment references only.
-- Recorded exact BPP9000 dimensions, types, task layout, random2, recurrent
-  tick, mutation, score, timeout, threshold, direct-node framing, and
-  solution-validation behavior.
-- Recorded the Qiner/core example-task and threshold discrepancy.
-- Completed the Anti-Military/no-SPDX and missing-license audit and selected
-  clean-room reimplementation.
-- Ranked K1 recurrent tick, K2 fused score, K3 fused search, K4 reduction, and
-  K5 random2/K12 for XDNA1 suitability without performance claims.
-- Designed the M1 scalar CPU reference and exact CPU/NPU correctness contract.
-- Expanded all M1–M11 gates and benchmark methodology.
-
-## Files changed
-
-- `docs/PROJECT_SPEC.md`
-- `docs/ARCHITECTURE.md`
-- `docs/MILESTONES.md`
-- `docs/UPSTREAM.md`
-- `docs/DECISIONS.md`
-- `docs/TESTING.md`
-- `docs/BENCHMARKS.md`
-- `docs/AI_HANDOFF.md`
-- README was not changed; its statement that no mining implementation exists
-  remains accurate.
-
-No files under `src/`, `tests/`, `benchmarks/`, or `scripts/` were implemented.
-
-## Sources/revisions inspected
-
-- Qubic core: tag `v1.301.3`,
+- Qubic core: `v1.301.3`,
   `a83f935406cd006b5b1a94971139e74d410ecb6d`.
-- Qiner: tag `v1.302.3`,
+- Qiner reference aid: `v1.302.3`,
   `11fb18a6f4944bb55fe103d3f263cb5d31e00200`.
-- Official docs: mining, software, pool, FAQ, Qatum blog, and ecosystem entry,
-  accessed 2026-08-09.
-- QLI client: tag `v3.7.2`,
-  `9a01902342240c69b19d9cceb637ea68916a3d2c`.
-- Hawk Point reference: branch `revert/kernel-pin-441`,
-  `15f3352779e944ccd202b2e166e40e197a1de759`.
-- MLIR-AIE: `57d7494e99c214f5f53b328a0ed43a99e759e835`.
+- Canonical active algorithm: BPP9000 (`nonce[0] == 1`).
+- Production shape: `N=18, M=1, T=8760, W=672, P=64, K=3, S=100`.
+- Production score windows: `8088`; maximum ticks per window: `100000`.
+- Timeout sentinel: `0xffffffff`; lower finite score is better.
+- Runtime threshold is supplied by system information; the reference does not
+  treat the Qiner example threshold `6469` as production truth.
 
-See `docs/UPSTREAM.md` for repository URLs, paths, license details, task
-SHA-256 values, and reproducibility commands.
+Do not redo the M0 source/license audit unless a concrete upstream
+contradiction affects the CPU semantics. Do not copy Qubic core, Qiner, or QLI
+source. Their implementation source is Anti-Military licensed or unlicensed;
+M1 is clean-room.
 
-## Checks executed
+## Completed M1 work
 
-During source audit:
+- Added a standalone C++20/CMake library under `src/bpp9000/`.
+- Added fixed-width public-key, mining-seed, nonce, task-header, topology,
+  trit, LUT, recurrent-state, score, threshold, and mutation domain types.
+- Added explicit little-endian 96-byte header serialization. The parser checks
+  magic/version, dimensions, checked topology/data lengths, exact file length,
+  role/index uniqueness and bounds, packed trit values `<243`, and digest
+  metadata. Trailing bytes and truncation fail closed.
+- Added canonical five-trit packing/unpacking; valid trits are exactly 0, 1,
+  and 2, with 2 meaning UNKNOWN.
+- Added dense logical LUT rows with 32-byte storage stride and a scalar,
+  double-buffered recurrent tick. Every non-input update reads the previous
+  state buffer and commits to the next buffer.
+- Added one-window and full-window score paths, exact failure counting,
+  timeout propagation, completion-aware score predicates, and runtime
+  threshold predicates.
+- Added canonical BPP9000 nonce checks (`nonce[0]==1`, `1<=nonce[1]<=10`,
+  `nonce[2]==0`) and rejection of an all-zero mining seed.
+- Added mutation selection, old/new value records, accept-if-`r <= current`,
+  reverse-order rollback, and the default 100-step/101-score-call search.
+- Added a seed-aware `CandidateRandomSource` boundary. Draw order and the
+  64-byte random2-compatible padding sizes are explicit. The M1 fixture source
+  is deterministic and non-cryptographic; no K12/random2 or signing code was
+  copied or implemented.
+- Added 100 generated small full-search cases and 10 independently generated
+  production-shaped 44,744-byte cases. The production-shaped cases parse and
+  execute one complete 672-sample window; they do not claim ten full
+  production-score runs.
+- Added `scripts/generate_corpus.sh` and a committed generator summary.
 
-- clean target-repository status and branch/log inspection;
-- exact source revision and license-file inspection;
-- canonical and Qiner example task size/SHA-256 comparison;
-- source-path searches for algorithm, system-info, framing, broadcast,
-  transaction, and pool configuration facts.
+## Upstream cross-check result
 
-Document checks completed before the commit attempt:
+The implementation was checked against the M0-derived facts from the pinned
+core/Qiner revisions: exact header field order and sizes, base-3 packing,
+topology role/index rules, three-neighbor LUT indexing, simultaneous
+previous-state reads, signal-paced window scoring, timeout propagation,
+canonical nonce fields, mutation selection/replacement, accept-if-`r <=
+current`, and the 100-step/101-call lifecycle. Exact production K12/random2
+outputs were not claimed because the required crypto provider is intentionally
+an injection seam.
 
-- `git diff --check` passed with no whitespace errors;
-- `pandoc --from=gfm --to=html --output=/dev/null` parsed all eight modified
-  Markdown documents successfully;
-- Qatum scope scan found no guessed wire schema, M1 implementation, or
-  measured NPU performance claim;
-- canonical task SHA-256:
-  `0c5e9e42c6d86c320af62f4125ca85b2446f2b098893fd6521bcf66c22f7f00a`;
-- Qiner example task SHA-256:
-  `403e24225f5b0512d0cbf49758fed9a01e7334d3cea565ad6c5e82420b713226`.
+## Files changed in M1
 
-Hardware tests actually executed: none. No XDNA1 device, runtime, kernel, or
-live Qubic node was exercised during M0.
+- `CMakeLists.txt`
+- `src/bpp9000/types.hpp`
+- `src/bpp9000/task.hpp`
+- `src/bpp9000/task.cpp`
+- `src/bpp9000/random.hpp`
+- `src/bpp9000/random.cpp`
+- `src/bpp9000/reference.hpp`
+- `src/bpp9000/reference.cpp`
+- `tests/test_main.cpp`
+- `scripts/generate_corpus.sh`
+- `docs/TESTING.md`
+- `docs/DECISIONS.md`
+- `docs/ARCHITECTURE.md`
+- `docs/PROJECT_SPEC.md`
+- `docs/MILESTONES.md`
+- `docs/AI_HANDOFF.md`
 
-The final closing checks are:
+## Tests and exact results
+
+Commands:
 
 ```bash
-git status -sb
-git diff --check
-git branch --show-current
-git log --oneline -15
-git rev-parse HEAD
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build -j2
+ctest --test-dir build --output-on-failure
+./build/bpp9000_tests
+./scripts/generate_corpus.sh build
 ```
 
-There is no build system or executable test command in the bootstrap
-repository; M0 is a document/source audit. Do not claim a build or test pass.
+The direct test executable passes 8 groups and 361 assertions. The corpus
+command reports:
 
-## Known uncertainties
+```text
+generator_version=m1-v1
+generated_cases=100
+production_shaped_cases=10
+generated_digest=2979889feed3352b3c12831a301a357b6c9099f3de80b955f152c53bca2f8c03
+production_digest=7c1da1028b9ecdbae54616654606185e62076ff7b69e209ecbf3d23f6a2fede1
+```
 
-1. Qatum pool wire protocol, version negotiation, job/share schema, task
-   distribution, authentication details, and reconnect behavior are not
-   sufficiently complete and consistently pinned in authoritative sources.
-   This is a deferred optional adapter gate, not an M0 or M1–M5 blocker.
-2. The QLI client documents one WebSocket/JWT service, but its checked-in
-   documentation is not a canonical interoperable protocol and its repository
-   has no license file.
-3. The full task file must be obtained through an authorized/current
-   distribution and hash-checked; core source pins the expected production
-   hashes, but M0 did not connect to a live node.
-4. The independent K12/signature implementation and its target-project license
-   must be selected in M1/M6; do not copy Qubic crypto code.
-5. XDNA1 tile capacity, exact compiler/runtime compatibility, and useful batch
-   size are empirical M2–M5 questions. No NPU or performance result exists.
+The fixed test vector and corpus were executed twice with byte-identical
+results. `git diff --check` passes.
 
-## Licensing constraints
+## Hardware tests actually executed
 
-Qubic core and Qiner source use a custom Anti-Military License without an SPDX
-identifier. The narrow core MIT exception covers only the listed uint128 files.
-QLI client has no detected license. Treat all Qubic/QLI implementation source
-as reference-only and reimplement clean-room. Do not copy source structure or
-code into this repository. If any upstream code is proposed for reuse, stop
-for file-level license/legal review and preserve required notices/restrictions.
+None. No XDNA1 device, XRT runtime, AIE2 kernel, live Qubic node, network
+adapter, or production K12 provider was exercised. M1 intentionally has no
+hardware or networking dependency.
 
-## Important decisions
+## Known limitations and unresolved behavior
 
-- BPP9000 (`nonce[0] == 1`) is the current target; Neuraxon is reserved.
-- Core production task/hash and runtime threshold outrank Qiner example values.
-- Runtime system info supplies current seed/threshold; do not hard-code 6,469.
-- CPU owns networking, freshness, task validation, candidate control,
-  mutation/rollback, crypto/signing, and final canonical verification.
-- First XDNA hypothesis is candidate/window-batched recurrent LUT ticks; four
-  columns initially partition complete independent work, not tick stages.
-- Exact equality is required; `2` is UNKNOWN, not `-1`; no tolerance or hidden
-  saturation is allowed.
-- No benchmark claim is allowed before correctness and dispatch evidence.
-- Direct-node support is the canonical first network target; Qatum/pool support
-  is optional, version-gated, and currently unresolved.
+1. The production task's topology/data hashes are KangarooTwelve-derived. M1
+   has an explicit injected digest boundary and a test-only deterministic
+   fingerprint, but no production K12 implementation. Select and license
+   review that provider before production task loading or M6 integration.
+2. The canonical production task bytes were not copied into this repository;
+   M0 recorded their expected hashes. M1 production-shaped fixtures are
+   independently generated and are not network truth.
+3. Qatum/pool wire behavior remains unresolved and deferred. M1 does not
+   depend on Qatum, QLI, or any pool.
+4. No performance number, NPU activity, throughput, speedup, energy, or
+   profitability claim exists.
+5. Optional ASAN/UBSAN builds were attempted but the development image lacks
+   the linker runtimes (`libasan.so.8.0.0` and `libubsan.so.1.0.0`). The normal
+   warning-clean build and complete test suite pass.
+
+## Architectural decisions to preserve
+
+- CPU owns task validation, random/K12 orchestration, mutation control,
+  accept/rollback, threshold/freshness policy, and canonical verification.
+- Exact integer equality is mandatory; no tolerance, saturation, signed-trit
+  reinterpretation, or silent CPU fallback is allowed.
+- The value `2` is UNKNOWN, never `-1`.
+- The first future XDNA mapping is independent candidate/window work across
+  complete lanes; do not split a recurrent candidate across columns before
+  measuring synchronization cost.
+- Direct-node integration is the first future protocol path. Qatum is optional
+  and must wait for a stable authoritative wire specification.
 
 ## Things the next agent MUST NOT redo
 
-- Do not recreate the repository or replace the scaffold.
-- Do not repeat the completed source/license audit unless upstream revisions
-  changed; start from `docs/UPSTREAM.md` and its pinned SHAs.
-- Do not copy Qubic core/Qiner/QLI source.
-- Do not implement networking, pool support, NPU kernels, batching, or M2.
-- Do not use Qiner's example task or 6,469 threshold as production truth.
-- Do not report static operation counts as measured performance.
-- Do not treat Qatum uncertainty as an M0 blocker or invent its wire protocol.
-- Do not implement Qatum/pool integration until direct-node support works and a
-  sufficiently complete authoritative specification or implementation is pinned
-  and independently reviewed.
-- Do not submit any future accelerated result without CPU canonical
-  verification.
+- Do not recreate the repository or repeat M0 research without a concrete
+  contradiction.
+- Do not copy Anti-Military-licensed Qubic source, Qiner source, QLI source,
+  crypto code, or upstream task bytes.
+- Do not replace the fixture random/digest seams with an unreviewed crypto
+  implementation while calling M1 complete.
+- Do not add AVX/SIMD, XDNA, XRT, MLIR-AIE, IRON, GPU, network, Qatum, pool,
+  signing, or production mining-loop code in M1.
+- Do not claim the production-shaped corpus is the canonical task or a
+  production performance benchmark.
+- Do not begin M3; M2 must establish runtime smoke evidence first.
 
-## Next exact task
+## Exact next task: M2 runtime smoke
 
-Begin **M1 — CPU golden reference**, and only M1:
+Start M2 only. Build a fail-closed, standalone XDNA1 runtime foundation with
+device identity/capability reporting, project-owned dependency pins, buffer
+allocation/synchronization, dispatch/completion/error handling, and a tiny
+deterministic smoke program. It must identify `RyzenAI-npu1` when present,
+prove actual dispatch, and classify missing hardware without a false NPU
+result. The M2 runtime smoke input/output must be compared against the M1
+oracle where applicable. Do not add BPP9000 kernels or mining networking.
 
-1. Define fixed-width domain types and a readable task parser for the pinned
-   BPP9000 file format.
-2. Implement a scalar, double-buffered recurrent BPP9000 reference with
-   injectable deterministic random2/K12 boundaries, mutation, accept/rollback,
-   score/timeout, threshold predicates, and a pure reference score API.
-3. Add deterministic golden and edge-case vectors plus the required correctness
-   matrix in `docs/TESTING.md`, with production-shaped metadata/vector
-   provenance.
-4. Cross-check behavior against the pinned core reference/Qiner behavior
-   without copying source.
-5. Add the reproducible M1 build/test command and update this handoff.
-
-M1 must not include AVX optimization, NPU code, MLIR-AIE, IRON, XRT, Qatum,
-pool integration, direct-node networking, or performance optimization.
-
-Stop after M1. Do not begin M2, XDNA runtime, speculative AIE2 kernels,
-network/pool integration, or optimization.
-
-## Relevant commands
+## Resume commands
 
 ```bash
 cd /home/umutcagand/xdna-npu-miner
 git status -sb
 git branch --show-current
 git log --oneline -15
-git diff --check
+git rev-parse HEAD
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build -j2
+ctest --test-dir build --output-on-failure
+./scripts/generate_corpus.sh build
 ```
-
-For the source audit, see the clone/checkout/hash commands in
-`docs/UPSTREAM.md`. The target repository must remain standalone.
