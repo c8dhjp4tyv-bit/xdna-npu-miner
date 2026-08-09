@@ -41,6 +41,7 @@ add_library(xdna_contract
     src/xdna/buffers.cpp
     src/xdna/k1.cpp
     src/xdna/m4.cpp
+    src/xdna/m5.cpp
     src/xdna/verification.cpp
 )
 
@@ -132,6 +133,18 @@ target_compile_options(m4_contract_tests PRIVATE
     -Werror
 )
 add_test(NAME m4_contract_tests COMMAND m4_contract_tests)
+
+add_executable(m5_contract_tests tests/m5_contract_tests.cpp)
+target_link_libraries(m5_contract_tests PRIVATE m4_test_support)
+target_compile_options(m5_contract_tests PRIVATE
+    -Wall
+    -Wextra
+    -Wpedantic
+    -Wconversion
+    -Wshadow
+    -Werror
+)
+add_test(NAME m5_contract_tests COMMAND m5_contract_tests)
 
 set(XRT_ROOT "$ENV{XILINX_XRT}" CACHE PATH "XRT installation root")
 if(NOT XRT_ROOT)
@@ -228,6 +241,23 @@ if(XRT_INCLUDE_DIR AND XRT_COREUTIL_LIBRARY)
         xdna_runtime
     )
     target_compile_options(xdna_m4_differential PRIVATE
+        -Wall
+        -Wextra
+        -Wpedantic
+        -Wconversion
+        -Wshadow
+        -Werror
+        -Wno-conversion
+        -Wno-ignored-qualifiers
+        -Wno-shadow
+    )
+
+    add_executable(xdna_m5_differential tests/m5_differential.cpp)
+    target_link_libraries(xdna_m5_differential PRIVATE
+        m4_test_support
+        xdna_runtime
+    )
+    target_compile_options(xdna_m5_differential PRIVATE
         -Wall
         -Wextra
         -Wpedantic

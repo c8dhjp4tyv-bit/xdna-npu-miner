@@ -5,15 +5,16 @@ engineering agent.
 
 ## Current milestone
 
-**M4 — full CPU/NPU BPP9000 score correctness path**
+**M5 — batching and four-column XDNA1 execution**
 
 ## Status
 
-**COMPLETE** — the physical M4 full-score differential acceptance run,
-two-candidate lifecycle check, M1/M2/M3 regressions, negative paths,
-documentation, and final repository checks pass on the current host.
+**COMPLETE** — the physical M5 batch/column matrix, M4 identical-work timing
+baseline, mutation/reset/order isolation, M1/M2/M3/M4 regressions, evidence
+aggregation, and final repository checks pass on the current host.
 
-M0, M1, M2, and M3 were externally reviewed and passed. M5 is **NOT STARTED**.
+M0 through M4 were externally reviewed and passed. M6 is **NOT STARTED**;
+do not begin direct-node integration in this handoff.
 
 ## Branch and commits
 
@@ -162,6 +163,34 @@ pin differs from the current host's `...443...` stack, which was not changed.
   device, toolchain, artifact, dispatch, differential, verification, and
   negative-path evidence.
 
+## Completed M5 work
+
+- Added the fixed-width M5 contract under `src/xdna/m5.hpp` and `m5.cpp`.
+  One item is one complete independent M4 `WindowScore` operation with
+  candidate index, window index, explicit state/LUT/topology/input/target
+  offsets, 15,488-byte input stride, 128-byte output stride, result ordering,
+  status, and per-item error fields. Contract validation rejects malformed
+  shapes, trits, roles, topology, stale/sentinel output, and wrong result
+  magic.
+- Added `src/xdna/m5_kernel.cc` and `m5_program.py`. The clean-room device
+  kernel runs the M4 window semantics only; CPU mutation, accept/rollback,
+  reduction, and canonical verification remain host-owned. Fixed artifact
+  variants exist for batch sizes 1, 2, 4, 8, and 16 with one, two, or four
+  columns where divisible.
+- Added explicit lane workers and corrected the runtime DMA tap to transfer
+  every `items_per_lane` record. Generated `npu1_1col`, `npu1_2col`, and
+  `npu1_4col`/partition metadata are retained under the build artifact paths
+  and summarized in `docs/evidence/m5-batching-four-column.json`.
+- Extended `XdnaRuntime` with M5 BO allocation/reuse, full input/output
+  rewrites per dispatch, explicit H2D/D2H counters, dispatch-wait timing, and
+  fail-closed per-item output validation. M4 and M5 measurements use separate
+  hardware-context lifetimes because this host rejects concurrent contexts.
+- Added `m5_contract_tests`, `xdna_m5_differential`,
+  `scripts/build-xdna-m5.sh`, `scripts/aggregate-m5-evidence.py`, and
+  `scripts/run-m5-validation.sh`. The runner exercises ordered, reversed,
+  `A,A,B,A`, unique-lane, repeated-BO, mutation-visible, rollback, timeout,
+  and finite-score cases against the M1 CPU oracle.
+
 ## Upstream cross-check result
 
 The implementation was checked against the M0-derived facts from the pinned
@@ -228,6 +257,18 @@ M4 also changed or added:
 - `tests/m4_vectors.*`, `tests/m4_contract_tests.cpp`, and
   `tests/m4_differential.cpp`;
 - `docs/evidence/m4-full-score-differential.json`, plus the M4 updates to
+  `docs/MILESTONES.md`, `docs/ARCHITECTURE.md`, `docs/TESTING.md`,
+  `docs/DECISIONS.md`, `docs/BENCHMARKS.md`, and this handoff.
+
+M5 also changed or added:
+
+- `src/xdna/m5.hpp`, `src/xdna/m5.cpp`, `src/xdna/m5_kernel.cc`,
+  `src/xdna/m5_program.py`, and the M5 additions to `src/xdna/runtime.*`;
+- `tests/m5_contract_tests.cpp`, `tests/m5_differential.cpp`, and the M5
+  CMake/CTest targets;
+- `scripts/build-xdna-m5.sh`, `scripts/aggregate-m5-evidence.py`, and
+  `scripts/run-m5-validation.sh`;
+- `docs/evidence/m5-batching-four-column.json`, plus the M5 updates to
   `docs/MILESTONES.md`, `docs/ARCHITECTURE.md`, `docs/TESTING.md`,
   `docs/DECISIONS.md`, `docs/BENCHMARKS.md`, and this handoff.
 
@@ -327,6 +368,37 @@ current/best LUT and score state. The M4 contract tests also cover malformed
 trits/topology/sequences, invalid window bounds, timeout serialization, and
 score mismatch rejection.
 
+M5 commands and exact results:
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build -j2
+ctest --test-dir build --output-on-failure
+./scripts/run-m5-validation.sh
+python3 -m json.tool docs/evidence/m5-batching-four-column.json
+git diff --check
+```
+
+`run-m5-validation.sh` reruns M1 corpus/digest checks, M2 smoke, M3
+differential, and M4 full-score validation before building and running the
+M5 matrix. It physically accepted these `(batch_size, columns)` variants:
+`(1,1)`, `(2,1)`, `(4,1)`, `(2,2)`, `(4,2)`, `(8,2)`, `(4,4)`, `(8,4)`,
+and `(16,4)`. Each configuration used 16 logical items, two warm-ups, five
+measured repeats, and 80/80 exact measured item matches with zero mismatches
+and zero runtime failures. The runner also recorded exact ordered/reversed/
+`A,A,B,A` isolation and mutation/rollback visibility matches.
+
+The M4 identical-work baseline was 80 physical dispatches, 160 H2D syncs,
+80 D2H syncs, 1,246,800 H2D bytes, 10,240 D2H bytes, and median/p95 wall
+time 2.479492/3.015180 ms. The best raw M5 record was batch 16/four columns:
+five dispatches, 10 H2D syncs, five D2H syncs, 1,249,280 H2D bytes, 10,240
+D2H bytes, and median/p95 wall time 1.067016/1.451890 ms. M5 H2D bytes are
+slightly larger because its fixed input stride includes 31 explicit padding
+bytes per item. The full raw timing samples, artifact SHA-256 values,
+instruction hashes, UUIDs, generated placement, and buffer footprints are in
+`docs/evidence/m5-batching-four-column.json`; no speedup, hashrate, power,
+energy, profitability, or network claim is made.
+
 ## Hardware tests actually executed
 
 The physical XDNA1/AIE2 path was exercised on the current host. `xrt-smi`
@@ -341,13 +413,26 @@ evidence JSON.
 The final M4 artifact was also loaded into an XRT hardware context on the same
 device and dispatched 13,460 times. It used one AIE2 column, kernel
 `MLIR_AIE`, xclbin SHA-256
-`0dbd4f44e33224a6df774ea0df1a3954acd2b57b710f97b101f7ea3b10ce943c`,
+`618d1fc500ab07b22e48854dd75409746c11f7f31864d3c9e989441bd0163ec2`,
 instruction SHA-256
 `cc811e1751208451a5979e117c91dc238809403602c58b098d1acd55edc3a5d6`, and
-runtime UUID `20ddef20-d111-cc35-0dc6-2d4b4802edb9`. M4 state was reset by the
-host per window and held device-local only within a dispatch; no persistent
-state or batch reuse was claimed. No live Qubic node, network adapter,
-production K12 provider, or four-column workload was exercised.
+runtime UUID `409da7fb-4047-d01e-7614-0e73947ad2bc`. M4 state was reset by the
+host per window and held device-local only within a dispatch.
+
+M5 physically loaded and ran all nine accepted fixed artifacts. The selected
+batch-16/four-column artifact used xclbin SHA-256
+`cc64f6719376fbbda50d094ec6980f0bc4590a40b4e60f83dfd567a677987724`,
+instruction SHA-256
+`8d4aae92b9edde7b9e2c6725ba74b3dbd91bc5d1e2e800ab1c4b1667f9a861f5`, and
+runtime UUID `3ce448ce-c7e2-2667-7606-8843f2567110`. Its generated partition
+metadata reports width 4, start column 0, four row-2 workers, and lane item
+ranges 0–3, 4–7, 8–11, and 12–15. Every lane processed distinct fixture
+inputs and returned an exact CPU-verified result. The M4 baseline and M5
+contexts were created in separate lifetimes because concurrent context setup
+returns `DRM_IOCTL_AMDXDNA_CREATE_HWCTX` `err=-19` on this host.
+
+No live Qubic node, network adapter, production K12 provider, or M6 protocol
+work was exercised.
 
 ## Known limitations and unresolved behavior
 
@@ -360,9 +445,10 @@ production K12 provider, or four-column workload was exercised.
    independently generated and are not network truth.
 3. Qatum/pool wire behavior remains unresolved and deferred. M1 does not
    depend on Qatum, QLI, or any pool.
-4. No performance number, NPU activity, throughput, speedup, energy, or
-   profitability claim exists. M3 and M4 record physical dispatch/correctness
-   counters only; they are not timing or throughput benchmarks.
+4. M5 records raw timing, transfer, and dispatch measurements for an identical
+   16-item comparison workload. They are not converted into a speedup,
+   hashrate, energy, or profitability claim; M3/M4 records remain correctness
+   evidence only.
 5. Optional ASAN/UBSAN builds were attempted but the development image lacks
    the linker runtimes (`libasan.so.8.0.0` and `libubsan.so.1.0.0`). The normal
    warning-clean build and complete test suite pass.
@@ -370,9 +456,11 @@ production K12 provider, or four-column workload was exercised.
    `WRONG_XDNA_GENERATION` run was not available. Forced device-execution,
    context-creation, and output-mismatch failures were not manufactured on the
    healthy device; their typed fail-closed paths are implemented.
-7. M4 uses one-column, one-dispatch-per-operation execution and host
-   round-trips for correctness. Topology/LUT/state buffer reuse, candidate
-   batching, and four-column mapping are intentionally deferred to M5.
+7. M5 does not retain a device-resident task/LUT/context across logical
+   mutations or task changes. It safely reuses XRT BO allocations by rewriting
+   the full input/output arenas every dispatch. The selected batch-16/four-
+   column configuration is a local compute backend only; networking remains
+   M6 work.
 
 ## Architectural decisions to preserve
 
@@ -395,6 +483,13 @@ production K12 provider, or four-column workload was exercised.
   every result to the M1 scalar oracle, and performs full-score reduction;
   `persistent_buffers=false` is intentional. CPU remains the only candidate
   and submission authority.
+- M5's selected backend is a fixed batch-16/four-column artifact for complete
+  independent window operations. Input stride is 15,488 bytes, output stride
+  is 128 bytes, lane order is contiguous and stable, BO allocations are
+  persistent but full arenas are rewritten/sentinel-initialized per dispatch,
+  and CPU recomputation remains mandatory. Do not silently change the work
+  unit to candidate mutation/search or split one recurrent window across
+  columns.
 - Direct-node integration is the first future protocol path. Qatum is optional
   and must wait for a stable authoritative wire specification.
 
@@ -407,27 +502,27 @@ production K12 provider, or four-column workload was exercised.
 - Do not replace the fixture random/digest seams with an unreviewed crypto
   implementation while calling M1 complete.
 - Do not add AVX/SIMD, GPU, network, Qatum, pool, signing, or production
-  mining-loop code while completing M4.
+  mining-loop code while extending the verified M5 backend.
 - Do not claim the production-shaped corpus is the canonical task or a
   production performance benchmark.
-- Do not claim four-column execution, throughput, speedup, power, or
-  profitability from the M2 smoke, M3 K1 counts, or M4 dispatch/duration
-  evidence.
+- Do not claim speedup, power, energy, profitability, or mining hashrate from
+  any M2/M3/M4 correctness record or from the M5 raw timings.
 - Do not redo the M3 K1 differential run unless source, toolchain, artifact, or
   contract changes require it.
 - Do not redo the M4 physical run unless the M4 source, toolchain, artifact, or
   contract changes require it. Do not silently convert the one-column M4
-  baseline into a batch or four-column experiment.
+  baseline into a batch or four-column experiment; use the checked-in M5
+  runner/evidence for that comparison.
 
-## Exact next task: M5 batching and four-column execution
+## Exact next task: M6 direct-node integration
 
-Use the verified M4 one-column, one-dispatch-per-operation path as the exact
-baseline. Add candidate/window batching and test independent work partitioning
-across the four physical AIE2 columns. For every selected batch size and
-column mapping, retain exact CPU/NPU differential comparison, candidate
-ordering/reset isolation, physical dispatch evidence, and explicit transfer
-counts. Record rejection if a mapping does not help. Do not begin networking,
-pool work, or profitability analysis.
+Do not implement it in this M5 task. The next agent must first use the verified
+M5 compute contract (batch 16, four columns, fixed 15,488/128-byte strides,
+contiguous result ordering, full input/output rewrites, CPU verification) while
+implementing the pinned direct-node system-info/work-context and authorized
+submission boundary. Keep Qatum/pool support optional and deferred until a
+versioned authoritative wire specification is pinned. Do not weaken CPU
+verification, add production K12/signing, or claim profitability.
 
 ## Resume commands
 
@@ -443,4 +538,6 @@ ctest --test-dir build --output-on-failure
 ./scripts/generate_corpus.sh build
 ./scripts/run-m3-validation.sh
 ./scripts/run-m4-validation.sh
+./scripts/run-m5-validation.sh
+python3 -m json.tool docs/evidence/m5-batching-four-column.json
 ```

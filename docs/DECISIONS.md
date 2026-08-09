@@ -350,6 +350,56 @@ against a standalone CPU candidate result. No candidate result is accepted
 from NPU-only output. This demonstrates reset, ordering, and contamination
 isolation without introducing M5 batching or four-column work.
 
+## D-028 — M5 batches complete independent candidate/window pairs
+
+**Status:** Accepted and verified for M5
+
+The first optimization boundary is one complete independent M4 window per
+batch item. The item owns its reset state, LUT, topology, input sequence,
+targets, and result slot. Candidate mutation, accept/rollback, full-score
+reduction, and canonical CPU verification remain host responsibilities.
+
+Reason: a candidate's recurrent ticks are sequential, while complete windows
+and candidate/window pairs are independent. Keeping each item as a complete
+M4 operation preserves the already verified state-reset, timeout, target-index,
+and mismatch boundary and avoids unmeasured cross-column synchronization.
+
+## D-029 — M5 uses explicit lane artifacts and persistent host BOs
+
+**Status:** Accepted and verified for M5
+
+M5 artifacts are generated for fixed `(batch_size, column_count)` pairs. Each
+lane is a separate worker explicitly placed on one physical AIE2 column and
+receives a contiguous item range; batch order is not reconstructed after the
+device. The XRT instruction/input/output BOs are allocated once and reused,
+but all active input and output bytes are rewritten/synchronized for every
+dispatch. The generated DMA tap covers all `items_per_lane` records; a
+single-record tap was rejected after the first multi-item physical test left
+the second output at the sentinel. Task/topology/LUT residency inside AIE
+local memory is deferred because mutation and task changes must remain visibly
+coherent at the M5 contract boundary. The accepted matrix covers batch sizes
+1, 2, 4, 8, and 16 across one, two, and four columns with exact results.
+
+Reason: fixed variants make compiler placement, buffer sizing, DMA resources,
+and transfer accounting auditable. Reused BO allocation is safe with explicit
+sentinel and full-arena rewrites; hidden device context reuse would be a new
+correctness risk and is not claimed.
+
+## D-030 — Measure M4 and M5 in separate XRT context lifetimes
+
+**Status:** Accepted and verified for M5
+
+The M5 measurement runner executes the identical logical workload through the
+M4 reference first, records its raw timing and transfer counters, destroys the
+M4 runtime, and then creates the M5 runtime. On this host, constructing both
+hardware contexts concurrently fails with `DRM_IOCTL_AMDXDNA_CREATE_HWCTX`
+`err=-19` (`No such device`); this is treated as a runtime limitation rather
+than hidden fallback. The two paths remain explicitly separate and use the
+same warm-up, repeat, CPU verification, and 16-item corpus rules.
+
+Reason: separate context lifetimes preserve truthful physical evidence while
+keeping the comparison workload and measurement method identical.
+
 ## Historical decisions retained
 
 The original bootstrap decisions remain valid:

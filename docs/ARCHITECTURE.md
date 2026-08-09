@@ -22,9 +22,10 @@ No NPU kernel is being implemented in M0.
 M1 added the CPU reference layer described below. M2 provides a standalone
 XRT/IRON runtime foundation and one-column deterministic hardware smoke. M3
 added the first BPP9000 XDNA compute boundary: one isolated K1 recurrent LUT
-tick. M4 now composes that primitive into a one-column repeated-tick/window
-score path with exact CPU verification. Mutation control remains CPU-owned;
-batching, four-column mapping, networking, and performance remain later
+tick. M4 composed that primitive into a one-column repeated-tick/window score
+path with exact CPU verification. M5 adds a fixed-width independent-window
+batch path and verified one-, two-, and four-column artifacts. Mutation
+control remains CPU-owned; networking and direct-node integration remain later
 milestones.
 
 ## System boundary
@@ -91,6 +92,7 @@ The M1 implementation uses these standalone source boundaries:
 | `xdna/runtime` | Device/version discovery, XRT buffers, dispatch and evidence | Execute selected deterministic buffers |
 | `xdna/k1` and `xdna/runtime` | Pack one K1 tick, synchronize, validate output shape/status | One isolated recurrent LUT/tick primitive |
 | `xdna/m4` and `xdna/m4_score` | Pack repeated ticks/window inputs, dispatch one operation, compare every result with the CPU oracle | Device-local repeated ticks and one-window score/status |
+| `xdna/m5` and `xdna/runtime` | CPU pack fixed batches, preserve candidate/window indices, rewrite reusable BOs, verify every item | Independent M4 window operations on explicit AIE2 lanes |
 | verification | Recompute candidate with the CPU oracle before submission | Never authorizes a share by itself |
 | benchmark | Timestamp, workload identity, transfer/telemetry accounting | Report actual dispatch/kernel timing |
 
@@ -203,6 +205,110 @@ The candidate path keeps random materialization, mutation, accept/rollback,
 and final CPU candidate comparison on the host. Two sequential 101-score-call
 candidate paths verify reset and ordering isolation. M4 remains one-column,
 does not implement networking or crypto, and records no performance claim.
+
+## M5 batched independent-window path
+
+M5 selects the independent candidate/window pair as its work unit. One batch
+item is one complete M4 `WindowScore` operation: it starts from an explicit
+all-UNKNOWN state, carries one candidate's LUT and task/topology view, feeds
+one window, and returns exactly one score/status/result record. Candidate
+mutation, accept/rollback, full-score reduction, and CPU verification remain
+outside the device batch boundary. This preserves the M4 reset semantics and
+avoids synchronizing one recurrent candidate across columns.
+
+The M5 host schema is fixed-width and row-major:
+
+```text
+batch item i
+  candidate_index: uint32
+  window_index:    uint64
+  input_offset:    i * 15488 bytes
+  output_offset:   i * 128 bytes
+  input_item_stride: 15488 bytes
+  output_item_stride: 128 bytes
+  state/LUT/topology/input/target offsets: M4 offsets relative to input_offset
+  score/status/ticks/feed/predicted/expected/error: output offsets relative to output_offset
+```
+
+The host never reorders results: output slot `i` is decoded with metadata
+`(candidate_index, window_index)` from input item `i`. The per-item status is
+the settled/timeout field and the per-item error word is zero only for a
+normal kernel result. A device/runtime failure rejects the whole batch and is
+not converted into per-item success.
+
+For the first M5 implementation, each lane receives a complete independent
+M4 arena. This deliberately repeats task/topology/LUT bytes when windows are
+batched, making the correctness and transfer tradeoff measurable without
+introducing an unverified device-resident context. XRT input/output BOs and
+the instruction BO are allocated once per runtime and reused; every dispatch
+rewrites the entire active input arena and sentinel-initializes the entire
+output arena before synchronization, so stale state/output cannot satisfy a
+match. Buffer classes are:
+
+| Buffer/data | M5 class | Rule |
+|---|---|---|
+| artifact/instructions and compiled lane placement | IMMUTABLE | fixed for one runtime/artifact |
+| task/topology and LUT bytes inside an item | PER-CANDIDATE / PER-WINDOW copy | repeated per item until a safe device context path is measured |
+| initial state, input sequence, targets | PER-WINDOW | reset and replaced for every logical item |
+| mutation records and candidate snapshots | PER-MUTATION | CPU only; never stale device state |
+| output/status arena and control metadata | PER-DISPATCH | sentinel-initialized and read back for every batch |
+
+The artifact variants are compiled for one, two, or four columns and a fixed
+batch size. Worker `lane j` is explicitly placed on the generated artifact's
+column lane and processes the contiguous item range assigned to that lane. A
+batch size must be divisible by the selected column count; this makes the
+mapping and ordering auditable. The runtime tap transfers all
+`items_per_lane` records for each lane, not just the first record. Generated
+AIE placement plus a unique CPU-verified result for every lane are required
+evidence for a claimed active-column configuration. Sequential one-column
+dispatches are not relabeled as multi-column execution.
+
+M4's one-operation-per-dispatch path remains unchanged and is measured as the
+control for the identical window-item corpus. M5 reports raw transfer bytes,
+syncs, physical dispatches, host preparation, dispatch/wait, CPU verification,
+and repeated wall-time samples. No speedup is inferred unless workload,
+verification policy, warm-up, repeats, and raw values are identical.
+
+M5 is **COMPLETE** on the verified Hawk Point host. The reproducible command
+`./scripts/run-m5-validation.sh` measured 16 deterministic independent
+candidate/window pairs with two warm-ups and five measured repeats per
+configuration. All nine configurations below had 80/80 exact measured item
+matches, zero mismatches, and zero runtime failures; the full raw records,
+artifact hashes, UUIDs, generated partition metadata, and lane evidence are in
+`docs/evidence/m5-batching-four-column.json`.
+
+| Path | Batch/columns | Median wall ms (p95) | Measured dispatches | H2D syncs / bytes | D2H syncs / bytes |
+|---|---:|---:|---:|---:|---:|
+| M4 reference | 1 / 1 | 2.479492 (3.015180) | 80 | 160 / 1,246,800 | 80 / 10,240 |
+| M5 | 1 / 1 | 2.655153 (2.836824) | 80 | 160 / 1,249,280 | 80 / 10,240 |
+| M5 | 2 / 1 | 1.814122 (2.019287) | 40 | 80 / 1,249,280 | 40 / 10,240 |
+| M5 | 4 / 1 | 1.586132 (1.844287) | 20 | 40 / 1,249,280 | 20 / 10,240 |
+| M5 | 2 / 2 | 1.966177 (2.239110) | 40 | 80 / 1,249,280 | 40 / 10,240 |
+| M5 | 4 / 2 | 1.462820 (1.864036) | 20 | 40 / 1,249,280 | 20 / 10,240 |
+| M5 | 8 / 2 | 1.550024 (1.916814) | 10 | 20 / 1,249,280 | 10 / 10,240 |
+| M5 | 4 / 4 | 1.405202 (1.514668) | 20 | 40 / 1,249,280 | 20 / 10,240 |
+| M5 | 8 / 4 | 1.133271 (1.174929) | 10 | 20 / 1,249,280 | 10 / 10,240 |
+| M5 | 16 / 4 | 1.067016 (1.451890) | 5 | 10 / 1,249,280 | 5 / 10,240 |
+
+The selected M5 configuration is batch 16 / four columns because it had the
+lowest measured median wall time in this matrix. The one-column M5 control is
+slower in this run because its fixed per-item arena includes 31 bytes of
+explicit padding; this is recorded as raw timing, not a speedup claim. The
+four-column artifacts have generated `npu1_4col` placement with four core
+workers on row 2 and partition width 4; each lane received distinct fixture
+inputs and returned its own CPU-verified result. Two-column artifacts have
+generated `npu1_2col` placement with partition width 2. The selected runtime
+reuses instruction/input/output BOs but destroys the M4 comparison context
+before creating M5 because this XRT environment does not support both hardware
+contexts concurrently.
+
+The M6 compute contract is therefore: submit fixed batches of up to 16
+independent pairs to the selected batch-16/four-column artifact, use the
+15,488-byte input and 128-byte output strides, rewrite all item input/state/LUT/
+topology/sequence/target bytes for every dispatch, preserve slot ordering, and
+CPU-recompute every returned window before mutation reduction or submission.
+Task/context invalidation is represented by a new packed batch/runtime boundary;
+no device-resident candidate or epoch state is assumed.
 
 ### M1 CPU API and storage contract
 

@@ -131,6 +131,68 @@ table above remains intentionally unmeasured. Do not infer a performance claim
 from the static operation counts in `docs/ARCHITECTURE.md`, from any dispatch
 count or validation duration, or from the related `hawkpoint-npu-llm` project.
 
+## M5 measurement contract
+
+M5 compares the M4 one-window control with a batched artifact over the same
+deterministic item list. One item is one independent candidate/window pair;
+the complete candidate mutation search is not silently represented as a
+partial throughput number. Each result is CPU-recomputed with the M1 oracle
+in both control and batched paths.
+
+For every fixed `(batch_size, columns)` artifact, record the artifact and
+instruction hashes, generated placement, batch/candidate/window identity,
+warm-up count, measured repeat count, raw wall samples, median/p95, host
+preparation, XRT dispatch/wait when available, CPU verification/reduction,
+physical dispatches, H2D/D2H sync counts and bytes, active-lane evidence,
+matches, mismatches, and runtime failures. XRT BOs may be reused only with a
+full input rewrite and output sentinel rewrite per dispatch. A rejected or
+unsupported compiler mapping is recorded with its exact configuration and
+error; it is not converted to a timing result.
+
+M5 may report raw `window-items/sec` or `score-window operations/sec`. It may
+not call this candidate hashrate, convert it into profitability, or claim a
+speedup unless the logical work, CPU verification, warm-up/repeat method, and
+raw values are identical to the M4 control.
+
+## M5 measured raw results
+
+The completed M5 run used the physical `RyzenAI-npu1` / AIE2 device, Fedora
+runtime pins from `runtime-pins.json`, 16 deterministic independent
+candidate/window pairs, two warm-ups, and five measured repeats. The M4
+reference was run first on the same 16 items with one dispatch per item. The
+baseline median was 2.479492 ms (p95 3.015180 ms), 80 physical dispatches,
+160 H2D syncs, 1,246,800 H2D bytes, 80 D2H syncs, and 10,240 D2H bytes.
+
+| Batch / columns | Median ms (p95) | Dispatches | H2D syncs / bytes | D2H syncs / bytes | Exact items / mismatches |
+|---:|---:|---:|---:|---:|---:|
+| 1 / 1 | 2.655153 (2.836824) | 80 | 160 / 1,249,280 | 80 / 10,240 | 80 / 0 |
+| 2 / 1 | 1.814122 (2.019287) | 40 | 80 / 1,249,280 | 40 / 10,240 | 80 / 0 |
+| 4 / 1 | 1.586132 (1.844287) | 20 | 40 / 1,249,280 | 20 / 10,240 | 80 / 0 |
+| 2 / 2 | 1.966177 (2.239110) | 40 | 80 / 1,249,280 | 40 / 10,240 | 80 / 0 |
+| 4 / 2 | 1.462820 (1.864036) | 20 | 40 / 1,249,280 | 20 / 10,240 | 80 / 0 |
+| 8 / 2 | 1.550024 (1.916814) | 10 | 20 / 1,249,280 | 10 / 10,240 | 80 / 0 |
+| 4 / 4 | 1.405202 (1.514668) | 20 | 40 / 1,249,280 | 20 / 10,240 | 80 / 0 |
+| 8 / 4 | 1.133271 (1.174929) | 10 | 20 / 1,249,280 | 10 / 10,240 | 80 / 0 |
+| 16 / 4 | 1.067016 (1.451890) | 5 | 10 / 1,249,280 | 5 / 10,240 | 80 / 0 |
+
+Batch 16 / four columns is the selected configuration by lowest measured
+median wall time. It reduces physical dispatches from 80 to 5 and H2D/D2H
+synchronization calls from 160/80 to 10/5 for this identical 16-item measured
+workload. H2D bytes are slightly larger than M4 because M5 deliberately rounds
+each 15,457-byte logical M4 payload to a 15,488-byte fixed device stride; D2H
+bytes are unchanged. These are raw timing and transfer observations; the
+machine-readable records intentionally set `speedup_claim:false` and contain
+all five raw samples per configuration.
+
+The generated AIE metadata reports partition width 1, 2, or 4 for the
+respective artifact families. For four-column runs it reports four row-2 core
+workers, and the isolation corpus gives each lane distinct inputs plus exact
+CPU-verified results. No NPU telemetry counter was available beyond physical
+XRT dispatch completion. No power, energy, profitability, or hashrate claim
+is made. Full evidence is in
+`docs/evidence/m5-batching-four-column.json`; the sweep is reproducible with
+`./scripts/run-m5-validation.sh`.
+
 ## Profitability
 
 Profitability is separate from hardware throughput. If ever calculated, record

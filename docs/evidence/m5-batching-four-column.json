@@ -1,0 +1,1278 @@
+{
+  "schema_version": 1,
+  "milestone": "M5",
+  "status": "PASS",
+  "work_unit": "independent candidate/window pair; one complete M4 WindowScore operation",
+  "workload": {
+    "generator": "m5-window-batch-v1",
+    "logical_work_items": 16,
+    "candidate_indices": "0..15",
+    "window_indices": "deterministic per-item fixture"
+  },
+  "toolchain": {
+    "device": "RyzenAI-npu1",
+    "architecture": "aie2",
+    "bdf": "0000:06:00.1",
+    "driver": "7.2.0-0.rc5.260731.8ba098e6.443.vanilla.fc45.x86_64",
+    "firmware": "1.5.5.391",
+    "xrt": "2.26.0",
+    "mlir_aie": "57d7494e99c214f5f53b328a0ed43a99e759e835",
+    "peano": "llvm-aie 21.0.0.2026072001+ce8c0f8f"
+  },
+  "baseline": {
+    "path": "M4_REFERENCE_ACCEL_PATH",
+    "artifact": {
+      "xclbin_sha256": "618d1fc500ab07b22e48854dd75409746c11f7f31864d3c9e989441bd0163ec2",
+      "instructions_sha256": "cc811e1751208451a5979e117c91dc238809403602c58b098d1acd55edc3a5d6",
+      "uuid": "409da7fb-4047-d01e-7614-0e73947ad2bc",
+      "kernel": "MLIR_AIE"
+    },
+    "benchmark": {
+      "logical_work_items": 16,
+      "batch_size": 1,
+      "work_items_per_dispatch": 1,
+      "warmup_runs": 2,
+      "measured_repeats": 5,
+      "wall_time_ms": {
+        "raw": [
+          2.694066,
+          2.479492,
+          2.326064,
+          3.01518,
+          2.39849
+        ],
+        "median": 2.479492,
+        "p95": 3.01518
+      },
+      "host_preparation_time_ms": {
+        "raw": [
+          0.371086,
+          0.365816,
+          0.365577,
+          0.496088,
+          0.371912
+        ],
+        "median": 0.371086
+      },
+      "cpu_verification_time_ms": {
+        "raw": [
+          0.487569,
+          0.493777,
+          0.482526,
+          0.683075,
+          0.489131
+        ],
+        "median": 0.489131
+      },
+      "xrt_dispatch_wait_time_ms": {
+        "raw": [
+          1.835411,
+          1.619899,
+          1.477961,
+          1.836017,
+          1.537447
+        ],
+        "median": 1.619899
+      },
+      "physical_dispatches": 80,
+      "successful_dispatches": 80,
+      "h2d_syncs": 160,
+      "d2h_syncs": 80,
+      "h2d_bytes": 1246800,
+      "d2h_bytes": 10240,
+      "exact_matches": 80,
+      "timeout_matches": 5,
+      "finite_matches": 75,
+      "mismatches": 0,
+      "runtime_failures": 0
+    },
+    "active_columns": 1,
+    "correctness": {
+      "cpu_recomputation_enabled": true,
+      "mismatches": 0,
+      "runtime_failures": 0
+    }
+  },
+  "configurations": [
+    {
+      "batch_size": 1,
+      "columns": 1,
+      "status": "ACCEPTED",
+      "artifact": {
+        "xclbin_sha256": "dc41d48ac4cb19d3df6d1715cf059888c4f9a89e39bfc3fa9c97f8662e6e7663",
+        "instructions_sha256": "cc811e1751208451a5979e117c91dc238809403602c58b098d1acd55edc3a5d6",
+        "uuid": "e808d53b-0f02-a52c-db49-f55dc105d24d",
+        "kernel": "MLIR_AIE",
+        "artifact_dir": "build/xdna-m5-b1-c1",
+        "target_columns": 1,
+        "batch_size": 1
+      },
+      "placement": {
+        "logical_lanes": 1,
+        "lane_mapping": [
+          {
+            "lane": 0,
+            "logical_column": 0,
+            "first_item": 0,
+            "item_count": 1
+          }
+        ],
+        "items_per_lane": 1,
+        "generated_aie_placement": true,
+        "execution_dependent_unique_lane_inputs": true,
+        "execution_dependent_unique_lane_matches": true,
+        "artifact_layout_file": "build/xdna-m5-b1-c1/xdna_m5.layout.json",
+        "generated_mlir_file": "build/xdna-m5-b1-c1/xdna_m5.prj/aie.mlir",
+        "partition_metadata_file": "build/xdna-m5-b1-c1/xdna_m5.prj/main_aie_partition.json",
+        "partition_column_width": 1,
+        "partition_start_columns": [
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "correctness": {
+        "isolation_patterns": "ordered, reversed, A,A,B,A where applicable",
+        "isolation_exact_matches": 1,
+        "isolation_dispatches": 1,
+        "mutation_exact_matches": 2,
+        "mutation_dispatches": 2,
+        "ordering_preserved": true,
+        "state_reset_per_item": true,
+        "mutation_visibility_pattern_verified": true,
+        "mismatches": 0,
+        "runtime_failures": 0,
+        "cpu_recomputation_enabled": true,
+        "npu_only_authorization": false
+      },
+      "benchmark": {
+        "logical_work_items": 16,
+        "batch_size": 1,
+        "work_items_per_dispatch": 1,
+        "warmup_runs": 2,
+        "measured_repeats": 5,
+        "wall_time_ms": {
+          "raw": [
+            2.560885,
+            2.655153,
+            2.836824,
+            2.359206,
+            2.691641
+          ],
+          "median": 2.655153,
+          "p95": 2.836824
+        },
+        "host_preparation_time_ms": {
+          "raw": [
+            0.264457,
+            0.280557,
+            0.328407,
+            0.262094,
+            0.263945
+          ],
+          "median": 0.264457
+        },
+        "cpu_verification_time_ms": {
+          "raw": [
+            0.47487,
+            0.514648,
+            0.576827,
+            0.476185,
+            0.475297
+          ],
+          "median": 0.476185
+        },
+        "xrt_dispatch_wait_time_ms": {
+          "raw": [
+            1.636128,
+            1.645291,
+            1.693643,
+            1.435108,
+            1.766745
+          ],
+          "median": 1.645291
+        },
+        "physical_dispatches": 80,
+        "successful_dispatches": 80,
+        "h2d_syncs": 160,
+        "d2h_syncs": 80,
+        "h2d_bytes": 1249280,
+        "d2h_bytes": 10240,
+        "exact_matches": 80,
+        "timeout_matches": 5,
+        "finite_matches": 75,
+        "mismatches": 0,
+        "runtime_failures": 0
+      },
+      "buffer_footprint": {
+        "input_item_bytes": 15488,
+        "output_item_bytes": 128,
+        "input_arena_bytes": 15488,
+        "output_arena_bytes": 128,
+        "total_arena_bytes": 15616,
+        "per_lane_input_bytes": 15488,
+        "per_lane_output_bytes": 128
+      }
+    },
+    {
+      "batch_size": 2,
+      "columns": 1,
+      "status": "ACCEPTED",
+      "artifact": {
+        "xclbin_sha256": "441a02772913ac8204e9e0099e7be09937532c1deb1284b66a7e36783b43226c",
+        "instructions_sha256": "ce87a9f1eccd64e85b03d4173262a832cf9cf85200e14a63444ce4873426ca0a",
+        "uuid": "d486b45f-3443-832c-4fcf-2a5f0f5b1d64",
+        "kernel": "MLIR_AIE",
+        "artifact_dir": "build/xdna-m5-b2-c1",
+        "target_columns": 1,
+        "batch_size": 2
+      },
+      "placement": {
+        "logical_lanes": 1,
+        "lane_mapping": [
+          {
+            "lane": 0,
+            "logical_column": 0,
+            "first_item": 0,
+            "item_count": 2
+          }
+        ],
+        "items_per_lane": 2,
+        "generated_aie_placement": true,
+        "execution_dependent_unique_lane_inputs": true,
+        "execution_dependent_unique_lane_matches": true,
+        "artifact_layout_file": "build/xdna-m5-b2-c1/xdna_m5.layout.json",
+        "generated_mlir_file": "build/xdna-m5-b2-c1/xdna_m5.prj/aie.mlir",
+        "partition_metadata_file": "build/xdna-m5-b2-c1/xdna_m5.prj/main_aie_partition.json",
+        "partition_column_width": 1,
+        "partition_start_columns": [
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "correctness": {
+        "isolation_patterns": "ordered, reversed, A,A,B,A where applicable",
+        "isolation_exact_matches": 4,
+        "isolation_dispatches": 2,
+        "mutation_exact_matches": 4,
+        "mutation_dispatches": 2,
+        "ordering_preserved": true,
+        "state_reset_per_item": true,
+        "mutation_visibility_pattern_verified": true,
+        "mismatches": 0,
+        "runtime_failures": 0,
+        "cpu_recomputation_enabled": true,
+        "npu_only_authorization": false
+      },
+      "benchmark": {
+        "logical_work_items": 16,
+        "batch_size": 2,
+        "work_items_per_dispatch": 2,
+        "warmup_runs": 2,
+        "measured_repeats": 5,
+        "wall_time_ms": {
+          "raw": [
+            1.880556,
+            1.801508,
+            1.799073,
+            2.019287,
+            1.814122
+          ],
+          "median": 1.814122,
+          "p95": 2.019287
+        },
+        "host_preparation_time_ms": {
+          "raw": [
+            0.249619,
+            0.250212,
+            0.255392,
+            0.252767,
+            0.253876
+          ],
+          "median": 0.252767
+        },
+        "cpu_verification_time_ms": {
+          "raw": [
+            0.455866,
+            0.457852,
+            0.453143,
+            0.458429,
+            0.472016
+          ],
+          "median": 0.457852
+        },
+        "xrt_dispatch_wait_time_ms": {
+          "raw": [
+            1.005289,
+            0.923918,
+            0.922445,
+            1.140536,
+            0.91978
+          ],
+          "median": 0.923918
+        },
+        "physical_dispatches": 40,
+        "successful_dispatches": 40,
+        "h2d_syncs": 80,
+        "d2h_syncs": 40,
+        "h2d_bytes": 1249280,
+        "d2h_bytes": 10240,
+        "exact_matches": 80,
+        "timeout_matches": 5,
+        "finite_matches": 75,
+        "mismatches": 0,
+        "runtime_failures": 0
+      },
+      "buffer_footprint": {
+        "input_item_bytes": 15488,
+        "output_item_bytes": 128,
+        "input_arena_bytes": 30976,
+        "output_arena_bytes": 256,
+        "total_arena_bytes": 31232,
+        "per_lane_input_bytes": 30976,
+        "per_lane_output_bytes": 256
+      }
+    },
+    {
+      "batch_size": 4,
+      "columns": 1,
+      "status": "ACCEPTED",
+      "artifact": {
+        "xclbin_sha256": "dc0662b6e02e7b074b6136a1309cd8399d924936eee180fd5e9a2cde0a1cd40b",
+        "instructions_sha256": "ac2cae0b96c4182f179f5d5ddb0924da8707bf23ab1b70b00aef6ea68ef828e6",
+        "uuid": "71817e90-495a-d368-cb9c-5e8e490cddb5",
+        "kernel": "MLIR_AIE",
+        "artifact_dir": "build/xdna-m5-b4-c1",
+        "target_columns": 1,
+        "batch_size": 4
+      },
+      "placement": {
+        "logical_lanes": 1,
+        "lane_mapping": [
+          {
+            "lane": 0,
+            "logical_column": 0,
+            "first_item": 0,
+            "item_count": 4
+          }
+        ],
+        "items_per_lane": 4,
+        "generated_aie_placement": true,
+        "execution_dependent_unique_lane_inputs": true,
+        "execution_dependent_unique_lane_matches": true,
+        "artifact_layout_file": "build/xdna-m5-b4-c1/xdna_m5.layout.json",
+        "generated_mlir_file": "build/xdna-m5-b4-c1/xdna_m5.prj/aie.mlir",
+        "partition_metadata_file": "build/xdna-m5-b4-c1/xdna_m5.prj/main_aie_partition.json",
+        "partition_column_width": 1,
+        "partition_start_columns": [
+          1,
+          2,
+          3,
+          4
+        ]
+      },
+      "correctness": {
+        "isolation_patterns": "ordered, reversed, A,A,B,A where applicable",
+        "isolation_exact_matches": 12,
+        "isolation_dispatches": 3,
+        "mutation_exact_matches": 8,
+        "mutation_dispatches": 2,
+        "ordering_preserved": true,
+        "state_reset_per_item": true,
+        "mutation_visibility_pattern_verified": true,
+        "mismatches": 0,
+        "runtime_failures": 0,
+        "cpu_recomputation_enabled": true,
+        "npu_only_authorization": false
+      },
+      "benchmark": {
+        "logical_work_items": 16,
+        "batch_size": 4,
+        "work_items_per_dispatch": 4,
+        "warmup_runs": 2,
+        "measured_repeats": 5,
+        "wall_time_ms": {
+          "raw": [
+            1.586132,
+            1.844287,
+            1.388932,
+            1.440779,
+            1.729692
+          ],
+          "median": 1.586132,
+          "p95": 1.844287
+        },
+        "host_preparation_time_ms": {
+          "raw": [
+            0.344778,
+            0.379584,
+            0.264448,
+            0.277902,
+            0.301879
+          ],
+          "median": 0.301879
+        },
+        "cpu_verification_time_ms": {
+          "raw": [
+            0.546376,
+            0.667608,
+            0.47305,
+            0.473629,
+            0.594126
+          ],
+          "median": 0.546376
+        },
+        "xrt_dispatch_wait_time_ms": {
+          "raw": [
+            0.486775,
+            0.551426,
+            0.474302,
+            0.518775,
+            0.640435
+          ],
+          "median": 0.518775
+        },
+        "physical_dispatches": 20,
+        "successful_dispatches": 20,
+        "h2d_syncs": 40,
+        "d2h_syncs": 20,
+        "h2d_bytes": 1249280,
+        "d2h_bytes": 10240,
+        "exact_matches": 80,
+        "timeout_matches": 5,
+        "finite_matches": 75,
+        "mismatches": 0,
+        "runtime_failures": 0
+      },
+      "buffer_footprint": {
+        "input_item_bytes": 15488,
+        "output_item_bytes": 128,
+        "input_arena_bytes": 61952,
+        "output_arena_bytes": 512,
+        "total_arena_bytes": 62464,
+        "per_lane_input_bytes": 61952,
+        "per_lane_output_bytes": 512
+      }
+    },
+    {
+      "batch_size": 2,
+      "columns": 2,
+      "status": "ACCEPTED",
+      "artifact": {
+        "xclbin_sha256": "2667e6999041607657a485ba7d35f36161382e2d22037782d5bc83dcc0712b87",
+        "instructions_sha256": "711028cb290e20365c8d9c579bbaa6a874a06dba47b59220e395e8a0ad16e4e5",
+        "uuid": "c8696ca0-0150-2baf-32a2-95e1b0c27d37",
+        "kernel": "MLIR_AIE",
+        "artifact_dir": "build/xdna-m5-b2-c2",
+        "target_columns": 2,
+        "batch_size": 2
+      },
+      "placement": {
+        "logical_lanes": 2,
+        "lane_mapping": [
+          {
+            "lane": 0,
+            "logical_column": 0,
+            "first_item": 0,
+            "item_count": 1
+          },
+          {
+            "lane": 1,
+            "logical_column": 1,
+            "first_item": 1,
+            "item_count": 1
+          }
+        ],
+        "items_per_lane": 1,
+        "generated_aie_placement": true,
+        "execution_dependent_unique_lane_inputs": true,
+        "execution_dependent_unique_lane_matches": true,
+        "artifact_layout_file": "build/xdna-m5-b2-c2/xdna_m5.layout.json",
+        "generated_mlir_file": "build/xdna-m5-b2-c2/xdna_m5.prj/aie.mlir",
+        "partition_metadata_file": "build/xdna-m5-b2-c2/xdna_m5.prj/main_aie_partition.json",
+        "partition_column_width": 2,
+        "partition_start_columns": [
+          1,
+          2,
+          3
+        ]
+      },
+      "correctness": {
+        "isolation_patterns": "ordered, reversed, A,A,B,A where applicable",
+        "isolation_exact_matches": 4,
+        "isolation_dispatches": 2,
+        "mutation_exact_matches": 4,
+        "mutation_dispatches": 2,
+        "ordering_preserved": true,
+        "state_reset_per_item": true,
+        "mutation_visibility_pattern_verified": true,
+        "mismatches": 0,
+        "runtime_failures": 0,
+        "cpu_recomputation_enabled": true,
+        "npu_only_authorization": false
+      },
+      "benchmark": {
+        "logical_work_items": 16,
+        "batch_size": 2,
+        "work_items_per_dispatch": 2,
+        "warmup_runs": 2,
+        "measured_repeats": 5,
+        "wall_time_ms": {
+          "raw": [
+            1.966177,
+            1.812278,
+            1.990463,
+            1.763956,
+            2.23911
+          ],
+          "median": 1.966177,
+          "p95": 2.23911
+        },
+        "host_preparation_time_ms": {
+          "raw": [
+            0.313519,
+            0.312489,
+            0.334239,
+            0.268985,
+            0.362602
+          ],
+          "median": 0.313519
+        },
+        "cpu_verification_time_ms": {
+          "raw": [
+            0.556277,
+            0.475174,
+            0.571095,
+            0.481406,
+            0.683665
+          ],
+          "median": 0.556277
+        },
+        "xrt_dispatch_wait_time_ms": {
+          "raw": [
+            0.874114,
+            0.844447,
+            0.866498,
+            0.836303,
+            0.955527
+          ],
+          "median": 0.866498
+        },
+        "physical_dispatches": 40,
+        "successful_dispatches": 40,
+        "h2d_syncs": 80,
+        "d2h_syncs": 40,
+        "h2d_bytes": 1249280,
+        "d2h_bytes": 10240,
+        "exact_matches": 80,
+        "timeout_matches": 5,
+        "finite_matches": 75,
+        "mismatches": 0,
+        "runtime_failures": 0
+      },
+      "buffer_footprint": {
+        "input_item_bytes": 15488,
+        "output_item_bytes": 128,
+        "input_arena_bytes": 30976,
+        "output_arena_bytes": 256,
+        "total_arena_bytes": 31232,
+        "per_lane_input_bytes": 15488,
+        "per_lane_output_bytes": 128
+      }
+    },
+    {
+      "batch_size": 4,
+      "columns": 2,
+      "status": "ACCEPTED",
+      "artifact": {
+        "xclbin_sha256": "6f753c282ae336fd0365911b55c6ad0dad69472d085d66801fe3322c7e9e8bb1",
+        "instructions_sha256": "55865478c8bc05447745e970c4d548e4e0fd38b2d74aaff9505aedca6c99e04e",
+        "uuid": "50494a4d-f0e7-545c-b34a-782e42023555",
+        "kernel": "MLIR_AIE",
+        "artifact_dir": "build/xdna-m5-b4-c2",
+        "target_columns": 2,
+        "batch_size": 4
+      },
+      "placement": {
+        "logical_lanes": 2,
+        "lane_mapping": [
+          {
+            "lane": 0,
+            "logical_column": 0,
+            "first_item": 0,
+            "item_count": 2
+          },
+          {
+            "lane": 1,
+            "logical_column": 1,
+            "first_item": 2,
+            "item_count": 2
+          }
+        ],
+        "items_per_lane": 2,
+        "generated_aie_placement": true,
+        "execution_dependent_unique_lane_inputs": true,
+        "execution_dependent_unique_lane_matches": true,
+        "artifact_layout_file": "build/xdna-m5-b4-c2/xdna_m5.layout.json",
+        "generated_mlir_file": "build/xdna-m5-b4-c2/xdna_m5.prj/aie.mlir",
+        "partition_metadata_file": "build/xdna-m5-b4-c2/xdna_m5.prj/main_aie_partition.json",
+        "partition_column_width": 2,
+        "partition_start_columns": [
+          1,
+          2,
+          3
+        ]
+      },
+      "correctness": {
+        "isolation_patterns": "ordered, reversed, A,A,B,A where applicable",
+        "isolation_exact_matches": 12,
+        "isolation_dispatches": 3,
+        "mutation_exact_matches": 8,
+        "mutation_dispatches": 2,
+        "ordering_preserved": true,
+        "state_reset_per_item": true,
+        "mutation_visibility_pattern_verified": true,
+        "mismatches": 0,
+        "runtime_failures": 0,
+        "cpu_recomputation_enabled": true,
+        "npu_only_authorization": false
+      },
+      "benchmark": {
+        "logical_work_items": 16,
+        "batch_size": 4,
+        "work_items_per_dispatch": 4,
+        "warmup_runs": 2,
+        "measured_repeats": 5,
+        "wall_time_ms": {
+          "raw": [
+            1.550666,
+            1.46282,
+            1.864036,
+            1.450688,
+            1.413288
+          ],
+          "median": 1.46282,
+          "p95": 1.864036
+        },
+        "host_preparation_time_ms": {
+          "raw": [
+            0.298763,
+            0.267994,
+            0.33572,
+            0.28201,
+            0.27134
+          ],
+          "median": 0.28201
+        },
+        "cpu_verification_time_ms": {
+          "raw": [
+            0.531359,
+            0.520548,
+            0.748799,
+            0.481497,
+            0.471878
+          ],
+          "median": 0.520548
+        },
+        "xrt_dispatch_wait_time_ms": {
+          "raw": [
+            0.52086,
+            0.494669,
+            0.544733,
+            0.51138,
+            0.497165
+          ],
+          "median": 0.51138
+        },
+        "physical_dispatches": 20,
+        "successful_dispatches": 20,
+        "h2d_syncs": 40,
+        "d2h_syncs": 20,
+        "h2d_bytes": 1249280,
+        "d2h_bytes": 10240,
+        "exact_matches": 80,
+        "timeout_matches": 5,
+        "finite_matches": 75,
+        "mismatches": 0,
+        "runtime_failures": 0
+      },
+      "buffer_footprint": {
+        "input_item_bytes": 15488,
+        "output_item_bytes": 128,
+        "input_arena_bytes": 61952,
+        "output_arena_bytes": 512,
+        "total_arena_bytes": 62464,
+        "per_lane_input_bytes": 30976,
+        "per_lane_output_bytes": 256
+      }
+    },
+    {
+      "batch_size": 8,
+      "columns": 2,
+      "status": "ACCEPTED",
+      "artifact": {
+        "xclbin_sha256": "d17cec3cc815383c4f11db046d954329358e9f44bc013ec1641ff62eb386f5b9",
+        "instructions_sha256": "dbdff2de716f726f658388d79e9a5921f6b22b9ed29e016cb5eef4085463579d",
+        "uuid": "96bb201a-ed27-6cac-6216-e4c18d894b3e",
+        "kernel": "MLIR_AIE",
+        "artifact_dir": "build/xdna-m5-b8-c2",
+        "target_columns": 2,
+        "batch_size": 8
+      },
+      "placement": {
+        "logical_lanes": 2,
+        "lane_mapping": [
+          {
+            "lane": 0,
+            "logical_column": 0,
+            "first_item": 0,
+            "item_count": 4
+          },
+          {
+            "lane": 1,
+            "logical_column": 1,
+            "first_item": 4,
+            "item_count": 4
+          }
+        ],
+        "items_per_lane": 4,
+        "generated_aie_placement": true,
+        "execution_dependent_unique_lane_inputs": true,
+        "execution_dependent_unique_lane_matches": true,
+        "artifact_layout_file": "build/xdna-m5-b8-c2/xdna_m5.layout.json",
+        "generated_mlir_file": "build/xdna-m5-b8-c2/xdna_m5.prj/aie.mlir",
+        "partition_metadata_file": "build/xdna-m5-b8-c2/xdna_m5.prj/main_aie_partition.json",
+        "partition_column_width": 2,
+        "partition_start_columns": [
+          1,
+          2,
+          3
+        ]
+      },
+      "correctness": {
+        "isolation_patterns": "ordered, reversed, A,A,B,A where applicable",
+        "isolation_exact_matches": 24,
+        "isolation_dispatches": 3,
+        "mutation_exact_matches": 16,
+        "mutation_dispatches": 2,
+        "ordering_preserved": true,
+        "state_reset_per_item": true,
+        "mutation_visibility_pattern_verified": true,
+        "mismatches": 0,
+        "runtime_failures": 0,
+        "cpu_recomputation_enabled": true,
+        "npu_only_authorization": false
+      },
+      "benchmark": {
+        "logical_work_items": 16,
+        "batch_size": 8,
+        "work_items_per_dispatch": 8,
+        "warmup_runs": 2,
+        "measured_repeats": 5,
+        "wall_time_ms": {
+          "raw": [
+            1.767423,
+            1.349417,
+            1.550024,
+            1.306136,
+            1.916814
+          ],
+          "median": 1.550024,
+          "p95": 1.916814
+        },
+        "host_preparation_time_ms": {
+          "raw": [
+            0.368093,
+            0.37721,
+            0.369104,
+            0.264768,
+            0.485303
+          ],
+          "median": 0.369104
+        },
+        "cpu_verification_time_ms": {
+          "raw": [
+            0.810284,
+            0.450797,
+            0.629459,
+            0.56999,
+            0.812747
+          ],
+          "median": 0.629459
+        },
+        "xrt_dispatch_wait_time_ms": {
+          "raw": [
+            0.315904,
+            0.283282,
+            0.298723,
+            0.269327,
+            0.282451
+          ],
+          "median": 0.283282
+        },
+        "physical_dispatches": 10,
+        "successful_dispatches": 10,
+        "h2d_syncs": 20,
+        "d2h_syncs": 10,
+        "h2d_bytes": 1249280,
+        "d2h_bytes": 10240,
+        "exact_matches": 80,
+        "timeout_matches": 5,
+        "finite_matches": 75,
+        "mismatches": 0,
+        "runtime_failures": 0
+      },
+      "buffer_footprint": {
+        "input_item_bytes": 15488,
+        "output_item_bytes": 128,
+        "input_arena_bytes": 123904,
+        "output_arena_bytes": 1024,
+        "total_arena_bytes": 124928,
+        "per_lane_input_bytes": 61952,
+        "per_lane_output_bytes": 512
+      }
+    },
+    {
+      "batch_size": 4,
+      "columns": 4,
+      "status": "ACCEPTED",
+      "artifact": {
+        "xclbin_sha256": "2df94f610f44aa2fda3c13d6d4a0e1eb4c39ab47df920cf9e9b6fe63b4bb19fc",
+        "instructions_sha256": "21624bdfcae16190860b630b2a085e6cd7b8bd6bbb7871443da7ec1f097de80b",
+        "uuid": "de84544e-b19b-741a-7ef3-cdc154fe284d",
+        "kernel": "MLIR_AIE",
+        "artifact_dir": "build/xdna-m5-b4-c4",
+        "target_columns": 4,
+        "batch_size": 4
+      },
+      "placement": {
+        "logical_lanes": 4,
+        "lane_mapping": [
+          {
+            "lane": 0,
+            "logical_column": 0,
+            "first_item": 0,
+            "item_count": 1
+          },
+          {
+            "lane": 1,
+            "logical_column": 1,
+            "first_item": 1,
+            "item_count": 1
+          },
+          {
+            "lane": 2,
+            "logical_column": 2,
+            "first_item": 2,
+            "item_count": 1
+          },
+          {
+            "lane": 3,
+            "logical_column": 3,
+            "first_item": 3,
+            "item_count": 1
+          }
+        ],
+        "items_per_lane": 1,
+        "generated_aie_placement": true,
+        "execution_dependent_unique_lane_inputs": true,
+        "execution_dependent_unique_lane_matches": true,
+        "artifact_layout_file": "build/xdna-m5-b4-c4/xdna_m5.layout.json",
+        "generated_mlir_file": "build/xdna-m5-b4-c4/xdna_m5.prj/aie.mlir",
+        "partition_metadata_file": "build/xdna-m5-b4-c4/xdna_m5.prj/main_aie_partition.json",
+        "partition_column_width": 4,
+        "partition_start_columns": [
+          0
+        ]
+      },
+      "correctness": {
+        "isolation_patterns": "ordered, reversed, A,A,B,A where applicable",
+        "isolation_exact_matches": 12,
+        "isolation_dispatches": 3,
+        "mutation_exact_matches": 8,
+        "mutation_dispatches": 2,
+        "ordering_preserved": true,
+        "state_reset_per_item": true,
+        "mutation_visibility_pattern_verified": true,
+        "mismatches": 0,
+        "runtime_failures": 0,
+        "cpu_recomputation_enabled": true,
+        "npu_only_authorization": false
+      },
+      "benchmark": {
+        "logical_work_items": 16,
+        "batch_size": 4,
+        "work_items_per_dispatch": 4,
+        "warmup_runs": 2,
+        "measured_repeats": 5,
+        "wall_time_ms": {
+          "raw": [
+            1.394201,
+            1.405202,
+            1.413959,
+            1.514668,
+            1.392518
+          ],
+          "median": 1.405202,
+          "p95": 1.514668
+        },
+        "host_preparation_time_ms": {
+          "raw": [
+            0.260029,
+            0.26594,
+            0.257696,
+            0.25514,
+            0.255501
+          ],
+          "median": 0.257696
+        },
+        "cpu_verification_time_ms": {
+          "raw": [
+            0.465505,
+            0.460364,
+            0.474671,
+            0.469351,
+            0.460887
+          ],
+          "median": 0.465505
+        },
+        "xrt_dispatch_wait_time_ms": {
+          "raw": [
+            0.503768,
+            0.510219,
+            0.515631,
+            0.624084,
+            0.501252
+          ],
+          "median": 0.510219
+        },
+        "physical_dispatches": 20,
+        "successful_dispatches": 20,
+        "h2d_syncs": 40,
+        "d2h_syncs": 20,
+        "h2d_bytes": 1249280,
+        "d2h_bytes": 10240,
+        "exact_matches": 80,
+        "timeout_matches": 5,
+        "finite_matches": 75,
+        "mismatches": 0,
+        "runtime_failures": 0
+      },
+      "buffer_footprint": {
+        "input_item_bytes": 15488,
+        "output_item_bytes": 128,
+        "input_arena_bytes": 61952,
+        "output_arena_bytes": 512,
+        "total_arena_bytes": 62464,
+        "per_lane_input_bytes": 15488,
+        "per_lane_output_bytes": 128
+      }
+    },
+    {
+      "batch_size": 8,
+      "columns": 4,
+      "status": "ACCEPTED",
+      "artifact": {
+        "xclbin_sha256": "d52c7ce5e22f51a2b8d245a92f8901ef1c47b3f0719ee92bd064efae3fffd618",
+        "instructions_sha256": "be75b2fcab2a78a565fd3a76b158f87b442a591720e39bca9a80f32b60c7f9af",
+        "uuid": "8271a7b7-a858-394c-3a66-9e28c114456a",
+        "kernel": "MLIR_AIE",
+        "artifact_dir": "build/xdna-m5-b8-c4",
+        "target_columns": 4,
+        "batch_size": 8
+      },
+      "placement": {
+        "logical_lanes": 4,
+        "lane_mapping": [
+          {
+            "lane": 0,
+            "logical_column": 0,
+            "first_item": 0,
+            "item_count": 2
+          },
+          {
+            "lane": 1,
+            "logical_column": 1,
+            "first_item": 2,
+            "item_count": 2
+          },
+          {
+            "lane": 2,
+            "logical_column": 2,
+            "first_item": 4,
+            "item_count": 2
+          },
+          {
+            "lane": 3,
+            "logical_column": 3,
+            "first_item": 6,
+            "item_count": 2
+          }
+        ],
+        "items_per_lane": 2,
+        "generated_aie_placement": true,
+        "execution_dependent_unique_lane_inputs": true,
+        "execution_dependent_unique_lane_matches": true,
+        "artifact_layout_file": "build/xdna-m5-b8-c4/xdna_m5.layout.json",
+        "generated_mlir_file": "build/xdna-m5-b8-c4/xdna_m5.prj/aie.mlir",
+        "partition_metadata_file": "build/xdna-m5-b8-c4/xdna_m5.prj/main_aie_partition.json",
+        "partition_column_width": 4,
+        "partition_start_columns": [
+          0
+        ]
+      },
+      "correctness": {
+        "isolation_patterns": "ordered, reversed, A,A,B,A where applicable",
+        "isolation_exact_matches": 24,
+        "isolation_dispatches": 3,
+        "mutation_exact_matches": 16,
+        "mutation_dispatches": 2,
+        "ordering_preserved": true,
+        "state_reset_per_item": true,
+        "mutation_visibility_pattern_verified": true,
+        "mismatches": 0,
+        "runtime_failures": 0,
+        "cpu_recomputation_enabled": true,
+        "npu_only_authorization": false
+      },
+      "benchmark": {
+        "logical_work_items": 16,
+        "batch_size": 8,
+        "work_items_per_dispatch": 8,
+        "warmup_runs": 2,
+        "measured_repeats": 5,
+        "wall_time_ms": {
+          "raw": [
+            1.133271,
+            1.12709,
+            1.174929,
+            1.133181,
+            1.153459
+          ],
+          "median": 1.133271,
+          "p95": 1.174929
+        },
+        "host_preparation_time_ms": {
+          "raw": [
+            0.254749,
+            0.253678,
+            0.26048,
+            0.260649,
+            0.263856
+          ],
+          "median": 0.26048
+        },
+        "cpu_verification_time_ms": {
+          "raw": [
+            0.454335,
+            0.453842,
+            0.465016,
+            0.458001,
+            0.459053
+          ],
+          "median": 0.458001
+        },
+        "xrt_dispatch_wait_time_ms": {
+          "raw": [
+            0.255641,
+            0.246204,
+            0.274886,
+            0.23891,
+            0.256963
+          ],
+          "median": 0.255641
+        },
+        "physical_dispatches": 10,
+        "successful_dispatches": 10,
+        "h2d_syncs": 20,
+        "d2h_syncs": 10,
+        "h2d_bytes": 1249280,
+        "d2h_bytes": 10240,
+        "exact_matches": 80,
+        "timeout_matches": 5,
+        "finite_matches": 75,
+        "mismatches": 0,
+        "runtime_failures": 0
+      },
+      "buffer_footprint": {
+        "input_item_bytes": 15488,
+        "output_item_bytes": 128,
+        "input_arena_bytes": 123904,
+        "output_arena_bytes": 1024,
+        "total_arena_bytes": 124928,
+        "per_lane_input_bytes": 30976,
+        "per_lane_output_bytes": 256
+      }
+    },
+    {
+      "batch_size": 16,
+      "columns": 4,
+      "status": "ACCEPTED",
+      "artifact": {
+        "xclbin_sha256": "cc64f6719376fbbda50d094ec6980f0bc4590a40b4e60f83dfd567a677987724",
+        "instructions_sha256": "8d4aae92b9edde7b9e2c6725ba74b3dbd91bc5d1e2e800ab1c4b1667f9a861f5",
+        "uuid": "3ce448ce-c7e2-2667-7606-8843f2567110",
+        "kernel": "MLIR_AIE",
+        "artifact_dir": "build/xdna-m5-b16-c4",
+        "target_columns": 4,
+        "batch_size": 16
+      },
+      "placement": {
+        "logical_lanes": 4,
+        "lane_mapping": [
+          {
+            "lane": 0,
+            "logical_column": 0,
+            "first_item": 0,
+            "item_count": 4
+          },
+          {
+            "lane": 1,
+            "logical_column": 1,
+            "first_item": 4,
+            "item_count": 4
+          },
+          {
+            "lane": 2,
+            "logical_column": 2,
+            "first_item": 8,
+            "item_count": 4
+          },
+          {
+            "lane": 3,
+            "logical_column": 3,
+            "first_item": 12,
+            "item_count": 4
+          }
+        ],
+        "items_per_lane": 4,
+        "generated_aie_placement": true,
+        "execution_dependent_unique_lane_inputs": true,
+        "execution_dependent_unique_lane_matches": true,
+        "artifact_layout_file": "build/xdna-m5-b16-c4/xdna_m5.layout.json",
+        "generated_mlir_file": "build/xdna-m5-b16-c4/xdna_m5.prj/aie.mlir",
+        "partition_metadata_file": "build/xdna-m5-b16-c4/xdna_m5.prj/main_aie_partition.json",
+        "partition_column_width": 4,
+        "partition_start_columns": [
+          0
+        ]
+      },
+      "correctness": {
+        "isolation_patterns": "ordered, reversed, A,A,B,A where applicable",
+        "isolation_exact_matches": 48,
+        "isolation_dispatches": 3,
+        "mutation_exact_matches": 32,
+        "mutation_dispatches": 2,
+        "ordering_preserved": true,
+        "state_reset_per_item": true,
+        "mutation_visibility_pattern_verified": true,
+        "mismatches": 0,
+        "runtime_failures": 0,
+        "cpu_recomputation_enabled": true,
+        "npu_only_authorization": false
+      },
+      "benchmark": {
+        "logical_work_items": 16,
+        "batch_size": 16,
+        "work_items_per_dispatch": 16,
+        "warmup_runs": 2,
+        "measured_repeats": 5,
+        "wall_time_ms": {
+          "raw": [
+            1.033603,
+            1.064371,
+            1.206449,
+            1.45189,
+            1.067016
+          ],
+          "median": 1.067016,
+          "p95": 1.45189
+        },
+        "host_preparation_time_ms": {
+          "raw": [
+            0.2606,
+            0.259739,
+            0.260871,
+            0.395103,
+            0.262303
+          ],
+          "median": 0.260871
+        },
+        "cpu_verification_time_ms": {
+          "raw": [
+            0.47337,
+            0.500291,
+            0.618472,
+            0.638149,
+            0.499809
+          ],
+          "median": 0.500291
+        },
+        "xrt_dispatch_wait_time_ms": {
+          "raw": [
+            0.136957,
+            0.13783,
+            0.153228,
+            0.151766,
+            0.140113
+          ],
+          "median": 0.140113
+        },
+        "physical_dispatches": 5,
+        "successful_dispatches": 5,
+        "h2d_syncs": 10,
+        "d2h_syncs": 5,
+        "h2d_bytes": 1249280,
+        "d2h_bytes": 10240,
+        "exact_matches": 80,
+        "timeout_matches": 5,
+        "finite_matches": 75,
+        "mismatches": 0,
+        "runtime_failures": 0
+      },
+      "buffer_footprint": {
+        "input_item_bytes": 15488,
+        "output_item_bytes": 128,
+        "input_arena_bytes": 247808,
+        "output_arena_bytes": 2048,
+        "total_arena_bytes": 249856,
+        "per_lane_input_bytes": 61952,
+        "per_lane_output_bytes": 512
+      }
+    }
+  ],
+  "selected_configuration": {
+    "batch_size": 16,
+    "columns": 4,
+    "median_wall_time_ms": 1.067016,
+    "rationale": "lowest measured median wall time among exact, runtime-clean configurations"
+  },
+  "rejected_configurations": [],
+  "unsupported_configurations": [],
+  "verification": {
+    "cpu_canonical_recomputation": true,
+    "npu_only_authorization": false,
+    "m1_generated_digest": "2979889feed3352b3c12831a301a357b6c9099f3de80b955f152c53bca2f8c03",
+    "m1_production_digest": "7c1da1028b9ecdbae54616654606185e62076ff7b69e209ecbf3d23f6a2fede1",
+    "regressions": {
+      "m1": "PASS",
+      "m2": "PASS",
+      "m3": "PASS",
+      "m4": "PASS"
+    }
+  },
+  "buffer_reuse": {
+    "persistent_xrt_bos": true,
+    "full_input_rewrite_per_dispatch": true,
+    "output_sentinel_rewrite_per_dispatch": true,
+    "device_context_residency": false
+  },
+  "diagnostics": {
+    "raw_timings_only": true,
+    "speedup_claim": false,
+    "profitability_claim": false
+  }
+}

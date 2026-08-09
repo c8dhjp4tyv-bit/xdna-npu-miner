@@ -3,6 +3,7 @@
 #include "xdna/device.hpp"
 #include "xdna/k1.hpp"
 #include "xdna/m4.hpp"
+#include "xdna/m5.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -27,11 +28,13 @@ struct SmokeArtifact {
 
 using K1Artifact = SmokeArtifact;
 using M4Artifact = SmokeArtifact;
+using M5Artifact = SmokeArtifact;
 
 enum class WorkloadKind {
     Smoke,
     K1,
     M4,
+    M5,
 };
 
 struct RuntimeCounters {
@@ -39,13 +42,18 @@ struct RuntimeCounters {
     std::uint64_t completed_dispatches = 0U;
     std::uint64_t h2d_syncs = 0U;
     std::uint64_t d2h_syncs = 0U;
+    std::uint64_t h2d_bytes = 0U;
+    std::uint64_t d2h_bytes = 0U;
+    std::uint64_t dispatch_wait_ns = 0U;
 };
 
 class XdnaRuntime final {
 public:
     XdnaRuntime(const SmokeArtifact& artifact,
                 const std::string& selector = "0",
-                WorkloadKind workload = WorkloadKind::Smoke);
+                WorkloadKind workload = WorkloadKind::Smoke,
+                std::size_t m5_batch_size = kM5DefaultBatchSize,
+                std::size_t m5_columns = 1U);
 
     XdnaRuntime(const XdnaRuntime&) = delete;
     XdnaRuntime& operator=(const XdnaRuntime&) = delete;
@@ -64,6 +72,12 @@ public:
     // this runtime boundary; this method performs only physical XRT work and
     // packed-buffer validation.
     void dispatch_m4(M4PackedBuffers& buffers, const M4DeviceLayout& layout = {});
+
+    // Dispatches one fixed-size M5 batch. The runtime owns and reuses the
+    // XRT BOs, but the complete input arena and output sentinel are rewritten
+    // before every physical dispatch. It never computes CPU expected values.
+    void dispatch_m5(M5PackedBatch& batch,
+                     const M5DeviceLayout& layout = m5_default_layout());
 
     [[nodiscard]] const CapabilityReport& capability() const noexcept
     {
@@ -111,6 +125,11 @@ private:
     xrt::bo m4_input_bo_;
     xrt::bo m4_output_bo_;
     std::vector<bpp9000::Byte> m4_device_input_;
+    xrt::bo m5_input_bo_;
+    xrt::bo m5_output_bo_;
+    std::vector<bpp9000::Byte> m5_device_input_;
+    std::size_t m5_batch_size_;
+    std::size_t m5_columns_;
     std::string kernel_name_;
     std::string artifact_uuid_;
     RuntimeCounters counters_;

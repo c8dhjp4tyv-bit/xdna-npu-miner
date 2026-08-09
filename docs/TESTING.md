@@ -271,6 +271,49 @@ script additionally checks missing artifact, invalid device selector, and
 wrong manifest; all three must fail closed. M4 intentionally does not claim
 multiple batch sizes or four-column execution; those belong to M5.
 
+### 8a. M5 batching and column tests
+
+M5 treats one independent candidate/window pair as one work item. The pure
+M5 contract test must verify exact item and result strides, candidate/window
+metadata, per-item status/error transport, output-slot ordering, and stale
+output rejection. The physical M5 differential test must run deliberately
+different lanes, then reverse the assignment and the `A,A,B,A` pattern; every
+slot must equal the independently recomputed M1 `score_window` result.
+
+Accepted artifacts are fixed `(batch_size, columns)` variants. Required
+physical configurations are batch sizes 1, 2, and 4 plus a larger batch when
+the device permits, and column counts 1, 2, and 4. A batch must be divisible
+by its column count. Generated placement and unique input/result evidence are
+required before calling a column active. Buffer reuse tests must prove that
+input/output BO reuse, mutation-visible LUT replacement, reset state, and
+sentinel output initialization do not change exact results.
+
+M5 benchmark runs use at least two warm-ups and five measured repeats over an
+identical deterministic window-item corpus. They record raw wall samples,
+median/p95 where practical, physical dispatches, H2D/D2H syncs and bytes,
+dispatch/wait time when available, host preparation, CPU verification, and
+zero mismatch/runtime failures. The M4 one-dispatch path is the control for
+the same item corpus. No CPU fallback, result synthesis, or reordering is
+permitted. The physical runner also performs a host LUT mutation, dispatches
+the changed candidate, rolls the mutation back, dispatches again, and checks
+that the original LUT bytes are restored.
+
+The full reproducible M5 command is:
+
+```bash
+./scripts/run-m5-validation.sh
+python3 -m json.tool docs/evidence/m5-batching-four-column.json
+```
+
+The final matrix accepted `(1,1)`, `(2,1)`, `(4,1)`, `(2,2)`, `(4,2)`,
+`(8,2)`, `(4,4)`, `(8,4)`, and `(16,4)` as `(batch_size, columns)` pairs.
+Every configuration produced 80/80 exact measured item matches and zero
+mismatches/runtime failures. Generated `npu1_2col` and `npu1_4col` partition
+metadata, lane-to-item ranges, ordered/reversed/A,A,B,A isolation patterns,
+and unique per-lane results are saved in the aggregate evidence. The selected
+raw-timing configuration was batch 16/four columns; M5 remains CPU-authorized
+only after exact recomputation.
+
 ### 9. Protocol/integration tests (M6/M7)
 
 The direct-node test boundary is the required first M6 integration path:

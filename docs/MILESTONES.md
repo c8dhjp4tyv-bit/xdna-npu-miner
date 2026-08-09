@@ -5,10 +5,13 @@ when every acceptance criterion passes and `docs/AI_HANDOFF.md` is updated.
 Static hypotheses, configured offload, and plausible source code are not
 evidence.
 
-**Current milestone:** M4 — full CPU/NPU BPP9000 score correctness path
+**Current milestone:** M5 — batching and four-column XDNA1 execution
 **Current status:** COMPLETE
 **M0 status:** COMPLETE
 **M3 status:** COMPLETE
+**M4 status:** COMPLETE
+**M5 status:** COMPLETE
+**M6 status:** NOT STARTED
 
 ## M0 — Repository bootstrap, research, and technical specification
 
@@ -368,7 +371,7 @@ experiments; no M5 performance work is included in M4.
 
 ### Status
 
-**NOT STARTED**
+**COMPLETE**
 
 ### Objective
 
@@ -403,6 +406,33 @@ column-shard isolation, repeated epoch/task reuse, and device activity evidence.
   assumed.
 - Best batch/column configuration and its limits are checked in as evidence.
 
+### M5 result
+
+M5 selected one complete independent candidate/window pair as the batch work
+unit. The physical host run used 16 deterministic pairs, two warm-ups, and
+five measured repeats for every accepted `(batch_size, columns)` artifact.
+The matrix `(1,1)`, `(2,1)`, `(4,1)`, `(2,2)`, `(4,2)`, `(8,2)`, `(4,4)`,
+`(8,4)`, and `(16,4)` completed with 80/80 exact measured item matches per
+configuration, zero mismatches, and zero runtime failures. The runner also
+verified ordered, reversed, and `A,A,B,A` lane patterns, per-item reset,
+and mutate/dispatch/rollback/dispatch LUT visibility.
+
+The identical-work M4 reference measurement used 80 one-item dispatches,
+160 H2D syncs, 80 D2H syncs, and a 2.479492 ms median wall time (p95
+3.015180 ms). The selected M5 artifact is batch 16/four columns: five
+measured dispatches, 10 H2D syncs, five D2H syncs, and a 1.067016 ms median
+wall time (p95 1.451890 ms). M5 H2D bytes are 1,249,280 versus the M4
+1,246,800 because the fixed M5 input stride retains 31 explicit padding bytes
+per item; D2H bytes are equal. These are recorded as raw timings, with no
+profitability or hashrate claim.
+
+Generated `npu1_1col`, `npu1_2col`, and `npu1_4col` placement metadata, lane
+ranges, artifact SHA-256 values, instruction SHA-256 values, runtime UUIDs,
+and physical XRT completion evidence are checked in through
+`docs/evidence/m5-batching-four-column.json`. The reproducible full gate is
+`./scripts/run-m5-validation.sh`. M6 remains **NOT STARTED** and owns only
+the future direct-node protocol integration around this verified backend.
+
 ### Non-goals
 
 Changing the algorithm, weakening CPU verification, or adding an unpinned pool
@@ -413,6 +443,10 @@ protocol.
 Record the chosen batch/column contract and transfer/kernel evidence for M6/M7.
 
 ## M6 — Qubic direct-node and optional pool integration
+
+### Status
+
+**NOT STARTED**
 
 ### Objective
 

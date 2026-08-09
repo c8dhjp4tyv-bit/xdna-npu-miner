@@ -4,6 +4,7 @@
 #include "xdna/errors.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <cstdint>
 #include <cstring>
 #include <filesystem>
@@ -53,7 +54,9 @@ namespace {
 
 XdnaRuntime::XdnaRuntime(const SmokeArtifact& artifact,
                          const std::string& selector,
-                         WorkloadKind workload)
+                         WorkloadKind workload,
+                         std::size_t m5_batch_size,
+                         std::size_t m5_columns)
     : artifact_(artifact),
       workload_(workload),
       capability_(probe_device(selector)),
@@ -71,6 +74,11 @@ XdnaRuntime::XdnaRuntime(const SmokeArtifact& artifact,
       m4_input_bo_(),
       m4_output_bo_(),
       m4_device_input_(),
+      m5_input_bo_(),
+      m5_output_bo_(),
+      m5_device_input_(),
+      m5_batch_size_(m5_batch_size),
+      m5_columns_(m5_columns),
       kernel_name_(),
       artifact_uuid_(),
       counters_()
@@ -90,25 +98,44 @@ XdnaRuntime::XdnaRuntime(const SmokeArtifact& artifact,
             ErrorCode::ArtifactMissing,
             "instruction artifact is missing: " + artifact_path_message(artifact_.instructions));
     }
-    if (workload_ == WorkloadKind::K1 || workload_ == WorkloadKind::M4) {
+    if (workload_ == WorkloadKind::M5
+        && (m5_columns_ == 0U || m5_columns_ > 4U || m5_columns_ == 3U
+            || m5_batch_size_ == 0U || m5_batch_size_ > kM5MaximumBatchSize
+            || (m5_batch_size_ % m5_columns_) != 0U)) {
+        throw RuntimeError(
+            ErrorCode::InvalidArgument,
+            "M5 runtime requires a batch size in 1..16 divisible by one, two, or four columns");
+    }
+    if (workload_ == WorkloadKind::K1 || workload_ == WorkloadKind::M4
+        || workload_ == WorkloadKind::M5) {
         if (!std::filesystem::is_regular_file(artifact_.manifest)) {
             throw RuntimeError(
                 ErrorCode::ArtifactMissing,
-                (workload_ == WorkloadKind::K1 ? "K1 artifact manifest is missing: "
-                                                : "M4 artifact manifest is missing: ")
+                (workload_ == WorkloadKind::K1
+                     ? "K1 artifact manifest is missing: "
+                     : workload_ == WorkloadKind::M4 ? "M4 artifact manifest is missing: "
+                                                    : "M5 artifact manifest is missing: ")
                     + artifact_path_message(artifact_.manifest));
         }
         std::ifstream manifest(artifact_.manifest);
         std::string marker;
-        const std::string expected_marker = workload_ == WorkloadKind::K1
-            ? "artifact_kind=xdna-npu-miner-m3-k1-v1"
-            : "artifact_kind=xdna-npu-miner-m4-score-v1";
+        std::string expected_marker;
+        if (workload_ == WorkloadKind::K1) {
+            expected_marker = "artifact_kind=xdna-npu-miner-m3-k1-v1";
+        } else if (workload_ == WorkloadKind::M4) {
+            expected_marker = "artifact_kind=xdna-npu-miner-m4-score-v1";
+        } else {
+            expected_marker = "artifact_kind=xdna-npu-miner-m5-batch-v1 batch_size="
+                + std::to_string(m5_batch_size_) + " columns=" + std::to_string(m5_columns_);
+        }
         if (!manifest || !std::getline(manifest, marker) || marker != expected_marker) {
             throw RuntimeError(
                 ErrorCode::ArtifactInvalid,
                 workload_ == WorkloadKind::K1
                     ? "K1 artifact manifest does not identify the project K1 artifact"
-                    : "M4 artifact manifest does not identify the project M4 artifact");
+                    : workload_ == WorkloadKind::M4
+                        ? "M4 artifact manifest does not identify the project M4 artifact"
+                        : "M5 artifact manifest does not identify the requested batch/column artifact");
         }
     }
 
@@ -191,7 +218,7 @@ XdnaRuntime::XdnaRuntime(const SmokeArtifact& artifact,
                     ErrorCode::ArtifactInvalid,
                     "XRT allocated a K1 buffer smaller than its logical/device contract");
             }
-        } else {
+        } else if (workload_ == WorkloadKind::M4) {
             const M4DeviceLayout layout = m4_default_layout();
             m4_input_bo_ = xrt::bo(
                 device_,
@@ -211,6 +238,27 @@ XdnaRuntime::XdnaRuntime(const SmokeArtifact& artifact,
                 throw RuntimeError(
                     ErrorCode::ArtifactInvalid,
                     "XRT allocated an M4 buffer smaller than its logical/device contract");
+            }
+        } else {
+            const M5DeviceLayout layout = m5_default_layout(m5_batch_size_);
+            m5_input_bo_ = xrt::bo(
+                device_,
+                layout.input_buffer_bytes,
+                XRT_BO_FLAGS_HOST_ONLY,
+                kernel_.group_id(3));
+            m5_output_bo_ = xrt::bo(
+                device_,
+                layout.output_buffer_bytes,
+                XRT_BO_FLAGS_HOST_ONLY,
+                kernel_.group_id(4));
+            m5_device_input_.assign(layout.input_buffer_bytes, 0xA5U);
+
+            if (instruction_bo_.size() < instructions_.size() * sizeof(std::uint32_t)
+                || m5_input_bo_.size() < layout.input_buffer_bytes
+                || m5_output_bo_.size() < layout.output_buffer_bytes) {
+                throw RuntimeError(
+                    ErrorCode::ArtifactInvalid,
+                    "XRT allocated an M5 buffer smaller than its logical/device contract");
             }
         }
 
@@ -300,13 +348,19 @@ void XdnaRuntime::dispatch(std::span<const std::int32_t> input,
         input_bo_.sync(XCL_BO_SYNC_BO_TO_DEVICE, kSmokeBufferBytes, 0U);
         output_bo_.sync(XCL_BO_SYNC_BO_TO_DEVICE, kSmokeBufferBytes, 0U);
         counters_.h2d_syncs += 2U;
+        counters_.h2d_bytes += 2U * kSmokeBufferBytes;
         ++counters_.dispatches;
 
         const std::uint32_t opcode = 3U;
         ert_cmd_state status = ERT_CMD_STATE_ERROR;
         try {
+            const auto dispatch_started = std::chrono::steady_clock::now();
             xrt::run run = kernel_(opcode, instruction_bo_, instructions_.size(), input_bo_, output_bo_);
             status = run.wait();
+            counters_.dispatch_wait_ns += static_cast<std::uint64_t>(
+                std::chrono::duration_cast<std::chrono::nanoseconds>(
+                    std::chrono::steady_clock::now() - dispatch_started)
+                    .count());
         } catch (const std::exception& error) {
             throw RuntimeError(
                 ErrorCode::DeviceExecutionFailed,
@@ -321,6 +375,7 @@ void XdnaRuntime::dispatch(std::span<const std::int32_t> input,
 
         output_bo_.sync(XCL_BO_SYNC_BO_FROM_DEVICE, kSmokeBufferBytes, 0U);
         ++counters_.d2h_syncs;
+        counters_.d2h_bytes += kSmokeBufferBytes;
         std::memcpy(output.data(), output_map, kSmokeBufferBytes);
     } catch (const RuntimeError&) {
         throw;
@@ -370,11 +425,13 @@ void XdnaRuntime::dispatch_k1(K1PackedBuffers& buffers, const K1DeviceLayout& la
         k1_input_bo_.sync(XCL_BO_SYNC_BO_TO_DEVICE, k1_device_input_.size(), 0U);
         k1_next_state_bo_.sync(XCL_BO_SYNC_BO_TO_DEVICE, buffers.next_state.size(), 0U);
         counters_.h2d_syncs += 2U;
+        counters_.h2d_bytes += k1_device_input_.size() + buffers.next_state.size();
         ++counters_.dispatches;
 
         const std::uint32_t opcode = 3U;
         ert_cmd_state status = ERT_CMD_STATE_ERROR;
         try {
+            const auto dispatch_started = std::chrono::steady_clock::now();
             xrt::run run = kernel_(
                 opcode,
                 instruction_bo_,
@@ -382,6 +439,10 @@ void XdnaRuntime::dispatch_k1(K1PackedBuffers& buffers, const K1DeviceLayout& la
                 k1_input_bo_,
                 k1_next_state_bo_);
             status = run.wait();
+            counters_.dispatch_wait_ns += static_cast<std::uint64_t>(
+                std::chrono::duration_cast<std::chrono::nanoseconds>(
+                    std::chrono::steady_clock::now() - dispatch_started)
+                    .count());
         } catch (const std::exception& error) {
             throw RuntimeError(
                 ErrorCode::DeviceExecutionFailed,
@@ -397,6 +458,7 @@ void XdnaRuntime::dispatch_k1(K1PackedBuffers& buffers, const K1DeviceLayout& la
 
         k1_next_state_bo_.sync(XCL_BO_SYNC_BO_FROM_DEVICE, buffers.next_state.size(), 0U);
         ++counters_.d2h_syncs;
+        counters_.d2h_bytes += buffers.next_state.size();
         std::memcpy(
             buffers.next_state.data(),
             next_state_map,
@@ -445,11 +507,13 @@ void XdnaRuntime::dispatch_m4(M4PackedBuffers& buffers, const M4DeviceLayout& la
         m4_input_bo_.sync(XCL_BO_SYNC_BO_TO_DEVICE, m4_device_input_.size(), 0U);
         m4_output_bo_.sync(XCL_BO_SYNC_BO_TO_DEVICE, buffers.output.size(), 0U);
         counters_.h2d_syncs += 2U;
+        counters_.h2d_bytes += m4_device_input_.size() + buffers.output.size();
         ++counters_.dispatches;
 
         const std::uint32_t opcode = 3U;
         ert_cmd_state status = ERT_CMD_STATE_ERROR;
         try {
+            const auto dispatch_started = std::chrono::steady_clock::now();
             xrt::run run = kernel_(
                 opcode,
                 instruction_bo_,
@@ -457,6 +521,10 @@ void XdnaRuntime::dispatch_m4(M4PackedBuffers& buffers, const M4DeviceLayout& la
                 m4_input_bo_,
                 m4_output_bo_);
             status = run.wait();
+            counters_.dispatch_wait_ns += static_cast<std::uint64_t>(
+                std::chrono::duration_cast<std::chrono::nanoseconds>(
+                    std::chrono::steady_clock::now() - dispatch_started)
+                    .count());
         } catch (const std::exception& error) {
             throw RuntimeError(
                 ErrorCode::DeviceExecutionFailed,
@@ -472,6 +540,7 @@ void XdnaRuntime::dispatch_m4(M4PackedBuffers& buffers, const M4DeviceLayout& la
 
         m4_output_bo_.sync(XCL_BO_SYNC_BO_FROM_DEVICE, buffers.output.size(), 0U);
         ++counters_.d2h_syncs;
+        counters_.d2h_bytes += buffers.output.size();
         std::memcpy(buffers.output.data(), output_map, buffers.output.size());
         try {
             validate_m4_output(buffers.output, layout);
@@ -486,6 +555,91 @@ void XdnaRuntime::dispatch_m4(M4PackedBuffers& buffers, const M4DeviceLayout& la
         throw RuntimeError(
             ErrorCode::SynchronizationFailed,
             "XRT M4 buffer synchronization or dispatch failed: " + exception_message(error));
+    }
+}
+
+void XdnaRuntime::dispatch_m5(M5PackedBatch& batch, const M5DeviceLayout& layout)
+{
+    if (workload_ != WorkloadKind::M5) {
+        throw RuntimeError(ErrorCode::InvalidArgument, "M5 dispatch requested from a non-M5 runtime");
+    }
+    try {
+        validate_m5_packed_input(batch, layout);
+    } catch (const M5ContractError& error) {
+        throw RuntimeError(ErrorCode::InvalidBuffer, std::string("M5 buffer contract rejected: ") + error.what());
+    }
+
+    try {
+        if (layout.batch_size != m5_batch_size_
+            || m5_device_input_.size() != layout.input_buffer_bytes) {
+            throw RuntimeError(ErrorCode::InvalidBuffer, "M5 runtime arena does not match its fixed artifact batch");
+        }
+        auto* input_map = m5_input_bo_.map<bpp9000::Byte*>();
+        auto* output_map = m5_output_bo_.map<bpp9000::Byte*>();
+
+        std::fill(m5_device_input_.begin(), m5_device_input_.end(), static_cast<bpp9000::Byte>(0xA5U));
+        std::memcpy(m5_device_input_.data(), batch.input.data(), batch.input.size());
+        std::fill(output_map,
+                  output_map + batch.output.size(),
+                  static_cast<bpp9000::Byte>(0x5AU));
+
+        std::memcpy(input_map, m5_device_input_.data(), m5_device_input_.size());
+        m5_input_bo_.sync(XCL_BO_SYNC_BO_TO_DEVICE, m5_device_input_.size(), 0U);
+        m5_output_bo_.sync(XCL_BO_SYNC_BO_TO_DEVICE, batch.output.size(), 0U);
+        counters_.h2d_syncs += 2U;
+        counters_.h2d_bytes += m5_device_input_.size() + batch.output.size();
+        ++counters_.dispatches;
+
+        const std::uint32_t opcode = 3U;
+        ert_cmd_state status = ERT_CMD_STATE_ERROR;
+        try {
+            const auto dispatch_started = std::chrono::steady_clock::now();
+            xrt::run run = kernel_(
+                opcode,
+                instruction_bo_,
+                instructions_.size(),
+                m5_input_bo_,
+                m5_output_bo_);
+            status = run.wait();
+            counters_.dispatch_wait_ns += static_cast<std::uint64_t>(
+                std::chrono::duration_cast<std::chrono::nanoseconds>(
+                    std::chrono::steady_clock::now() - dispatch_started)
+                    .count());
+        } catch (const std::exception& error) {
+            throw RuntimeError(
+                ErrorCode::DeviceExecutionFailed,
+                "XRT M5 kernel dispatch failed: " + exception_message(error));
+        }
+        if (status != ERT_CMD_STATE_COMPLETED) {
+            throw RuntimeError(
+                ErrorCode::DeviceExecutionFailed,
+                "XRT M5 run did not complete; status="
+                    + std::to_string(static_cast<unsigned int>(status)));
+        }
+        ++counters_.completed_dispatches;
+
+        m5_output_bo_.sync(XCL_BO_SYNC_BO_FROM_DEVICE, batch.output.size(), 0U);
+        ++counters_.d2h_syncs;
+        counters_.d2h_bytes += batch.output.size();
+        std::memcpy(batch.output.data(), output_map, batch.output.size());
+        for (std::size_t index = 0U; index < layout.batch_size; ++index) {
+            const std::size_t output_offset = index * layout.output_item_stride_bytes;
+            try {
+                validate_m5_output(std::span<const bpp9000::Byte>(batch.output).subspan(
+                    output_offset,
+                    layout.output_item_stride_bytes));
+            } catch (const M5ContractError& error) {
+                throw RuntimeError(
+                    ErrorCode::DeviceExecutionFailed,
+                    std::string("M5 device returned an invalid item output: ") + error.what());
+            }
+        }
+    } catch (const RuntimeError&) {
+        throw;
+    } catch (const std::exception& error) {
+        throw RuntimeError(
+            ErrorCode::SynchronizationFailed,
+            "XRT M5 buffer synchronization or dispatch failed: " + exception_message(error));
     }
 }
 
