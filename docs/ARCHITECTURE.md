@@ -25,8 +25,11 @@ added the first BPP9000 XDNA compute boundary: one isolated K1 recurrent LUT
 tick. M4 composed that primitive into a one-column repeated-tick/window score
 path with exact CPU verification. M5 adds a fixed-width independent-window
 batch path and verified one-, two-, and four-column artifacts. Mutation
-control remains CPU-owned; networking and direct-node integration remain later
-milestones.
+control remains CPU-owned. M6 now provides the clean-room direct-node framing,
+system-info/work-context, submission-gate, solution-serialization, bounded
+transport, and mock integration boundary around that backend. Production
+crypto selection and live interoperability remain explicit M6 gates; M7's
+continuous supervisor is not implemented.
 
 ## System boundary
 
@@ -93,12 +96,33 @@ The M1 implementation uses these standalone source boundaries:
 | `xdna/k1` and `xdna/runtime` | Pack one K1 tick, synchronize, validate output shape/status | One isolated recurrent LUT/tick primitive |
 | `xdna/m4` and `xdna/m4_score` | Pack repeated ticks/window inputs, dispatch one operation, compare every result with the CPU oracle | Device-local repeated ticks and one-window score/status |
 | `xdna/m5` and `xdna/runtime` | CPU pack fixed batches, preserve candidate/window indices, rewrite reusable BOs, verify every item | Independent M4 window operations on explicit AIE2 lanes |
+| `src/qubic/direct_node` | Frame/system-info parsing, WorkContext freshness, CPU/NPU submission gate, crypto injection, solution serialization, bounded TCP/reconnect | None |
 | verification | Recompute candidate with the CPU oracle before submission | Never authorizes a share by itself |
 | benchmark | Timestamp, workload identity, transfer/telemetry accounting | Report actual dispatch/kernel timing |
 
 A future pool adapter must sit beside the direct-node network adapter. It must
 not alter the CPU/NPU compute contract. Pool-specific proprietary protocols
 are adapters at this boundary, not part of the mining/scoring core.
+
+## M6 direct-node boundary
+
+`src/qubic/direct_node.*` owns only the finite protocol boundary. It parses the
+8-byte little-endian request/response frame, decodes the exact 128-byte
+`RespondSystemInfo` payload, attaches the locally hash-validated task identity
+and BPP9000 algorithm to a `WorkContext`, and rejects older epoch/tick or
+changed-seed work. A candidate is eligible only when its nonce, seed, task,
+algorithm, finite full score, threshold, and exact CPU/NPU evidence all agree.
+
+The M5 backend remains the compute provider: M6 consumes CPU-recomputed full
+score evidence and never lets an NPU-only result authorize a message. Solution
+serialization preserves the source/destination/gamming nonce prefix, the
+68-byte encrypted seed/nonce/score payload, and the 64-byte signature. The
+`CryptoProvider` is deliberately injected because Qubic's upstream crypto
+implementation is not reusable under this project's clean-room/license rule;
+`UnavailableCryptoProvider` fails closed. Network submission also requires an
+explicit runtime opt-in, bounded connect/read/write timeouts, and bounded
+reconnect attempts. The test provider is non-cryptographic and is never live
+interoperability evidence.
 
 ## M2 runtime foundation
 

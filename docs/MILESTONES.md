@@ -5,13 +5,13 @@ when every acceptance criterion passes and `docs/AI_HANDOFF.md` is updated.
 Static hypotheses, configured offload, and plausible source code are not
 evidence.
 
-**Current milestone:** M5 — batching and four-column XDNA1 execution
-**Current status:** COMPLETE
+**Current milestone:** M6 — Qubic direct-node integration
+**Current status:** IN PROGRESS
 **M0 status:** COMPLETE
 **M3 status:** COMPLETE
 **M4 status:** COMPLETE
 **M5 status:** COMPLETE
-**M6 status:** NOT STARTED
+**M6 status:** IN PROGRESS
 
 ## M0 — Repository bootstrap, research, and technical specification
 
@@ -430,8 +430,9 @@ Generated `npu1_1col`, `npu1_2col`, and `npu1_4col` placement metadata, lane
 ranges, artifact SHA-256 values, instruction SHA-256 values, runtime UUIDs,
 and physical XRT completion evidence are checked in through
 `docs/evidence/m5-batching-four-column.json`. The reproducible full gate is
-`./scripts/run-m5-validation.sh`. M6 remains **NOT STARTED** and owns only
-the future direct-node protocol integration around this verified backend.
+`./scripts/run-m5-validation.sh`. M6 is **IN PROGRESS** and owns only the
+direct-node protocol integration around this verified backend; M7 remains
+out of scope.
 
 ### Non-goals
 
@@ -446,7 +447,13 @@ Record the chosen batch/column contract and transfer/kernel evidence for M6/M7.
 
 ### Status
 
-**NOT STARTED**
+**IN PROGRESS** — clean-room framing, system-info parsing, WorkContext
+freshness, CPU/NPU submission gates, deterministic solution serialization,
+bounded transport/reconnect, mock integration, and secret-redacted runtime
+configuration are implemented and covered by offline tests. A production
+K12/FourQ-compatible crypto provider has not yet been selected or license
+reviewed, and no authorized live endpoint or submission secret was configured;
+live interoperability is therefore not exercised. M6 is not complete.
 
 ### Objective
 

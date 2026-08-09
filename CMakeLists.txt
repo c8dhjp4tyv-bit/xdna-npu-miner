@@ -146,6 +146,33 @@ target_compile_options(m5_contract_tests PRIVATE
 )
 add_test(NAME m5_contract_tests COMMAND m5_contract_tests)
 
+add_library(qubic_direct_node
+    src/qubic/direct_node.cpp
+)
+
+target_include_directories(qubic_direct_node PUBLIC src)
+target_link_libraries(qubic_direct_node PUBLIC bpp9000_reference)
+target_compile_options(qubic_direct_node PRIVATE
+    -Wall
+    -Wextra
+    -Wpedantic
+    -Wconversion
+    -Wshadow
+    -Werror
+)
+
+add_executable(qubic_direct_node_tests tests/qubic_direct_node_tests.cpp)
+target_link_libraries(qubic_direct_node_tests PRIVATE qubic_direct_node)
+target_compile_options(qubic_direct_node_tests PRIVATE
+    -Wall
+    -Wextra
+    -Wpedantic
+    -Wconversion
+    -Wshadow
+    -Werror
+)
+add_test(NAME qubic_direct_node_tests COMMAND qubic_direct_node_tests)
+
 set(XRT_ROOT "$ENV{XILINX_XRT}" CACHE PATH "XRT installation root")
 if(NOT XRT_ROOT)
     set(XRT_ROOT "/opt/xilinx/xrt")

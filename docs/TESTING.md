@@ -391,6 +391,31 @@ evidence record. Validate it with:
 python3 -m json.tool docs/evidence/m4-full-score-differential.json
 ```
 
+The M6 direct-node contract is included in `ctest` as
+`qubic_direct_node_tests`. It uses a chunked in-memory byte stream and a
+non-cryptographic test provider only. Coverage includes strict 8-byte frame
+parsing, partial reads, all 128-byte system-info fields, bounded reconnect,
+epoch/tick/seed freshness, task/algorithm compatibility, exact CPU/NPU score
+comparison, canonical nonce and threshold gates, deterministic solution
+serialization, explicit live-submission opt-in, and secret-redacted runtime
+configuration. The required no-send cases are stale seed/context,
+CPU/NPU mismatch, invalid nonce, unsupported algorithm, task mismatch, bad
+threshold, timeout sentinel, malformed context, and disabled live submission.
+
+Run the offline M6 boundary with:
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build -j2
+ctest --test-dir build --output-on-failure
+python3 -m json.tool docs/evidence/m6-direct-node.json
+```
+
+No live endpoint or signing secret is implied by the mock test. Live
+system-info and solution submission must be reported separately, and live
+submission remains disabled until an independently reviewed permissive crypto
+provider is configured and an authorized endpoint is supplied.
+
 ## Security-oriented tests
 
 Ensure later code does not:

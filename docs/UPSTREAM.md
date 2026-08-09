@@ -31,6 +31,13 @@ example threshold are not production consensus values. Future agents must
 re-check the current upstream revisions before implementing network-facing
 behavior because Qubic mining is actively changing.
 
+M6 revalidated both public Git remotes on 2026-08-09 with `git ls-remote`.
+Qubic core `HEAD`, `main`, and `v1.301.3` all resolved to
+`a83f935406cd006b5b1a94971139e74d410ecb6d`; Qiner `HEAD`, `main`, and
+`v1.302.3` all resolved to `11fb18a6f4944bb55fe103d3f263cb5d31e00200`.
+The direct-node implementation uses only independently expressed framing,
+parsing, freshness, gating, and serialization; no upstream source was copied.
+
 ## Source records
 
 ### Source S-001 — Qubic core/node
@@ -397,8 +404,10 @@ Direct-node authentication is cryptographic identity and node policy, not a
 username/password handshake: the signing public key must verify the packet and
 must satisfy source/destination/balance/computor rules. The reference path uses
 TCP/IPv4 and reconnects by opening a new configured connection for a submission.
-A future implementation must add bounded connect/send/read timeouts and
-classify rejection; M0 does not implement it.
+M6 adds bounded connect/send/read timeouts and finite reconnect attempts around
+this boundary. It does not select or copy a production crypto provider, so the
+live signing/submission gate remains explicitly unavailable until that review
+is complete.
 
 The source revision and task hashes are compatibility inputs. A miner must
 reject an unknown algorithm id, invalid task header/hash, unsupported system

@@ -25,13 +25,16 @@ protocols belong in adapters; they are not part of the mining/scoring core.
 
 ## Current milestone
 
-**M3 — first XDNA1 BPP9000 K1 recurrent-tick kernel — COMPLETE**
+**M6 — Qubic direct-node integration — IN PROGRESS**
 
-M1 is implemented as a standalone scalar C++20/CMake reference. It is the
-correctness oracle for later kernels. M2 provides the physical XDNA1 runtime
-boundary, and M3 verifies one isolated K1 recurrent tick against that oracle.
-The K12/random2 and network boundaries remain injected/deferred; no full
-scoring, networking, or four-column path is part of M3.
+M1 is implemented as a standalone scalar C++20/CMake reference and remains the
+correctness oracle. M2 provides the physical XDNA1 runtime boundary, M3
+verifies one isolated K1 recurrent tick, M4 verifies one-window scoring, and M5
+provides the verified batch-16/four-column independent-window backend. M6 now
+implements the finite direct-node frame, system-info/work-context, freshness,
+CPU/NPU submission gate, deterministic solution serialization, and bounded
+transport boundary. Production crypto selection and live interoperability are
+still explicit gates; M7's continuous supervisor remains out of scope.
 
 ## Current algorithm contract
 

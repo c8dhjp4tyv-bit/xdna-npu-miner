@@ -409,3 +409,37 @@ The original bootstrap decisions remain valid:
 - milestone completion requires evidence;
 - mining is only for hardware and endpoints the operator is authorized to use;
 - profitability is outside core correctness and benchmark claims.
+
+## D-031 — M6 direct-node protocol is a clean-room CPU boundary
+
+**Status:** Accepted and offline-tested; live interoperability pending
+
+M6 implements the direct-node frame, 128-byte system-info schema, work-context
+freshness, exact CPU/NPU submission gate, deterministic broadcast layout, and
+bounded TCP/reconnect boundary under `src/qubic/direct_node.*`. It does not
+copy Qubic core or Qiner source and does not alter the M5 compute contract.
+Networking, task identity, algorithm selection, threshold policy, nonce policy,
+and submission authority remain CPU-owned.
+
+Reason: direct-node integration is required before any optional pool adapter,
+but the accelerator must remain a deterministic backend behind a correctness
+gate. Keeping the finite protocol boundary separate makes stale/mismatch no-
+send tests and future provider review auditable.
+
+## D-032 — Production crypto and live submission require explicit injection and opt-in
+
+**Status:** Accepted; blocks live submission until satisfied
+
+The direct-node solution path requires an injected `CryptoProvider` for the
+K12-derived gamma/message type and the 64-byte identity signature. The
+repository's `UnavailableCryptoProvider` fails closed; the deterministic test
+provider is non-cryptographic and may only exercise offline serialization and
+mock transport. Runtime submission also requires an explicit opt-in flag in
+addition to configured signing material. Secrets are read only from explicitly
+named runtime environment variables, are never included in summaries, and are
+cleared on `SigningSecret` destruction.
+
+Reason: Qubic's upstream crypto implementation is not reusable under the
+project's clean-room/license boundary. Fabricating a signer, inferring a
+secret, or treating mock bytes as authenticated network evidence would violate
+the correctness and security gates.

@@ -5,16 +5,39 @@ engineering agent.
 
 ## Current milestone
 
-**M5 — batching and four-column XDNA1 execution**
+**M6 — Qubic direct-node integration**
 
 ## Status
 
-**COMPLETE** — the physical M5 batch/column matrix, M4 identical-work timing
-baseline, mutation/reset/order isolation, M1/M2/M3/M4 regressions, evidence
-aggregation, and final repository checks pass on the current host.
+**IN PROGRESS** — this is a crash-recovery continuation. The repository was
+recovered before M6 implementation: no M6 source, tests, commits, or evidence
+file survived in the worktree. M0 through M5 remain the inherited baseline;
+their validations must be rerun after recovery before M6 can be considered
+complete.
 
-M0 through M4 were externally reviewed and passed. M6 is **NOT STARTED**;
-do not begin direct-node integration in this handoff.
+## Crash recovery checkpoint
+
+- Recovery date: 2026-08-09.
+- Branch: `main`.
+- HEAD: `62a84d5d8674a1a74c1b7348e1fa41c85348e026` (`record M5 handoff
+  commit`), also `origin/main`.
+- Working tree: four modified, unstaged evidence JSON files:
+  `docs/evidence/m2-xdna-smoke.json`,
+  `docs/evidence/m3-k1-differential.json`,
+  `docs/evidence/m4-full-score-differential.json`, and
+  `docs/evidence/m5-batching-four-column.json`.
+- Staged files: none.
+- Recovered commits: the M0–M5 commit chain through `62a84d5`; no separate M6
+  commit was found in `git log --all` or the reflog.
+- `git fsck --full`: five dangling objects (two trees and three blobs) only;
+  no missing or corrupt object was reported. No conflict markers, editor
+  temporary files, or M6 files were found.
+- The four evidence diffs are regenerated artifact UUID/hash/timing records;
+  they are retained for inspection and are not treated as committed evidence
+  until their producing validation commands are rerun and the records are
+  validated.
+- First incomplete M6 task: all M6 components, beginning with current direct-
+  node protocol revalidation and the clean-room framing/work-context boundary.
 
 ## Branch and commits
 
@@ -31,6 +54,8 @@ do not begin direct-node integration in this handoff.
   `f5836e2fb0fd57d03babe6c3c3647db06fd0c269`
 - M4 implementation/evidence commit: `c6308b1`
 - M5 implementation/evidence commit: `bd9a349`
+- M6 recovery checkpoint: uncommitted in the current working tree; no M6
+  commit existed before this session.
 
 ## M0 authority that M1 used
 
@@ -192,6 +217,33 @@ pin differs from the current host's `...443...` stack, which was not changed.
   `A,A,B,A`, unique-lane, repeated-BO, mutation-visible, rollback, timeout,
   and finite-score cases against the M1 CPU oracle.
 
+## Completed M6 work in this recovery checkpoint
+
+- Revalidated the current public Qubic core/Qiner refs with `git ls-remote`;
+  the pinned core `a83f935406cd006b5b1a94971139e74d410ecb6d` and Qiner
+  `11fb18a6f4944bb55fe103d3f263cb5d31e00200` still match `main` and their
+  recorded tags. No upstream source was copied.
+- Added `src/qubic/direct_node.hpp/.cpp` with strict 8-byte frame parsing,
+  incremental/partial-read handling, exact 128-byte `RespondSystemInfo`
+  parsing, local task identity, BPP9000 algorithm selection, WorkContext
+  freshness, CPU/NPU exact score/threshold/nonce gates, deterministic direct
+  solution serialization, bounded TCP connect/read/write behavior, bounded
+  reconnect, secret-safe environment configuration, and explicit live-send
+  opt-in.
+- Added an injected `CryptoProvider` boundary and fail-closed
+  `UnavailableCryptoProvider`. No production K12/FourQ-compatible provider or
+  secret was selected; the test provider is deterministic and
+  non-cryptographic only.
+- Added `qubic_direct_node_tests` covering fragmented frames, system-info
+  fields, stale context/seed, unsupported algorithm, task mismatch,
+  CPU/NPU mismatch, invalid nonce, timeout, threshold rejection, malformed
+  context, deterministic solution bytes, bounded reconnect, mock request and
+  mock submission, disabled live submission, and secret redaction.
+- Added `docs/evidence/m6-direct-node.json` with the recovery, protocol,
+  offline/mock, no-send, live-gate, and regression state. M6 remains
+  **IN PROGRESS** because live interoperability and production crypto are not
+  exercised.
+
 ## Upstream cross-check result
 
 The implementation was checked against the M0-derived facts from the pinned
@@ -272,6 +324,16 @@ M5 also changed or added:
 - `docs/evidence/m5-batching-four-column.json`, plus the M5 updates to
   `docs/MILESTONES.md`, `docs/ARCHITECTURE.md`, `docs/TESTING.md`,
   `docs/DECISIONS.md`, `docs/BENCHMARKS.md`, and this handoff.
+
+M6 recovery checkpoint also changed or added:
+
+- `src/qubic/direct_node.hpp`, `src/qubic/direct_node.cpp`, and
+  `tests/qubic_direct_node_tests.cpp`;
+- the `qubic_direct_node` library and CTest target in `CMakeLists.txt`;
+- `docs/evidence/m6-direct-node.json`;
+- the M6 updates to `docs/UPSTREAM.md`, `docs/PROJECT_SPEC.md`,
+  `docs/MILESTONES.md`, `docs/ARCHITECTURE.md`, `docs/TESTING.md`,
+  `docs/DECISIONS.md`, and this handoff.
 
 ## Tests and exact results
 
@@ -400,6 +462,23 @@ instruction hashes, UUIDs, generated placement, and buffer footprints are in
 `docs/evidence/m5-batching-four-column.json`; no speedup, hashrate, power,
 energy, profitability, or network claim is made.
 
+M6 offline/mock commands and exact results:
+
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build -j2
+ctest --test-dir build --output-on-failure
+python3 -m json.tool docs/evidence/m6-direct-node.json
+git diff --check
+```
+
+After recovery and the M6 additions, the build completed with no compiler
+errors and CTest reported `6/6` tests passed. The new direct-node test uses
+one-byte response reads, bounded three-attempt reconnect with two injected
+failures, exact mock system-info request parsing, deterministic test-only
+solution serialization, and zero sends for every invalid-case gate. It does
+not claim K12/FourQ correctness or live node interoperability.
+
 ## Hardware tests actually executed
 
 The physical XDNA1/AIE2 path was exercised on the current host. `xrt-smi`
@@ -432,15 +511,16 @@ inputs and returned an exact CPU-verified result. The M4 baseline and M5
 contexts were created in separate lifetimes because concurrent context setup
 returns `DRM_IOCTL_AMDXDNA_CREATE_HWCTX` `err=-19` on this host.
 
-No live Qubic node, network adapter, production K12 provider, or M6 protocol
-work was exercised.
+No live Qubic node or production K12/signing provider was exercised. M6
+protocol behavior was exercised only through the offline/mock boundary recorded
+in `docs/evidence/m6-direct-node.json`.
 
 ## Known limitations and unresolved behavior
 
 1. The production task's topology/data hashes are KangarooTwelve-derived. M1
    has an explicit injected digest boundary and a test-only deterministic
    fingerprint, but no production K12 implementation. Select and license
-   review that provider before production task loading or M6 integration.
+   review that provider before production task loading or live M6 submission.
 2. The canonical production task bytes were not copied into this repository;
    M0 recorded their expected hashes. M1 production-shaped fixtures are
    independently generated and are not network truth.
@@ -460,8 +540,9 @@ work was exercised.
 7. M5 does not retain a device-resident task/LUT/context across logical
    mutations or task changes. It safely reuses XRT BO allocations by rewriting
    the full input/output arenas every dispatch. The selected batch-16/four-
-   column configuration is a local compute backend only; networking remains
-   M6 work.
+   column configuration is a local compute backend only. M6 wraps it with an
+   offline-tested direct-node boundary, but production crypto and live
+   interoperability remain unavailable.
 
 ## Architectural decisions to preserve
 
@@ -491,8 +572,9 @@ work was exercised.
   and CPU recomputation remains mandatory. Do not silently change the work
   unit to candidate mutation/search or split one recurrent window across
   columns.
-- Direct-node integration is the first future protocol path. Qatum is optional
-  and must wait for a stable authoritative wire specification.
+- Direct-node integration is the current M6 protocol path. Qatum is optional
+  and must wait for a stable authoritative wire specification; M7's continuous
+  supervisor remains out of scope.
 
 ## Things the next agent MUST NOT redo
 
@@ -502,8 +584,9 @@ work was exercised.
   crypto code, or upstream task bytes.
 - Do not replace the fixture random/digest seams with an unreviewed crypto
   implementation while calling M1 complete.
-- Do not add AVX/SIMD, GPU, network, Qatum, pool, signing, or production
-  mining-loop code while extending the verified M5 backend.
+- Do not add AVX/SIMD, GPU, Qatum, pool, or continuous mining-loop code while
+  extending the verified M5 backend. M6 network code must remain inside the
+  finite direct-node boundary and behind the CPU/crypto/live-send gates.
 - Do not claim the production-shaped corpus is the canonical task or a
   production performance benchmark.
 - Do not claim speedup, power, energy, profitability, or mining hashrate from
@@ -515,15 +598,16 @@ work was exercised.
   baseline into a batch or four-column experiment; use the checked-in M5
   runner/evidence for that comparison.
 
-## Exact next task: M6 direct-node integration
+## Exact next task: finish the M6 gate or checkpoint it
 
-Do not implement it in this M5 task. The next agent must first use the verified
-M5 compute contract (batch 16, four columns, fixed 15,488/128-byte strides,
-contiguous result ordering, full input/output rewrites, CPU verification) while
-implementing the pinned direct-node system-info/work-context and authorized
-submission boundary. Keep Qatum/pool support optional and deferred until a
-versioned authoritative wire specification is pinned. Do not weaken CPU
-verification, add production K12/signing, or claim profitability.
+Do not start M7. First rerun the inherited physical M1–M5 validation suite
+after this recovery, then select and independently license-review a permissive
+K12/FourQ-compatible provider. If an explicitly authorized current node and
+safe signing material become available, exercise system-info interoperability
+and only a CPU-verified, threshold-eligible submission with live opt-in.
+Otherwise preserve `LIVE_SUBMISSION_NOT_EXERCISED`, keep M6 **IN PROGRESS**,
+and record the external blocker. Do not weaken CPU verification, infer task
+bytes, or claim profitability.
 
 ## Resume commands
 

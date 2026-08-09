@@ -198,3 +198,11 @@ is made. Full evidence is in
 Profitability is separate from hardware throughput. If ever calculated, record
 the timestamp, reward/difficulty source, token price source, electricity price,
 fees, pool terms, and assumptions; do not mix it into the benchmark gate.
+
+## M6 protocol note
+
+M6 direct-node framing, freshness, serialization, and mock transport tests are
+correctness evidence only. They use no live node, no production signer, and
+produce no network throughput, mining-rate, latency, power, energy, or
+profitability claim. The machine-readable state is
+`docs/evidence/m6-direct-node.json`.

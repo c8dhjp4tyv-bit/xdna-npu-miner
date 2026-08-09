@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "milestone": "M6",
+  "status": "IN_PROGRESS",
+  "captured_utc": "2026-08-09T19:41:43Z",
+  "recovery": {
+    "crash_recovery": true,
+    "head": "62a84d5d8674a1a74c1b7348e1fa41c85348e026",
+    "branch": "main",
+    "origin_main_matches_head": true,
+    "git_fsck": "five dangling objects only; no missing or corrupt object reported",
+    "surviving_m6_commits": [],
+    "surviving_m6_files_before_this_checkpoint": [],
+    "uncommitted_inherited_evidence": [
+      "docs/evidence/m2-xdna-smoke.json",
+      "docs/evidence/m3-k1-differential.json",
+      "docs/evidence/m4-full-score-differential.json",
+      "docs/evidence/m5-batching-four-column.json"
+    ]
+  },
+  "upstream": {
+    "core": {
+      "repository": "https://github.com/qubic/core",
+      "revision": "a83f935406cd006b5b1a94971139e74d410ecb6d",
+      "ref": "v1.301.3",
+      "current_main_at_revalidation": "a83f935406cd006b5b1a94971139e74d410ecb6d",
+      "relevant_paths": [
+        "src/network_messages/header.h",
+        "src/network_messages/network_message_type.h",
+        "src/network_messages/system_info.h",
+        "src/network_messages/broadcast_message.h",
+        "src/qubic.cpp"
+      ],
+      "revalidation_command": "git ls-remote https://github.com/qubic/core.git HEAD refs/heads/main refs/tags/v1.301.3"
+    },
+    "qiner": {
+      "repository": "https://github.com/qubic/Qiner",
+      "revision": "11fb18a6f4944bb55fe103d3f263cb5d31e00200",
+      "ref": "v1.302.3",
+      "current_main_at_revalidation": "11fb18a6f4944bb55fe103d3f263cb5d31e00200",
+      "relevant_paths": ["src/Qiner.cpp"],
+      "revalidation_command": "git ls-remote https://github.com/qubic/Qiner.git HEAD refs/heads/main refs/tags/v1.302.3"
+    }
+  },
+  "framing_and_schema": {
+    "request_response_header_bytes": 8,
+    "size_encoding": "three-byte little-endian total frame size including header",
+    "max_frame_bytes": 16777215,
+    "message_types": {
+      "broadcast_message": 1,
+      "request_system_info": 46,
+      "respond_system_info": 47
+    },
+    "system_info_payload_bytes": 128,
+    "solution_payload_bytes": 228,
+    "solution_encryption": "32-byte mining seed + 32-byte nonce + little-endian uint32 score",
+    "solution_signature_bytes": 64,
+    "partial_tcp_reads": "covered by FramedConnection and one-byte mock reads",
+    "bounded_reconnect": "covered by three-attempt mock request with two injected failures"
+  },
+  "implementation": {
+    "files": [
+      "src/qubic/direct_node.hpp",
+      "src/qubic/direct_node.cpp",
+      "tests/qubic_direct_node_tests.cpp",
+      "CMakeLists.txt"
+    ],
+    "cpu_owned": [
+      "system-info parsing",
+      "task and algorithm compatibility",
+      "epoch/tick/seed/threshold freshness",
+      "CPU/NPU exact score comparison",
+      "nonce and threshold gates",
+      "solution serialization and transport policy"
+    ],
+    "npu_contract": "M5 remains the fixed batch-16/four-column backend; M6 accepts only independently CPU-verified full-score evidence and does not change M5 semantics",
+    "continuous_supervisor": false,
+    "qatum_or_pool": false
+  },
+  "crypto": {
+    "provider": "not selected",
+    "production_ready": false,
+    "license_review": "blocked pending selection of an independently reviewed permissive K12/FourQ-compatible provider",
+    "boundary": "CryptoProvider injection; UnavailableCryptoProvider fails closed",
+    "test_provider": "non-cryptographic deterministic fixture used only for offline serialization/mock tests",
+    "live_signing": "not exercised"
+  },
+  "offline_tests": {
+    "command": "cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug && cmake --build build -j2 && ctest --test-dir build --output-on-failure",
+    "result": "PASS",
+    "ctest": "6/6 passed",
+    "coverage": [
+      "strict frame size and type parsing",
+      "fragmented frame reads",
+      "all RespondSystemInfo fields",
+      "context freshness and seed changes",
+      "unsupported algorithm",
+      "task mismatch",
+      "stale seed",
+      "invalid canonical nonce",
+      "CPU/NPU mismatch",
+      "timeout sentinel",
+      "threshold rejection",
+      "malformed context",
+      "deterministic solution bytes",
+      "bounded reconnect",
+      "secret-redacted configuration"
+    ]
+  },
+  "mock_integration": {
+    "system_info_request": "PASS",
+    "solution_submission": "PASS with test-only deterministic provider and explicit opt-in",
+    "network_messages_sent_by_invalid_cases": 0,
+    "no_send_cases": [
+      "stale context/seed",
+      "CPU/NPU mismatch",
+      "invalid canonical nonce",
+      "unsupported algorithm",
+      "task mismatch",
+      "threshold violation",
+      "timeout sentinel",
+      "malformed context",
+      "live submission disabled"
+    ]
+  },
+  "live_interoperability": {
+    "system_info": "NOT_EXERCISED",
+    "submission": "LIVE_SUBMISSION_NOT_EXERCISED",
+    "reason": "No explicitly authorized endpoint, production crypto provider, or runtime signing secret was configured; no fabricated or unauthorised packet was sent"
+  },
+  "regressions": {
+    "post_recovery_build_and_pure_ctest": "PASS",
+    "m1_m5_physical_validation": "NOT_RERUN_AFTER_RECOVERY",
+    "inherited_m2_m5_evidence": "uncommitted regenerated records retained for inspection, not promoted to M6 evidence"
+  }
+}
