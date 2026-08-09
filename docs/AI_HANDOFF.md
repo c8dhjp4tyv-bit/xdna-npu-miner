@@ -30,6 +30,7 @@ do not begin direct-node integration in this handoff.
 - M3 implementation commit:
   `f5836e2fb0fd57d03babe6c3c3647db06fd0c269`
 - M4 implementation/evidence commit: `c6308b1`
+- M5 implementation/evidence commit: `bd9a349`
 
 ## M0 authority that M1 used
 
