@@ -2,6 +2,7 @@
 
 #include "xdna/device.hpp"
 #include "xdna/k1.hpp"
+#include "xdna/m4.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -25,10 +26,12 @@ struct SmokeArtifact {
 };
 
 using K1Artifact = SmokeArtifact;
+using M4Artifact = SmokeArtifact;
 
 enum class WorkloadKind {
     Smoke,
     K1,
+    M4,
 };
 
 struct RuntimeCounters {
@@ -56,6 +59,11 @@ public:
     // only host validation, H2D, physical XRT execution, D2H, and output
     // validation; it never computes the CPU expected result.
     void dispatch_k1(K1PackedBuffers& buffers, const K1DeviceLayout& layout = {});
+
+    // Dispatches one M4 operation. Scoring and CPU comparison remain above
+    // this runtime boundary; this method performs only physical XRT work and
+    // packed-buffer validation.
+    void dispatch_m4(M4PackedBuffers& buffers, const M4DeviceLayout& layout = {});
 
     [[nodiscard]] const CapabilityReport& capability() const noexcept
     {
@@ -100,6 +108,9 @@ private:
     xrt::bo k1_input_bo_;
     xrt::bo k1_next_state_bo_;
     std::vector<bpp9000::Byte> k1_device_input_;
+    xrt::bo m4_input_bo_;
+    xrt::bo m4_output_bo_;
+    std::vector<bpp9000::Byte> m4_device_input_;
     std::string kernel_name_;
     std::string artifact_uuid_;
     RuntimeCounters counters_;

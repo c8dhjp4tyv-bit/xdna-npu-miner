@@ -40,6 +40,8 @@ add_test(NAME bpp9000_reference_tests COMMAND bpp9000_tests)
 add_library(xdna_contract
     src/xdna/buffers.cpp
     src/xdna/k1.cpp
+    src/xdna/m4.cpp
+    src/xdna/verification.cpp
 )
 
 target_include_directories(xdna_contract PUBLIC src)
@@ -99,6 +101,38 @@ target_compile_options(k1_contract_tests PRIVATE
 
 add_test(NAME k1_contract_tests COMMAND k1_contract_tests)
 
+add_library(m4_test_support
+    tests/m4_vectors.cpp
+)
+target_include_directories(m4_test_support PUBLIC
+    src
+    tests
+)
+target_link_libraries(m4_test_support PUBLIC
+    bpp9000_reference
+    xdna_contract
+)
+target_compile_options(m4_test_support PRIVATE
+    -Wall
+    -Wextra
+    -Wpedantic
+    -Wconversion
+    -Wshadow
+    -Werror
+)
+
+add_executable(m4_contract_tests tests/m4_contract_tests.cpp)
+target_link_libraries(m4_contract_tests PRIVATE m4_test_support)
+target_compile_options(m4_contract_tests PRIVATE
+    -Wall
+    -Wextra
+    -Wpedantic
+    -Wconversion
+    -Wshadow
+    -Werror
+)
+add_test(NAME m4_contract_tests COMMAND m4_contract_tests)
+
 set(XRT_ROOT "$ENV{XILINX_XRT}" CACHE PATH "XRT installation root")
 if(NOT XRT_ROOT)
     set(XRT_ROOT "/opt/xilinx/xrt")
@@ -121,6 +155,7 @@ if(XRT_INCLUDE_DIR AND XRT_COREUTIL_LIBRARY)
         src/xdna/device.cpp
         src/xdna/runtime.cpp
         src/xdna/smoke.cpp
+        src/xdna/m4_score.cpp
     )
     target_include_directories(xdna_runtime PUBLIC
         src
@@ -176,6 +211,23 @@ if(XRT_INCLUDE_DIR AND XRT_COREUTIL_LIBRARY)
         xdna_runtime
     )
     target_compile_options(xdna_k1_differential PRIVATE
+        -Wall
+        -Wextra
+        -Wpedantic
+        -Wconversion
+        -Wshadow
+        -Werror
+        -Wno-conversion
+        -Wno-ignored-qualifiers
+        -Wno-shadow
+    )
+
+    add_executable(xdna_m4_differential tests/m4_differential.cpp)
+    target_link_libraries(xdna_m4_differential PRIVATE
+        m4_test_support
+        xdna_runtime
+    )
+    target_compile_options(xdna_m4_differential PRIVATE
         -Wall
         -Wextra
         -Wpedantic

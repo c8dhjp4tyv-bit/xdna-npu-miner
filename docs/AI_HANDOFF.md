@@ -5,15 +5,15 @@ engineering agent.
 
 ## Current milestone
 
-**M3 — first XDNA1 BPP9000 K1 recurrent-tick kernel**
+**M4 — full CPU/NPU BPP9000 score correctness path**
 
 ## Status
 
-**COMPLETE** — the physical K1 differential acceptance run, M1/M2 regressions,
-negative paths, documentation, and final repository checks pass on the current
-host.
+**COMPLETE** — the physical M4 full-score differential acceptance run,
+two-candidate lifecycle check, M1/M2/M3 regressions, negative paths,
+documentation, and final repository checks pass on the current host.
 
-M0, M1, and M2 were externally reviewed and passed. M4 is **NOT STARTED**.
+M0, M1, M2, and M3 were externally reviewed and passed. M5 is **NOT STARTED**.
 
 ## Branch and commits
 
@@ -28,6 +28,7 @@ M0, M1, and M2 were externally reviewed and passed. M4 is **NOT STARTED**.
   `4ae226a048a65fed67fd7b8ab6a8feee9ec4c696`
 - M3 implementation commit:
   `f5836e2fb0fd57d03babe6c3c3647db06fd0c269`
+- M4 completion commit: record the commit that contains this handoff update.
 
 ## M0 authority that M1 used
 
@@ -136,6 +137,31 @@ pin differs from the current host's `...443...` stack, which was not changed.
 - Added `xdna_k1_differential`, deterministic edge/fixed/random vectors,
   mismatch JSON capture, and `scripts/run-m3-validation.sh`.
 
+## Completed M4 work
+
+- Added the public `CandidateMaterial` seam in the M1 reference so CPU-owned
+  candidate materialization is shared exactly by the M4 verifier without
+  moving mutation or random-source authority to the device.
+- Added `src/xdna/m4.hpp/.cpp` with the fixed 15,488-byte input/128-byte output
+  contract, M3-compatible 64-byte state/46x32 LUT/64x3 topology/18 input-role
+  schema, trit and role validation, explicit timeout sentinel transport, and
+  exact packed-output validation.
+- Added `src/xdna/m4_score.hpp/.cpp` and `verification.*`. Raw NPU results are
+  separate from the verified result; every window is independently recomputed
+  by M1, compared field-for-field, and rejected on any mismatch. CPU retains
+  state reset, window reduction, random materialization, mutation,
+  accept/rollback, and candidate authority.
+- Added the clean-room one-column AIE2 artifact in `m4_kernel.cc` and
+  `m4_program.py`, plus `scripts/build-xdna-m4.sh`. It supports isolated K1,
+  repeated-tick, and one-window signal-paced score modes with no CPU fallback.
+- Added `m4_contract_tests`, deterministic fixed/random vectors, physical
+  `xdna_m4_differential`, mismatch JSON diagnostics, and
+  `scripts/run-m4-validation.sh`. The final driver keeps M2/M3 evidence in
+  temporary files and leaves the committed M2/M3 records unchanged.
+- Added `docs/evidence/m4-full-score-differential.json` with final physical
+  device, toolchain, artifact, dispatch, differential, verification, and
+  negative-path evidence.
+
 ## Upstream cross-check result
 
 The implementation was checked against the M0-derived facts from the pinned
@@ -189,6 +215,21 @@ M3 also changed or added:
 - the M3 updates to `docs/AI_HANDOFF.md`, `docs/MILESTONES.md`,
   `docs/ARCHITECTURE.md`, `docs/TESTING.md`, `docs/DECISIONS.md`, and
   `docs/BENCHMARKS.md`.
+
+M4 also changed or added:
+
+- `src/bpp9000/reference.hpp` and `src/bpp9000/reference.cpp` for the shared
+  candidate-material seam;
+- `src/xdna/m4.hpp`, `src/xdna/m4.cpp`, `src/xdna/m4_score.hpp`,
+  `src/xdna/m4_score.cpp`, `src/xdna/verification.hpp`,
+  `src/xdna/verification.cpp`, and the M4 additions to `runtime.*`;
+- `src/xdna/m4_kernel.cc`, `src/xdna/m4_program.py`,
+  `scripts/build-xdna-m4.sh`, and `scripts/run-m4-validation.sh`;
+- `tests/m4_vectors.*`, `tests/m4_contract_tests.cpp`, and
+  `tests/m4_differential.cpp`;
+- `docs/evidence/m4-full-score-differential.json`, plus the M4 updates to
+  `docs/MILESTONES.md`, `docs/ARCHITECTURE.md`, `docs/TESTING.md`,
+  `docs/DECISIONS.md`, `docs/BENCHMARKS.md`, and this handoff.
 
 ## Tests and exact results
 
@@ -245,6 +286,47 @@ successful dispatches and exact logical matches, zero mismatches, zero runtime
 failures, 2,278 H2D synchronizations, and 1,139 D2H synchronizations. The
 machine-readable record is `docs/evidence/m3-k1-differential.json`.
 
+M4 commands and exact results:
+
+```bash
+./scripts/run-m4-validation.sh
+python3 -m json.tool docs/evidence/m4-full-score-differential.json
+git diff --check
+```
+
+The final physical run used the pinned random seed
+`5562880460839399681` and completed:
+
+```text
+repeated_tick_cases=1000
+one_window_cases=100
+multi_window_cases=1000
+fixed_cases=100
+random_cases=1000
+full_score_cases=11
+production_shaped_cases=1
+candidate_cases=2
+physical_dispatches=13460
+successful_dispatches=13460
+exact_score_runs=213
+exact_comparisons=4313
+candidate_score_calls=202
+candidate_window_comparisons=1212
+score_mismatches=0
+runtime_failures=0
+explicit_h2d_syncs=26920
+explicit_d2h_syncs=13460
+```
+
+The differential evidence records 12,460 compared windows, 34 timeout
+matches, 3,279 finite score matches, and zero mismatches. The 11 full-score
+runs include ten generated small cases and one independent production-shaped
+`T=8760/W=672` case with all 8,088 windows. Each of the two candidate paths
+completed 101 score calls and matched the standalone CPU candidate's final
+current/best LUT and score state. The M4 contract tests also cover malformed
+trits/topology/sequences, invalid window bounds, timeout serialization, and
+score mismatch rejection.
+
 ## Hardware tests actually executed
 
 The physical XDNA1/AIE2 path was exercised on the current host. `xrt-smi`
@@ -254,8 +336,18 @@ artifact was loaded into an XRT hardware context and dispatched 1,139 times
 with exact output comparison against M1. The final artifact used one AIE2
 column, kernel `MLIR_AIE`, xclbin UUID
 `8e1b4ae5-7811-4641-fa48-99bfeb489071`, and the hashes recorded in the
-evidence JSON. No live Qubic node, network adapter, production K12 provider,
-state-resident multi-tick workload, or four-column workload was exercised.
+evidence JSON.
+
+The final M4 artifact was also loaded into an XRT hardware context on the same
+device and dispatched 13,460 times. It used one AIE2 column, kernel
+`MLIR_AIE`, xclbin SHA-256
+`0dbd4f44e33224a6df774ea0df1a3954acd2b57b710f97b101f7ea3b10ce943c`,
+instruction SHA-256
+`cc811e1751208451a5979e117c91dc238809403602c58b098d1acd55edc3a5d6`, and
+runtime UUID `20ddef20-d111-cc35-0dc6-2d4b4802edb9`. M4 state was reset by the
+host per window and held device-local only within a dispatch; no persistent
+state or batch reuse was claimed. No live Qubic node, network adapter,
+production K12 provider, or four-column workload was exercised.
 
 ## Known limitations and unresolved behavior
 
@@ -269,8 +361,8 @@ state-resident multi-tick workload, or four-column workload was exercised.
 3. Qatum/pool wire behavior remains unresolved and deferred. M1 does not
    depend on Qatum, QLI, or any pool.
 4. No performance number, NPU activity, throughput, speedup, energy, or
-   profitability claim exists. M3 records physical dispatch counters only;
-   it is not a timing or throughput benchmark.
+   profitability claim exists. M3 and M4 record physical dispatch/correctness
+   counters only; they are not timing or throughput benchmarks.
 5. Optional ASAN/UBSAN builds were attempted but the development image lacks
    the linker runtimes (`libasan.so.8.0.0` and `libubsan.so.1.0.0`). The normal
    warning-clean build and complete test suite pass.
@@ -278,9 +370,9 @@ state-resident multi-tick workload, or four-column workload was exercised.
    `WRONG_XDNA_GENERATION` run was not available. Forced device-execution,
    context-creation, and output-mismatch failures were not manufactured on the
    healthy device; their typed fail-closed paths are implemented.
-7. M3 proves one isolated tick per host dispatch. State is not retained on the
-   device across ticks, and no full-window score, mutation loop, batching, or
-   four-column mapping is implemented.
+7. M4 uses one-column, one-dispatch-per-operation execution and host
+   round-trips for correctness. Topology/LUT/state buffer reuse, candidate
+   batching, and four-column mapping are intentionally deferred to M5.
 
 ## Architectural decisions to preserve
 
@@ -298,6 +390,11 @@ state-resident multi-tick workload, or four-column workload was exercised.
 - M3's K1 artifact is one-column isolated recurrent compute only. Its exact
   logical contract and combined device arena are recorded in the M3 evidence;
   do not treat its dispatch count as a performance result.
+- M4's artifact is one-column repeated-tick/one-window scoring. The host
+  resets each window to UNKNOWN, transfers the full operation arena, compares
+  every result to the M1 scalar oracle, and performs full-score reduction;
+  `persistent_buffers=false` is intentional. CPU remains the only candidate
+  and submission authority.
 - Direct-node integration is the first future protocol path. Qatum is optional
   and must wait for a stable authoritative wire specification.
 
@@ -310,22 +407,27 @@ state-resident multi-tick workload, or four-column workload was exercised.
 - Do not replace the fixture random/digest seams with an unreviewed crypto
   implementation while calling M1 complete.
 - Do not add AVX/SIMD, GPU, network, Qatum, pool, signing, or production
-  mining-loop code while completing M3.
+  mining-loop code while completing M4.
 - Do not claim the production-shaped corpus is the canonical task or a
   production performance benchmark.
 - Do not claim four-column execution, throughput, speedup, power, or
-  profitability from the M2 smoke or M3 K1 dispatch counts.
+  profitability from the M2 smoke, M3 K1 counts, or M4 dispatch/duration
+  evidence.
 - Do not redo the M3 K1 differential run unless source, toolchain, artifact, or
   contract changes require it.
+- Do not redo the M4 physical run unless the M4 source, toolchain, artifact, or
+  contract changes require it. Do not silently convert the one-column M4
+  baseline into a batch or four-column experiment.
 
-## Exact next task: M4 full CPU/NPU correctness path
+## Exact next task: M5 batching and four-column execution
 
-M4 may compose the verified K1 primitive into a full-window or justified fused
-score path while retaining the M1 scalar oracle as the submission authority.
-It must add state reset/feed/settling, timeout and score reduction semantics,
-multiple candidates/batches, and saved exact mismatch artifacts. Do not begin
-network integration, pool work, four-column tuning, or performance optimization
-as part of M4.
+Use the verified M4 one-column, one-dispatch-per-operation path as the exact
+baseline. Add candidate/window batching and test independent work partitioning
+across the four physical AIE2 columns. For every selected batch size and
+column mapping, retain exact CPU/NPU differential comparison, candidate
+ordering/reset isolation, physical dispatch evidence, and explicit transfer
+counts. Record rejection if a mapping does not help. Do not begin networking,
+pool work, or profitability analysis.
 
 ## Resume commands
 
@@ -340,4 +442,5 @@ cmake --build build -j2
 ctest --test-dir build --output-on-failure
 ./scripts/generate_corpus.sh build
 ./scripts/run-m3-validation.sh
+./scripts/run-m4-validation.sh
 ```

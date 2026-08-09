@@ -1,9 +1,10 @@
 # Benchmark Protocol
 
 M0 defines measurement methodology. M1 and M2 established correctness
-evidence, and M3 established physical K1 dispatch evidence. No throughput,
-latency, power, NPU-activity, speedup, or work/Joule value may be inferred
-from those correctness runs.
+evidence, M3 established physical K1 dispatch evidence, and M4 established
+physical full-score correctness evidence. No throughput, latency, power,
+NPU-activity, speedup, or work/Joule value may be inferred from those
+correctness runs.
 
 ## Workload identity
 
@@ -113,11 +114,22 @@ failures, with 2,278 H2D and 1,139 D2H synchronizations. The machine-readable
 record is `docs/evidence/m3-k1-differential.json`; the stack and artifact pins
 are recorded in that file and `runtime-pins.json`.
 
+M4 executed a correctness differential only: the same physical device
+completed 13,460 one-column XRT dispatches for repeated ticks, one-window and
+multi-window cases, 11 full scores including one production-shaped 8,088-window
+score, and two 101-score-call candidate lifecycles. All dispatches completed;
+the CPU/NPU path recorded zero mismatches and zero runtime failures, with
+26,920 H2D and 13,460 D2H synchronizations. The machine-readable record is
+`docs/evidence/m4-full-score-differential.json`. Its diagnostic duration and
+dispatch counts are correctness-run evidence only.
+
 These are dispatch/correctness records, not benchmarks. No timing, throughput,
 speedup, power, energy, active-four-column claim, or profitability value was
-recorded. The table above remains intentionally unmeasured. Do not infer a
-performance claim from the static operation counts in `docs/ARCHITECTURE.md`,
-from either dispatch count, or from the related `hawkpoint-npu-llm` project.
+recorded. M4 used one column, one physical dispatch per operation, host
+round-trips for each result, and no persistent state/topology/LUT reuse. The
+table above remains intentionally unmeasured. Do not infer a performance claim
+from the static operation counts in `docs/ARCHITECTURE.md`, from any dispatch
+count or validation duration, or from the related `hawkpoint-npu-llm` project.
 
 ## Profitability
 

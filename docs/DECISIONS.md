@@ -306,6 +306,50 @@ candidate batching, four-column mapping, and full score composition are
 deferred to M4/M5 where their synchronization and correctness contracts can
 be measured.
 
+## D-025 — M4 uses an auditable one-window device boundary
+
+**Status:** Accepted for M4
+
+M4 extends the clean-room K1 artifact with repeated-tick and one-window score
+modes, but keeps full-window iteration and score reduction on the host. Each
+window is independently packed, physically dispatched, and compared with the
+M1 scalar `score_window` result before the host accumulates the CPU/NPU score.
+This preserves an observable mismatch boundary for state reset, input timing,
+settling, timeout, and target indexing while avoiding an opaque full-miner
+kernel. Mutation materialization, accept/rollback, and candidate authority
+remain CPU-owned.
+
+Reason: M4's gate is exact full-score behavior, not launch or transfer
+optimization. A one-window physical boundary exposes the first differing
+window and keeps the CPU oracle authoritative.
+
+## D-026 — M4 resets state per window and does not claim persistence
+
+**Status:** Accepted for M4
+
+Every M4 score window starts from an explicit all-UNKNOWN 64-byte state. The
+device keeps current/next recurrent state local to one dispatch and returns the
+result; the host does not reuse device state across windows or candidates.
+Topology, LUT, input rows, and targets are retransferred for each operation.
+This is deliberately correctness-first and records `persistent_buffers=false`;
+buffer reuse and device-resident batching are M5 work.
+
+Reason: implicit state or stale LUT/topology would make exact differential
+failures difficult to localize. The chosen behavior is conservative and does
+not imply a performance result.
+
+## D-027 — M4 candidate isolation is sequential and CPU-authoritative
+
+**Status:** Accepted for M4
+
+The M4 acceptance driver runs two independent candidate lifecycles in order.
+Each lifecycle materializes its own deterministic random material, performs
+the complete initial-plus-100-mutation/101-score-call path, verifies every NPU
+score against the CPU oracle, and checks the final LUT/current/best state
+against a standalone CPU candidate result. No candidate result is accepted
+from NPU-only output. This demonstrates reset, ordering, and contamination
+isolation without introducing M5 batching or four-column work.
+
 ## Historical decisions retained
 
 The original bootstrap decisions remain valid:

@@ -474,6 +474,40 @@ void rollback_mutation(Lut& lut, const MutationRecord& record)
     lut.set_row(record.row, record.entry, record.old_value);
 }
 
+CandidateMaterial make_candidate_material(const Task& task,
+                                          const PublicKey& public_key,
+                                          const MiningSeed& mining_seed,
+                                          const Nonce& nonce,
+                                          const CandidateRandomSource& random_source,
+                                          const ReferenceConfig& config)
+{
+    require_scorable_task(task, config);
+    if (!is_canonical_nonce(nonce)) {
+        throw TaskError(TaskErrorCode::InvalidDomainValue, "nonce is not canonical BPP9000 work");
+    }
+    if (!is_valid_mining_seed(mining_seed)) {
+        throw TaskError(TaskErrorCode::InvalidDomainValue, "mining seed is zero or unavailable");
+    }
+    if (config.mutation_steps > std::numeric_limits<std::size_t>::max() / kMaxMutationsPerStep) {
+        throw TaskError(TaskErrorCode::BadLength, "mutation step count is too large");
+    }
+
+    const std::size_t root_logical_bytes
+        = checked_size_product(task.header.shape.population, kLutEntries, "root LUT bytes");
+    CandidateMaterial material;
+    material.root_bytes.assign(padded_draw_bytes(root_logical_bytes), 0U);
+    random_source.fill_root_lut(mining_seed, public_key, material.root_bytes);
+
+    const std::size_t mutation_logical_bytes = checked_size_product(
+        checked_size_product(static_cast<std::size_t>(config.mutation_steps), kMaxMutationsPerStep, "mutation count"),
+        sizeof(std::uint64_t),
+        "mutation draw bytes");
+    const std::size_t mutation_count = padded_draw_bytes(mutation_logical_bytes) / sizeof(std::uint64_t);
+    material.mutation_words.assign(mutation_count, 0U);
+    random_source.fill_mutation_words(mining_seed, public_key, nonce, material.mutation_words);
+    return material;
+}
+
 CandidateResult score_candidate(const Task& task,
                                 const PublicKey& public_key,
                                 const MiningSeed& mining_seed,
@@ -488,25 +522,11 @@ CandidateResult score_candidate(const Task& task,
     if (!is_valid_mining_seed(mining_seed)) {
         throw TaskError(TaskErrorCode::InvalidDomainValue, "mining seed is zero or unavailable");
     }
-    if (config.mutation_steps > std::numeric_limits<std::size_t>::max() / kMaxMutationsPerStep) {
-        throw TaskError(TaskErrorCode::BadLength, "mutation step count is too large");
-    }
-
-    const std::size_t root_logical_bytes = checked_size_product(task.header.shape.population, kLutEntries, "root LUT bytes");
-    const std::size_t root_bytes_count = padded_draw_bytes(root_logical_bytes);
-    std::vector<Byte> root_bytes(root_bytes_count, 0U);
-    random_source.fill_root_lut(mining_seed, public_key, root_bytes);
-
-    const std::size_t mutation_logical_bytes = checked_size_product(
-        checked_size_product(static_cast<std::size_t>(config.mutation_steps), kMaxMutationsPerStep, "mutation count"),
-        sizeof(std::uint64_t),
-        "mutation draw bytes");
-    const std::size_t mutation_count = padded_draw_bytes(mutation_logical_bytes) / sizeof(std::uint64_t);
-    std::vector<std::uint64_t> mutation_words(mutation_count, 0U);
-    random_source.fill_mutation_words(mining_seed, public_key, nonce, mutation_words);
+    const CandidateMaterial material
+        = make_candidate_material(task, public_key, mining_seed, nonce, random_source, config);
 
     Lut current(task);
-    current.initialize_from_root_bytes(root_bytes);
+    current.initialize_from_root_bytes(material.root_bytes);
     const ScoreResult initial = score_lut(task, current, config);
     CandidateResult result{initial, initial, current, current, 1U, {}};
     result.attempts.reserve(config.mutation_steps);
@@ -518,7 +538,7 @@ CandidateResult score_candidate(const Task& task,
         attempt.mutations.reserve(nonce.bytes[1]);
         const std::size_t word_base = static_cast<std::size_t>(step) * kMaxMutationsPerStep;
         for (std::size_t mutation = 0U; mutation < nonce.bytes[1]; ++mutation) {
-            attempt.mutations.push_back(mutate_lut(current, mutation_words[word_base + mutation]));
+            attempt.mutations.push_back(mutate_lut(current, material.mutation_words[word_base + mutation]));
         }
         attempt.measured = score_lut(task, current, config);
         ++result.score_calls;

@@ -68,6 +68,9 @@ XdnaRuntime::XdnaRuntime(const SmokeArtifact& artifact,
       k1_input_bo_(),
       k1_next_state_bo_(),
       k1_device_input_(),
+      m4_input_bo_(),
+      m4_output_bo_(),
+      m4_device_input_(),
       kernel_name_(),
       artifact_uuid_(),
       counters_()
@@ -87,19 +90,25 @@ XdnaRuntime::XdnaRuntime(const SmokeArtifact& artifact,
             ErrorCode::ArtifactMissing,
             "instruction artifact is missing: " + artifact_path_message(artifact_.instructions));
     }
-    if (workload_ == WorkloadKind::K1) {
+    if (workload_ == WorkloadKind::K1 || workload_ == WorkloadKind::M4) {
         if (!std::filesystem::is_regular_file(artifact_.manifest)) {
             throw RuntimeError(
                 ErrorCode::ArtifactMissing,
-                "K1 artifact manifest is missing: " + artifact_path_message(artifact_.manifest));
+                (workload_ == WorkloadKind::K1 ? "K1 artifact manifest is missing: "
+                                                : "M4 artifact manifest is missing: ")
+                    + artifact_path_message(artifact_.manifest));
         }
         std::ifstream manifest(artifact_.manifest);
         std::string marker;
-        if (!manifest || !std::getline(manifest, marker)
-            || marker != "artifact_kind=xdna-npu-miner-m3-k1-v1") {
+        const std::string expected_marker = workload_ == WorkloadKind::K1
+            ? "artifact_kind=xdna-npu-miner-m3-k1-v1"
+            : "artifact_kind=xdna-npu-miner-m4-score-v1";
+        if (!manifest || !std::getline(manifest, marker) || marker != expected_marker) {
             throw RuntimeError(
                 ErrorCode::ArtifactInvalid,
-                "K1 artifact manifest does not identify the project K1 artifact");
+                workload_ == WorkloadKind::K1
+                    ? "K1 artifact manifest does not identify the project K1 artifact"
+                    : "M4 artifact manifest does not identify the project M4 artifact");
         }
     }
 
@@ -161,7 +170,7 @@ XdnaRuntime::XdnaRuntime(const SmokeArtifact& artifact,
                     ErrorCode::ArtifactInvalid,
                     "XRT allocated a smoke buffer smaller than its logical contract");
             }
-        } else {
+        } else if (workload_ == WorkloadKind::K1) {
             const K1DeviceLayout layout = k1_default_layout();
             k1_input_bo_ = xrt::bo(
                 device_,
@@ -181,6 +190,27 @@ XdnaRuntime::XdnaRuntime(const SmokeArtifact& artifact,
                 throw RuntimeError(
                     ErrorCode::ArtifactInvalid,
                     "XRT allocated a K1 buffer smaller than its logical/device contract");
+            }
+        } else {
+            const M4DeviceLayout layout = m4_default_layout();
+            m4_input_bo_ = xrt::bo(
+                device_,
+                layout.input_buffer_bytes,
+                XRT_BO_FLAGS_HOST_ONLY,
+                kernel_.group_id(3));
+            m4_output_bo_ = xrt::bo(
+                device_,
+                layout.output_buffer_bytes,
+                XRT_BO_FLAGS_HOST_ONLY,
+                kernel_.group_id(4));
+            m4_device_input_.assign(layout.input_buffer_bytes, 0xA5U);
+
+            if (instruction_bo_.size() < instructions_.size() * sizeof(std::uint32_t)
+                || m4_input_bo_.size() < layout.input_buffer_bytes
+                || m4_output_bo_.size() < layout.output_buffer_bytes) {
+                throw RuntimeError(
+                    ErrorCode::ArtifactInvalid,
+                    "XRT allocated an M4 buffer smaller than its logical/device contract");
             }
         }
 
@@ -384,6 +414,78 @@ void XdnaRuntime::dispatch_k1(K1PackedBuffers& buffers, const K1DeviceLayout& la
         throw RuntimeError(
             ErrorCode::SynchronizationFailed,
             "XRT K1 buffer synchronization or dispatch failed: " + exception_message(error));
+    }
+}
+
+void XdnaRuntime::dispatch_m4(M4PackedBuffers& buffers, const M4DeviceLayout& layout)
+{
+    if (workload_ != WorkloadKind::M4) {
+        throw RuntimeError(ErrorCode::InvalidArgument, "M4 dispatch requested from a non-M4 runtime");
+    }
+    try {
+        validate_m4_packed_input(buffers, layout);
+    } catch (const M4ContractError& error) {
+        throw RuntimeError(ErrorCode::InvalidBuffer, std::string("M4 buffer contract rejected: ") + error.what());
+    }
+
+    try {
+        if (m4_device_input_.size() != layout.input_buffer_bytes) {
+            throw RuntimeError(ErrorCode::InvalidBuffer, "M4 runtime input arena does not match its layout");
+        }
+        auto* input_map = m4_input_bo_.map<bpp9000::Byte*>();
+        auto* output_map = m4_output_bo_.map<bpp9000::Byte*>();
+
+        std::fill(m4_device_input_.begin(), m4_device_input_.end(), static_cast<bpp9000::Byte>(0xA5U));
+        std::memcpy(m4_device_input_.data(), buffers.input.data(), buffers.input.size());
+        std::fill(output_map,
+                  output_map + buffers.output.size(),
+                  static_cast<bpp9000::Byte>(0x5AU));
+
+        std::memcpy(input_map, m4_device_input_.data(), m4_device_input_.size());
+        m4_input_bo_.sync(XCL_BO_SYNC_BO_TO_DEVICE, m4_device_input_.size(), 0U);
+        m4_output_bo_.sync(XCL_BO_SYNC_BO_TO_DEVICE, buffers.output.size(), 0U);
+        counters_.h2d_syncs += 2U;
+        ++counters_.dispatches;
+
+        const std::uint32_t opcode = 3U;
+        ert_cmd_state status = ERT_CMD_STATE_ERROR;
+        try {
+            xrt::run run = kernel_(
+                opcode,
+                instruction_bo_,
+                instructions_.size(),
+                m4_input_bo_,
+                m4_output_bo_);
+            status = run.wait();
+        } catch (const std::exception& error) {
+            throw RuntimeError(
+                ErrorCode::DeviceExecutionFailed,
+                "XRT M4 kernel dispatch failed: " + exception_message(error));
+        }
+        if (status != ERT_CMD_STATE_COMPLETED) {
+            throw RuntimeError(
+                ErrorCode::DeviceExecutionFailed,
+                "XRT M4 run did not complete; status="
+                    + std::to_string(static_cast<unsigned int>(status)));
+        }
+        ++counters_.completed_dispatches;
+
+        m4_output_bo_.sync(XCL_BO_SYNC_BO_FROM_DEVICE, buffers.output.size(), 0U);
+        ++counters_.d2h_syncs;
+        std::memcpy(buffers.output.data(), output_map, buffers.output.size());
+        try {
+            validate_m4_output(buffers.output, layout);
+        } catch (const M4ContractError& error) {
+            throw RuntimeError(
+                ErrorCode::DeviceExecutionFailed,
+                std::string("M4 device returned an invalid output: ") + error.what());
+        }
+    } catch (const RuntimeError&) {
+        throw;
+    } catch (const std::exception& error) {
+        throw RuntimeError(
+            ErrorCode::SynchronizationFailed,
+            "XRT M4 buffer synchronization or dispatch failed: " + exception_message(error));
     }
 }
 

@@ -125,6 +125,22 @@ struct CandidateResult {
     std::vector<MutationAttempt> attempts;
 };
 
+// Materializes the deterministic candidate inputs once so a compute backend
+// can score the same root LUT and mutation stream while the CPU retains all
+// candidate-control authority. The random provider remains an injected seam;
+// this helper does not implement K12/random2.
+struct CandidateMaterial {
+    std::vector<Byte> root_bytes;
+    std::vector<std::uint64_t> mutation_words;
+};
+
+[[nodiscard]] CandidateMaterial make_candidate_material(const Task& task,
+                                                         const PublicKey& public_key,
+                                                         const MiningSeed& mining_seed,
+                                                         const Nonce& nonce,
+                                                         const CandidateRandomSource& random_source,
+                                                         const ReferenceConfig& config = {});
+
 [[nodiscard]] CandidateResult score_candidate(const Task& task,
                                               const PublicKey& public_key,
                                               const MiningSeed& mining_seed,

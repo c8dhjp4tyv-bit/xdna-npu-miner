@@ -19,10 +19,12 @@ or implementation is pinned and independently reviewed.
 
 No NPU kernel is being implemented in M0.
 
-M1 added the CPU reference layer described below. M2 now provides a standalone
+M1 added the CPU reference layer described below. M2 provides a standalone
 XRT/IRON runtime foundation and one-column deterministic hardware smoke. M3
-now adds the first BPP9000 XDNA compute boundary: one isolated K1 recurrent LUT
-tick. Full scoring, mutation, networking, and four-column mapping remain later
+added the first BPP9000 XDNA compute boundary: one isolated K1 recurrent LUT
+tick. M4 now composes that primitive into a one-column repeated-tick/window
+score path with exact CPU verification. Mutation control remains CPU-owned;
+batching, four-column mapping, networking, and performance remain later
 milestones.
 
 ## System boundary
@@ -50,12 +52,12 @@ milestones.
 | mutation, accept/rollback   |
 +--------------+--------------+
                |
-               | one amortized batched dispatch
+               | one physical XRT dispatch per M4 operation
                v
 +------------------------------------------------+
 | XDNA1/AIE2 compute backend                     |
-| candidate/window-batched recurrent LUT ticks  |
-| persistent task/topology/state where possible |
+| repeated-tick/one-window recurrent LUT score  |
+| state local to one dispatch; batching deferred  |
 +----------------------+-------------------------+
                        |
                        v
@@ -88,6 +90,7 @@ The M1 implementation uses these standalone source boundaries:
 | `src/bpp9000/random` | Seed-aware injectable root/mutation draw boundary and deterministic fixture source | None |
 | `xdna/runtime` | Device/version discovery, XRT buffers, dispatch and evidence | Execute selected deterministic buffers |
 | `xdna/k1` and `xdna/runtime` | Pack one K1 tick, synchronize, validate output shape/status | One isolated recurrent LUT/tick primitive |
+| `xdna/m4` and `xdna/m4_score` | Pack repeated ticks/window inputs, dispatch one operation, compare every result with the CPU oracle | Device-local repeated ticks and one-window score/status |
 | verification | Recompute candidate with the CPU oracle before submission | Never authorizes a share by itself |
 | benchmark | Timestamp, workload identity, transfer/telemetry accounting | Report actual dispatch/kernel timing |
 
@@ -161,6 +164,45 @@ sentinel output) and one D2H synchronization.
 M3 verified one column only. State is not retained on the device across host
 dispatches, and no full-window score, mutation loop, candidate batch, or
 four-column performance experiment is part of this milestone.
+
+## M4 full CPU/NPU score correctness path
+
+M4 is **COMPLETE** for the exact one-column score boundary. The clean-room
+Iron/MLIR-AIE artifact has three auditable modes: one K1 tick, repeated ticks
+with explicit input rows, and one complete signal-paced score window. The
+device never computes a CPU oracle or authorizes a candidate; the host runs
+the independent M1 scalar window, compares score/status/ticks/feed/predicted/
+expected fields exactly, and only then reduces windows into a score result.
+
+The fixed device contract is:
+
+| Region | Device offset | Size | Logical meaning |
+|---|---:|---:|---|
+| control | 0 | 64 bytes | magic, mode, counts, roles |
+| state | 64 | 96 bytes | 64 logical trits plus padding |
+| LUT | 160 | 1,472 bytes | 46 rows × 32 bytes; 27 logical entries |
+| neighbors | 1,632 | 768 bytes | 64 × 3 `uint32_t` |
+| updated rows | 2,400 | 192 bytes | 46 logical rows plus device padding |
+| input roles | 2,592 | 72 bytes | 18 input neuron indices |
+| input sequence | 2,688 | 12,096 bytes | up to 672 rows × 18 trits |
+| targets | 14,784 | 673 bytes | up to 673 output trits |
+| total input | — | 15,488 bytes | one aligned operation arena |
+| output | separate BO | 128 bytes | state, score/status, counters, diagnostics |
+
+Every window starts from a host-created all-UNKNOWN 64-byte state. State is
+double-buffered inside one device dispatch and is discarded after the result;
+there is no implicit state between windows or candidates. Topology, LUT, input
+rows, and targets are retransferred for each dispatch in M4. This is an
+explicit correctness-first residency choice, not a transfer or throughput
+claim; persistent/reused buffers are deferred to M5.
+
+The host performs one physical XRT dispatch per repeated-tick result or score
+window. A full production-shaped score therefore executes all 8,088 windows,
+with CPU/NPU comparison at every window and host-side exact score reduction.
+The candidate path keeps random materialization, mutation, accept/rollback,
+and final CPU candidate comparison on the host. Two sequential 101-score-call
+candidate paths verify reset and ordering isolation. M4 remains one-column,
+does not implement networking or crypto, and records no performance claim.
 
 ### M1 CPU API and storage contract
 

@@ -4,7 +4,8 @@ set -euo pipefail
 readonly root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly build_dir="${M3_BUILD_DIR:-${root_dir}/build}"
 readonly k1_dir="${build_dir}/xdna-k1"
-readonly evidence_path="${root_dir}/docs/evidence/m3-k1-differential.json"
+readonly evidence_path="${M3_EVIDENCE_PATH:-${root_dir}/docs/evidence/m3-k1-differential.json}"
+readonly m2_evidence_path="${M2_EVIDENCE_PATH:-${root_dir}/docs/evidence/m2-xdna-smoke.json}"
 
 expect_failure() {
     set +e
@@ -25,7 +26,8 @@ ctest --test-dir "${build_dir}" --output-on-failure
 
 "${root_dir}/scripts/verify-xdna1.sh" --build-dir "${build_dir}"
 "${root_dir}/scripts/build-xdna-smoke.sh" "${build_dir}"
-BUILD_DIR="${build_dir}" "${root_dir}/scripts/run-xdna-smoke.sh" --iterations 100
+EVIDENCE_PATH="${m2_evidence_path}" BUILD_DIR="${build_dir}" \
+    "${root_dir}/scripts/run-xdna-smoke.sh" --iterations 100
 
 "${root_dir}/scripts/build-xdna-k1.sh" "${build_dir}"
 

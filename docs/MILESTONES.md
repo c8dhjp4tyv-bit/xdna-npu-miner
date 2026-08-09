@@ -5,9 +5,10 @@ when every acceptance criterion passes and `docs/AI_HANDOFF.md` is updated.
 Static hypotheses, configured offload, and plausible source code are not
 evidence.
 
-**Current milestone:** M3 — first XDNA1 BPP9000 K1 recurrent-tick kernel
+**Current milestone:** M4 — full CPU/NPU BPP9000 score correctness path
 **Current status:** COMPLETE
 **M0 status:** COMPLETE
+**M3 status:** COMPLETE
 
 ## M0 — Repository bootstrap, research, and technical specification
 
@@ -297,7 +298,7 @@ M3.
 
 ### Status
 
-**NOT STARTED**
+**COMPLETE**
 
 ### Objective
 
@@ -332,6 +333,27 @@ and saved reproducible mismatch artifacts.
   differs.
 - Actual dispatch evidence exists for the accelerated path.
 
+### M4 result
+
+The one-column Iron/MLIR-AIE artifact was exercised on the physical
+`RyzenAI-npu1`/AIE2 device. The final run completed 1,000 repeated-tick cases,
+100 one-window cases, 1,000 multi-window cases, 100 fixed cases, 1,000 seeded
+random cases, 11 full-score cases including one production-shaped `T=8760,
+W=672` case, and two independent 101-score-call candidate lifecycles. It
+completed 13,460 physical dispatches with 13,460 successful dispatches,
+zero CPU/NPU mismatches, zero runtime failures, 26,920 H2D synchronizations,
+and 13,460 D2H synchronizations. The differential record contains 213 score
+runs, 12,460 window comparisons, and 4,313 exact verification comparisons;
+candidate score calls and candidate window comparisons are recorded
+separately. The timeout sentinel matched exactly wherever exercised.
+
+M1 digests, the M2 100-dispatch smoke, and the M3 37-edge/100-fixed/1,000
+random K1 differential all remained green. Missing-artifact, invalid-device,
+and wrong-manifest runtime negatives passed, as did pure M4 invalid-trit,
+invalid-topology, malformed-sequence, invalid-window, bounded-tick, timeout,
+and score-mismatch checks. Evidence is in
+`docs/evidence/m4-full-score-differential.json`.
+
 ### Non-goals
 
 Pool protocol, four-column tuning, and performance claims.
@@ -339,9 +361,14 @@ Pool protocol, four-column tuning, and performance claims.
 ### Handoff requirement
 
 Record the full boundary, mismatch corpus, verification-gate behavior, and
-the batch/column experiments for M5.
+the exact one-column baseline for M5. M5 owns batching and four-column
+experiments; no M5 performance work is included in M4.
 
 ## M5 — Batching and four-column execution
+
+### Status
+
+**NOT STARTED**
 
 ### Objective
 

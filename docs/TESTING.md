@@ -2,8 +2,9 @@
 
 Testing is correctness-first. M1 provides the scalar CPU oracle and its
 deterministic corpus. M2 verifies the standalone XDNA1/AIE2 runtime boundary;
-M3 now verifies one physical BPP9000 K1 recurrent tick against the exact M1
-oracle. Full scoring and performance remain outside this milestone.
+M3 verifies one physical BPP9000 K1 recurrent tick; M4 verifies repeated ticks,
+window scoring, full score reduction, and candidate lifecycle behavior against
+the exact M1 oracle. Performance remains outside M4.
 
 ## Authoritative behavior under test
 
@@ -239,21 +240,36 @@ profitability.
 
 ### 8. Full differential gates (M4)
 
-M3 must compare the first selected primitive against the scalar oracle for all
-boundary cases and a deterministic random corpus. M4 must compare full scores
-and timeout/status for at least:
+M4 compares the verified K1 composition against the scalar `score_window` and
+`score_lut` paths. The complete physical command is:
 
-- every required matrix row above;
-- 100 fixed generated cases;
-- 1,000 seeded random cases, with the seed and corpus generator version
-  recorded;
-- multiple candidates and multiple batch sizes;
-- at least one production-shaped task case;
-- every mismatch saved with task hash, public key, seed, nonce, candidate index,
-  batch size, and serialized inputs.
+```bash
+./scripts/run-m4-validation.sh
+```
 
-The exact counts are acceptance gates for the initial implementation; a later
-milestone may expand them but may not reduce them without a recorded decision.
+The final run exercised 1,000 repeated-tick cases, 100 one-window cases,
+1,000 multi-window cases across three positions, 100 fixed cases, and 1,000
+seeded random cases from seed `5562880460839399681`. It also ran 10 generated
+full-score cases, one production-shaped `T=8760/W=672` full score over all
+8,088 windows, and two sequential deterministic 101-score-call candidate
+lifecycles. It completed 13,460 physical dispatches with exact CPU/NPU
+agreement, zero mismatches, and zero runtime failures. The final evidence is
+`docs/evidence/m4-full-score-differential.json`.
+
+M4 compares exact state, score, status, timeout sentinel, tick count, feed
+count, predicted output, expected output, candidate score-call count, and
+final LUT/candidate state. The CPU controls mutation materialization,
+accept/rollback, and final authority; an NPU-only result cannot be verified or
+submitted. A mismatch writes reproducible fixture/topology/LUT/result and
+artifact/runtime metadata, including the first window and candidate score-call
+location when known, then fails the case.
+
+Pure M4 negative coverage includes invalid trits, invalid topology, malformed
+input/target sequences, invalid window index, excessive maximum ticks, packed
+contract corruption, timeout transport, and score/status mismatch. The full
+script additionally checks missing artifact, invalid device selector, and
+wrong manifest; all three must fail closed. M4 intentionally does not claim
+multiple batch sizes or four-column execution; those belong to M5.
 
 ### 9. Protocol/integration tests (M6/M7)
 
@@ -321,6 +337,15 @@ evidence. Validate that record with:
 ```bash
 python3 -m json.tool docs/evidence/m3-k1-differential.json
 git diff --check
+```
+
+The M4 contract test is included in `ctest`. The full M4 validation command
+rebuilds the one-column score artifact, reruns all M1/M2/M3 regressions,
+executes the physical M4 tiers and negative paths, and writes the score
+evidence record. Validate it with:
+
+```bash
+python3 -m json.tool docs/evidence/m4-full-score-differential.json
 ```
 
 ## Security-oriented tests
