@@ -1,68 +1,109 @@
 # Benchmark Protocol
 
-Do not publish performance claims without recorded methodology and reproducible evidence.
+M0 defines measurement methodology only. No benchmark was run and no
+throughput, latency, power, NPU-activity, speedup, or work/Joule value may be
+invented.
 
-## Required metadata
+## Workload identity
 
-Every benchmark record should include:
+Every result must identify:
 
-- project commit;
-- milestone;
-- exact hardware model;
-- XDNA device identity;
-- kernel/firmware/XRT/MLIR-AIE/IRON versions as applicable;
-- CPU model and power profile;
-- workload/algorithm version;
-- input dimensions;
-- batch size;
-- warm-up procedure;
-- number of measured iterations;
-- correctness status;
-- failures/timeouts;
-- host RAM;
-- NPU telemetry when available;
-- power/energy source and methodology when available.
+- repository commit and milestone;
+- Qubic algorithm revision, currently BPP9000 from core
+  `v1.301.3` / `a83f935406cd006b5b1a94971139e74d410ecb6d`;
+- task file SHA-256 and topology/data hashes;
+- public key, mining seed and nonce corpus identifiers without exposing
+  signing secrets;
+- production dimensions (`N=18, M=1, T=8760, W=672, P=64, K=3, S=100,
+  L=1..10`) or the exact reduced test dimensions;
+- candidate definition: one full candidate search, including initial score and
+  100 mutation attempts, unless another unit is explicitly labeled;
+- batch size and four-column mapping.
 
-## Primary metrics
+The Qiner example task and its 6,469 example threshold must never be mixed
+silently with the core production task and runtime threshold.
 
-Depending on the final Qubic workload terminology established in M0, report the most appropriate unit such as candidates/s, scores/s, iterations/s, or another protocol-meaningful throughput metric.
+## Required comparisons
 
-Also record:
+The same task bytes, candidate corpus, correctness status, and requested work
+must be used for each available placement:
 
-- median latency;
-- p95 latency where meaningful;
-- throughput;
-- host/NPU transfer time when measurable;
-- kernel execution time when measurable;
-- CPU utilization;
-- memory use;
-- NPU activity/telemetry;
-- wall power or energy only if measured reliably;
-- error count.
+| Placement | Status | Candidate scores/s | Score calls/s | Windows/s | Batch |
+|---|---|---:|---:|---:|---:|
+| CPU scalar reference | Not measured | — | — | — | — |
+| CPU optimized | Not measured | — | — | — | — |
+| XDNA1 recurrent/fused | Not measured | — | — | — | — |
+| CPU + XDNA1 hybrid | Not measured | — | — | — | — |
 
-## Comparative table
+A “candidate” is the complete defined search. Also report algorithm-native
+subunits (`score calls/s`, `windows/s`, and `ticks/s`) when a partial kernel is
+benchmarked; partial-kernel numbers must not be presented as candidate mining
+throughput.
 
-Do not fill cells until actually measured under comparable conditions.
+## Metrics
 
-| Placement | Throughput | Median latency | p95 | RAM | NPU activity | Power/Energy | Errors |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| CPU reference | Not measured | — | — | — | — | — | — |
-| XDNA1 accelerated | Not measured | — | — | — | — | — | — |
-| CPU + XDNA1 hybrid | Not measured | — | — | — | — | — | — |
+For every run, record:
 
-## Benchmark rules
+- candidate scores/sec and algorithm-native work/sec;
+- latency per candidate and per batch: median, p95, and sample count;
+- batch size, queue depth, warm-up count, and steady-state count;
+- CPU utilization by process and, where useful, core placement;
+- host RAM/high-water mark;
+- XRT/NPU dispatch evidence and available per-kernel activity/counters;
+- host-to-device and device-to-host transfer time;
+- kernel execution time and host scheduling/launch time;
+- errors, timeouts, dropped/retried candidates, and result correctness;
+- wall power or energy only from a named measurement source;
+- work/Joule only when both work and energy are measured over the same interval;
+- thermal/clocks and power profile when available.
 
-1. Correctness tests must pass before performance is accepted.
-2. Use identical workload inputs for placement comparisons.
-3. Keep power profile, thermals and warm-up conditions as consistent as practical.
-4. Do not treat configured offload as utilization; use real telemetry where available.
-5. Do not infer NPU energy from TDP.
-6. Do not mix cold compile/load with steady-state throughput unless explicitly reporting TTFT/startup.
-7. Preserve raw benchmark artifacts for significant milestone/release claims when practical.
-8. Report rejected/failed optimization experiments as such; do not cherry-pick only successful runs.
+If a telemetry source is unavailable, write “not available” with the reason.
+Configured offload, a device name, or a successful CPU result is not NPU
+activity evidence.
+
+## Method
+
+1. Confirm the exact task/corpus and run the full correctness suite first.
+2. Record clean git state or the exact working-tree diff, hardware identity,
+   Fedora/kernel/firmware/XRT/MLIR-AIE/IRON versions, and device name.
+3. Warm up compilation, program load, buffer allocation, and caches separately.
+4. Measure steady-state runs with fixed batch size and queue configuration;
+   report cold-start/load latency separately.
+5. Repeat enough times to produce median and p95; preserve raw samples.
+6. Keep CPU governor/power mode, thermals, affinity, task bytes and candidate
+   order controlled between comparisons.
+7. Measure transfer and kernel intervals with the same clock/source where
+   possible; state timestamp limitations.
+8. Confirm actual XDNA dispatch for every result labeled XDNA1.
+9. Stop and classify any correctness mismatch; do not average failed results.
+10. Store a machine-readable record plus a human-readable summary under
+    `benchmarks/` once implementation exists.
+
+The first NPU benchmark must include a CPU reference run on the identical logical
+inputs and must state whether it measured K1, K2, K3, or a fused composition.
+
+## Acceptance gates by metric
+
+- A throughput result is publishable only after exact CPU/NPU correctness passes
+  for the same corpus.
+- A four-column result requires evidence that all claimed columns were active
+  or an explicit statement that the mapping was not verified.
+- A power/energy result requires the instrument or counter name, sampling
+  interval, units, and uncertainty/limitations.
+- A work/Joule result cannot be derived from TDP, utilization percentage, or
+  marketing specifications.
+- A speedup claim must include CPU baseline, NPU/hybrid configuration, workload
+  identity, and error count.
+
+## Current evidence
+
+M0 executed no benchmark. All numeric performance cells above are intentionally
+unmeasured. The next agent must not infer a performance claim from the static
+operation counts in `docs/ARCHITECTURE.md` or from the related
+`hawkpoint-npu-llm` project.
 
 ## Profitability
 
-Profitability is outside core benchmark correctness because coin price, rewards, difficulty and electricity cost are time-varying external inputs.
-
-If profitability is later calculated, keep it separate from hardware throughput and include the exact timestamp, market/difficulty data source, electricity price and assumptions.
+Profitability is separate from hardware throughput. If ever calculated, record
+the timestamp, reward/difficulty source, token price source, electricity price,
+fees, pool terms, and assumptions; do not mix it into the benchmark gate.

@@ -1,134 +1,339 @@
 # Architecture
 
-This document is provisional until Milestone M0 validates the current Qubic mining workload and protocol from authoritative upstream sources.
+## M0 architecture status
 
-## Design objective
+This is the standalone architecture for current Qubic BPP9000 on AMD Hawk
+Point XDNA1/AIE2. It is based on the current source revisions recorded in
+`docs/UPSTREAM.md`, especially `qubic/core`
+`v1.301.3` (`a83f935406cd006b5b1a94971139e74d410ecb6d`) and Qiner
+`v1.302.3` (`11fb18a6f4944bb55fe103d3f263cb5d31e00200`).
 
-Accelerate only compute-heavy, deterministic, batchable mining operations that fit XDNA1/AIE2 well, while keeping control-heavy and network-heavy work on the CPU.
+M0 is **COMPLETE**. The direct-node compute and protocol boundary is
+sufficiently specified for M1. Official Qubic sources conflict about Qatum's
+status, but that uncertainty does not block this project: direct-node mining
+is canonical, M1 through M5 have zero Qatum/pool dependency, and M6 must
+implement and validate direct-node integration first. Qatum/pool support is an
+optional, version-gated adapter after direct-node support works; it must not be
+implemented until an authoritative, sufficiently complete wire specification
+or implementation is pinned and independently reviewed.
 
-## Proposed high-level pipeline
+No NPU kernel is being implemented in M0.
 
-```text
-                 +----------------------+
-                 |  Qubic node / pool   |
-                 +----------+-----------+
-                            |
-                            v
-                 +----------------------+
-                 | CPU network/job mgr  |
-                 +----------+-----------+
-                            |
-                            v
-                 +----------------------+
-                 | CPU candidate/control|
-                 +----------+-----------+
-                            |
-                   batched work buffers
-                            |
-                            v
-           +-----------------------------------+
-           | AMD XDNA1 / AIE2 compute kernels |
-           | - deterministic scoring primitive |
-           | - repeated vector/matrix work     |
-           | - persistent/reused buffers       |
-           +----------------+------------------+
-                            |
-                            v
-                 +----------------------+
-                 | CPU verify/reference |
-                 +----------+-----------+
-                            |
-                            v
-                 +----------------------+
-                 | submit result/share  |
-                 +----------------------+
-```
-
-## Module boundaries
-
-### `src/core/`
-Shared domain types, scheduling interfaces and orchestration primitives. Must not contain Qubic protocol assumptions that belong in `src/qubic/`.
-
-### `src/qubic/`
-Qubic-specific protocol, job representation, candidate semantics, score/result structures and submission logic. Exact contents are determined by M0.
-
-### `src/cpu/`
-Trusted CPU reference implementation. This is the correctness oracle for accelerated compute and should be structurally independent enough to avoid reproducing the same implementation bug as the NPU path.
-
-### `src/xdna/`
-Device discovery, XRT/MLIR-AIE/IRON integration, buffer lifecycle, dispatch, synchronization, capability/version reporting and explicit hardware failure behavior.
-
-### `src/kernels/`
-AIE2 kernel/graph sources. Kernels must expose deterministic inputs/outputs that can be compared with the CPU reference.
-
-### `src/cli/`
-Configuration, endpoint selection, identity/wallet/mining parameters, logging controls and user-facing runtime diagnostics.
-
-## Host/NPU contract principles
-
-- Batch enough independent work to amortize launch and transfer overhead.
-- Prefer persistent/reused device buffers where correctness and runtime APIs permit.
-- Avoid round trips between CPU and NPU inside inner loops unless unavoidable.
-- Keep protocol/network objects out of kernel interfaces.
-- Use explicit fixed-width datatypes across the boundary.
-- Specify overflow, saturation, rounding, layout, alignment and endianness semantics.
-- Never let an unavailable NPU silently use CPU while reporting NPU mode.
-
-## Four-column strategy
-
-XDNA1 target exposes a 4-column AIE2 array. M0/M3/M5 must determine whether the selected workload benefits from:
-
-- independent batch partitioning by column;
-- pipeline stages across columns;
-- replicated kernels;
-- shared/reused weight/state placement;
-- another graph topology.
-
-No four-column utilization claim is accepted without hardware evidence.
-
-## Correctness architecture
-
-For every accelerated primitive:
+## System boundary
 
 ```text
-input vector
-    |--------------------------|
-    v                          v
-CPU golden                  XDNA1
-    |                          |
-    v                          v
-expected output            NPU output
-    \                          /
-     +-------- compare -------+
++-----------------------------+
+| Qubic node                   |
+| current seed, tick, threshold|
++--------------+--------------+
                |
-          pass / fail
+               | TCP: framed, signed/encrypted broadcast messages
+               | system-info response for epoch/seed/threshold
+               v
++-----------------------------+
+| CPU network / epoch manager |
+| task file validation        |
+| stale-work and reconnect    |
++--------------+--------------+
+               |
+               v
++-----------------------------+
+| CPU candidate/control       |
+| nonce policy               |
+| random2/K12 orchestration   |
+| mutation, accept/rollback   |
++--------------+--------------+
+               |
+               | one amortized batched dispatch
+               v
++------------------------------------------------+
+| XDNA1/AIE2 compute backend                     |
+| candidate/window-batched recurrent LUT ticks  |
+| persistent task/topology/state where possible |
++----------------------+-------------------------+
+                       |
+                       v
++-----------------------------+
+| CPU canonical verification  |
+| exact score/threshold gate  |
++--------------+--------------+
+               |
+               v
++-----------------------------+
+| CPU signed solution submit  |
+| future versioned pool share |
++-----------------------------+
 ```
 
-Failures should preserve enough input/context to reproduce the discrepancy.
+The node does not currently send a canonical BPP9000 “job blob” in the direct
+solution path. The CPU combines the hash-verified local task with current
+system information and locally generated candidate nonces.
 
-## Failure policy
+## Responsibilities and module boundaries
 
-The miner must distinguish at least:
+These are design boundaries, not implemented directories yet.
 
-- protocol/network error;
-- invalid/stale work;
-- CPU reference error;
-- NPU device unavailable;
-- NPU compile/load failure;
-- NPU dispatch/runtime failure;
-- CPU/NPU correctness mismatch;
-- submission rejection;
-- benchmark/telemetry unavailable.
+| Area | CPU responsibility | NPU responsibility |
+|---|---|---|
+| `qubic/task` | Parse 96-byte header/topology/data; validate dimensions, trits, hashes | None |
+| `qubic/epoch` | Request/parse system info; track epoch, tick, 32-byte seed, threshold; invalidate stale work | None |
+| `qubic/network` | 8-byte frame, signatures, gamma/encryption, reconnect, submission | None |
+| `cpu/reference` | Scalar BPP9000 oracle and candidate control | None |
+| `cpu/search` | Candidate nonce generation, mutation seed orchestration, accept/rollback | None |
+| `xdna/runtime` | Device/version discovery, XRT/IRON buffers, dispatch and evidence | Execute selected deterministic buffers |
+| `xdna/bpp9000` | Pack batches, synchronize, validate output shape/status | Recurrent LUT/tick primitive or fused score |
+| verification | Recompute candidate with the CPU oracle before submission | Never authorizes a share by itself |
+| benchmark | Timestamp, workload identity, transfer/telemetry accounting | Report actual dispatch/kernel timing |
 
-Correctness mismatch is fatal for the affected accelerated path until explicitly recovered/revalidated.
+A future pool adapter must sit beside the direct-node network adapter. It must
+not alter the CPU/NPU compute contract. Pool-specific proprietary protocols
+are adapters at this boundary, not part of the mining/scoring core.
 
-## Open architecture questions for M0
+## Protocol scope boundary
 
-1. What exactly is the current Qubic mining workload and scoring path?
-2. Which operations dominate runtime?
-3. Which datatypes and tensor/vector dimensions are current?
-4. Which state changes per candidate and which data can remain resident on XDNA1?
-5. What batch granularity is protocol-safe?
-6. Which current upstream implementation is authoritative enough for interoperability checking?
-7. What licensing constraints affect clean-room implementation?
-8. What network/pool protocol/version must M6 support?
+The direct Qubic-node path is the canonical protocol path for this project.
+The current core/Qiner direct-node behavior recorded in `docs/UPSTREAM.md` is
+sufficient for M0; Qiner remains a behavioral/reference aid and core remains
+the consensus and validation authority. M1 through M5 must have zero
+dependency on Qatum or any mining pool.
+
+M6 must implement and validate direct-node integration first. Qatum/pool
+integration may be added only after the direct-node path works and an
+authoritative, sufficiently complete, versioned wire specification or
+implementation has been pinned and independently reviewed. Until then, no
+Qatum wire behavior may be invented or inferred from a status page, an older
+announcement, or a proprietary pool adapter.
+
+## Exact BPP9000 state model
+
+Production values are:
+
+- task inputs `inputs[T][N]`: `uint8_t` trits, values 0, 1, 2;
+- task outputs `outputs[T][M]`: `uint8_t` trits, values 0, 1, 2;
+- neuron state: `uint8_t[P]`, double-buffered per tick;
+- LUT: `uint8_t[U][32]`; only entries 0..26 are logical, stride 32;
+- neighbors: `uint32_t[P][K]` in the serialized topology;
+- mutation seeds: `uint64_t[S][L]` after random2, padded to 8,064 bytes;
+- score: `uint32_t`; valid scores are not `0xffffffff` and are at most
+  `numberWindows == 8,088`;
+- timeout sentinel: `0xffffffff`;
+- random2 pool: approximately `2^32 / 8` bytes, padded to a multiple of
+  200 bytes for the 200-byte Keccak state;
+- canonical nonce: 32 bytes with `nonce[0] == 1`, `1 <= nonce[1] <= 10`,
+  `nonce[2] == 0`.
+
+There are no numeric synapse weights in BPP9000. The wiring is a
+`uint32_t[P][K]` neighbor-index table: each of the 64 neurons has three
+neighbor indices in `[0, P)`; the source validator requires bounds and role
+index uniqueness but does not require neighbor indices to be unique. The LUT
+values are the only per-neuron learned values and are trits `0,1,2`.
+
+There is no dot-product accumulation or saturation in the recurrent update.
+The base-3 LUT index is an unsigned value in `0..26`; the score is a
+`uint32_t` failure count bounded by 8,088, and the tick counter is a
+`uint32_t` bounded by 100,000. Core's per-candidate ANN storage is
+`alignas(64)` with 32-byte LUT row stride; the packed task header is exactly
+96 bytes and must not inherit host struct padding. Any XRT/device alignment
+or padded layout must be explicit in a pack/unpack contract.
+
+The update of all 46 non-input neurons in a tick reads the previous state
+buffer. Input neurons preserve their externally assigned state for the tick.
+This simultaneous-commit rule is part of the CPU/NPU contract; an in-place
+update is not equivalent.
+
+## Conceptual operation inventory
+
+Counts below are per epoch, per candidate, or per score as stated. They are
+static source-derived counts, not performance measurements.
+
+| Operation | Count | Datatype / traffic | Dependencies and branches | XDNA1 assessment |
+|---|---:|---|---|---|
+| Load/hash task file | once per task | 44,744 bytes; K12 hashes over topology/data | file and validation branches | LOW; CPU |
+| Generate random2 pool | once per epoch | 200-byte Keccak state repeated over ~512 MiB pool | sequential permutation and large writes | LOW; CPU/host memory |
+| Root K12/random2 LUT init | once per public key, then 1,728 logical draw bytes (1,792 padded) per candidate path as initialized | 32-byte hash input; byte pool reads | crypto control, candidate setup | LOW; keep CPU unless measured |
+| Search K12/random2 | once per candidate; 8,000-byte seed payload, 8,064 padded | 32-byte hash; pseudo-random pool reads | candidate-specific and low reuse | LOW; CPU |
+| Initialize ANN state/LUT | once per score call | 64 state bytes; 46*32 LUT bytes | reset/control | LOW |
+| One mutation | `L` per step, 100 steps; 100..1,000 mutations | one `uint64_t` seed and one LUT byte update | modulo/index/accept path | LOW as standalone |
+| Recurrent tick | 46 LUT evaluations/tick; three neighbor reads and one byte store per updated neuron | `uint8_t` state/LUT; index 0..26 | tick-to-tick state dependency; within-tick parallelism | HIGH candidate, benchmark required |
+| Input feed/reset | up to 18 writes/tick/window | task `uint8_t` trits | signal/feeding branch | Fuse with recurrent engine |
+| Window score | 8,088 windows/score; one output compare/window | state plus 672*18 input trits/window | variable settle length, timeout branch | MEDIUM when batched |
+| Mutation accept/rollback | 100 score comparisons and snapshots | about 1,242 logical LUT bytes/step | serial control and branch | LOW standalone |
+| Candidate batch/reduction | `B` independent candidates | candidate LUT/state and `B` scores | independent across candidates | HIGH potential; measure |
+| Canonical verification | at least one full score for a found result | same exact scalar semantics | CPU gate before submit | CPU authoritative |
+
+The recurrent tick is dot-product-adjacent only in its regularity; it is not a
+dense multiply. It is a byte LUT indirection with three byte reads. The trits
+are `0,1,2`, not `-1,0,+1`; multiplication cannot be replaced by ternary
+add/subtract arithmetic. There is no floating point and no documented
+saturation arithmetic in the score path.
+
+### Data reuse and serial portions
+
+- The 18-input/one-output task is constant across candidates and should be
+  resident or reused in host/device buffers.
+- The topology is constant; each complete candidate reuses the same neighbor
+  map.
+- A root LUT generated from the public key can be cached at the CPU boundary,
+  but mutation paths are candidate-specific.
+- A candidate's recurrent state is sequential across ticks. A single candidate
+  cannot be split across columns by time without a synchronization on every
+  tick.
+- Windows and candidates are independent at their outer boundaries. They are
+  the natural sources of batch parallelism.
+- Signal settling produces variable work per window. Any fused NPU kernel must
+  carry a per-lane active/settled mask or use a bounded fixed loop; either
+  choice needs differential tests.
+- Mutation accept/rollback and network freshness are CPU control operations.
+  Moving them alone to XDNA1 would add transfer and synchronization without a
+  known benefit.
+
+## Candidate XDNA1 kernels
+
+The following are hypotheses to benchmark after M1/M2. Shapes use a batch
+dimension `B`; `B` is not fixed in M0.
+
+### K1 — recurrent tick, candidate-batched
+
+**Classification: HIGH suitability, UNKNOWN — NEEDS BENCHMARK**
+
+| Field | Specification |
+|---|---|
+| Inputs | `state[B][P]` `uint8_t`; `lut[B or 1][U][32]` `uint8_t`; `neighbors[U][3]` `uint32_t`; optional `input[B][N]` |
+| Outputs | `next_state[B][P]` `uint8_t`; optional settled/signal mask |
+| Work | `B*U` LUT evaluations/tick, `3*B*U` neighbor byte reads, `B*U` stores, plus at most `B*N` input writes |
+| Vectorization | Pack independent candidates or windows across lanes; keep the three-neighbor index and LUT lookup explicit; do not use signed dot-product assumptions |
+| Local memory | Per item 64 state bytes; per candidate 46*32 LUT bytes if private; 552 bytes for 46*3 32-bit neighbor indices if replicated; actual tile allocation must be measured |
+| XRT/external buffers | Batch state, LUTs, task inputs, topology, output status; prefer persistent buffers across ticks in a fused dispatch |
+| Reuse | Topology/task reused for all candidates; LUT/state reused across ticks of one candidate |
+| Synchronization | One dispatch boundary per batch is preferred; per-tick host round trips are unacceptable for a throughput design |
+| Four-column mapping | Partition complete candidates/windows across four columns, approximately `B/4` each; do not split one recurrence across columns initially |
+| Host transfer risk | High if state is copied after every tick; low enough to investigate if state stays device-resident |
+| Correctness risks | Previous-vs-next state buffer, trit indexing, unknown handling, input timing, per-lane masks, LUT stride |
+| Likely bottleneck | Byte LUT/local-memory access and control divergence, not arithmetic throughput |
+
+### K2 — fused window-batched scoring
+
+**Classification: MEDIUM suitability, UNKNOWN — NEEDS BENCHMARK**
+
+| Field | Specification |
+|---|---|
+| Inputs | `inputs[B][W][N]` `uint8_t`; `outputs[B]` or target rows; topology; one LUT per candidate or shared LUT |
+| Outputs | `score[B]` `uint32_t`; timeout/status per batch item |
+| Work | Up to `B*W` feed iterations and `B*U*ticks` recurrent updates, with 8,088 windows per full score |
+| Vectorization | Batch independent windows/candidates; maintain per-lane active, feed counter, tick counter, and score |
+| Local memory | 64 state bytes per lane plus LUT/topology tiles; task row tiles should be reused instead of copied per tick |
+| XRT/external buffers | Canonical task data, candidate LUTs, output scores/status; persistent task buffer is preferred |
+| Reuse | Same topology and task for all lanes; candidate LUT across all windows |
+| Synchronization | One score or multi-score dispatch; CPU synchronizes only at score/result boundary |
+| Four-column mapping | Windows or candidates can be sharded; candidate sharding is simpler when LUTs differ |
+| Host transfer risk | Moderate for one full score; high if each window returns to host |
+| Correctness risks | Variable settling divergence, exact window indexing (`t+W`), timeout sentinel, reset-to-unknown |
+| Likely bottleneck | Divergent control and state/LUT memory access |
+
+### K3 — full candidate search/fused mutation loop
+
+**Classification: MEDIUM suitability as a fused experiment; LOW as a
+standalone kernel; UNKNOWN — NEEDS BENCHMARK**
+
+| Field | Specification |
+|---|---|
+| Inputs | `lut[B][U][32]`; `mutationSeeds[B][100][10]` `uint64_t`; task/topology |
+| Outputs | best `score[B]` and best LUT/nonce metadata |
+| Work | Up to 100 mutation steps, each applying `L` entries and invoking a full score |
+| Vectorization | Independent candidates across lanes; mutation table update is irregular |
+| Local memory | Current/best LUT snapshots (logical 1,242 bytes or padded rows), state and task tiles |
+| XRT/external buffers | Candidate seeds/LUTs in, best score/LUT out; large output only if best candidate is returned |
+| Reuse | Task/topology and root LUT reused; score state can stay local |
+| Synchronization | Must not synchronize host after each mutation; accept/rollback should be inside a fused device program if attempted |
+| Four-column mapping | Candidate sharding; do not distribute one mutation path across columns |
+| Host transfer risk | Low only if the entire search remains device-resident; otherwise prohibitive |
+| Correctness risks | Snapshot/rollback, `r <= current`, `K==0`, nonce-to-seed derivation, exact best-score tie behavior |
+| Likely bottleneck | Control, irregular LUT writes, state capacity, and device program complexity |
+
+M1/M3 should start with K1 or a smaller scalar recurrent primitive, not K3.
+K3 is not required to establish the architecture.
+
+### K4 — score reduction / output compare
+
+**Classification: LOW as a separate kernel; MEDIUM only when fused into K2**
+
+| Field | Specification |
+|---|---|
+| Inputs | predicted output trits and target trits, logically `[B][8088]` |
+| Outputs | `uint32_t score[B]` and timeout flags |
+| Work | up to `B*8088` byte comparisons and additions |
+| Vectorization | simple byte compare/reduction |
+| Local memory | small reduction state |
+| External buffers | unnecessary if K2 already owns predictions |
+| Reuse | none beyond one score |
+| Synchronization | separate dispatch would add a result transfer boundary |
+| Four-column mapping | trivial batch reduction |
+| Host transfer risk | dominates the small arithmetic if isolated |
+| Correctness risks | `0xffffffff` timeout and score width |
+| Likely bottleneck | launch/transfer overhead |
+
+### K5 — random2 pool/K12/hash support
+
+**Classification: LOW suitability; UNKNOWN — NEEDS BENCHMARK if a complete
+licensed crypto backend is ever selected**
+
+The pool is approximately 512 MiB and is generated once per epoch by repeated
+200-byte Keccak permutations. Per-candidate K12/random2 work has random pool
+reads and little reuse. This is not a reason to put network, identity, or
+cryptographic signing on the NPU. Keep it on the CPU until measurements and
+license review justify anything else.
+
+## Reference XDNA1 environment
+
+The related `hawkpoint-npu-llm` checkout was inspected only for environment
+and engineering patterns. Its validated pin file records Fedora x86, device
+`RyzenAI-npu1`, AMD XDNA
+`7.2.0-0.rc5.260729.fc02acf6.441.vanilla.fc45.x86_64`, firmware `1.5.5.391`,
+XRT `2.26.0`, and MLIR-AIE commit
+`57d7494e99c214f5f53b328a0ed43a99e759e835`. The observed patterns are
+device discovery, explicit XRT buffer synchronization, persistent IRON
+programs, four-column selection, `xrt-smi` evidence, and fail-closed hardware
+validation. These are implementation references for M2, not dependencies or
+architecture copied into this repository.
+
+## CPU/NPU correctness contract
+
+The boundary is a fixed-width, row-major schema:
+
+```text
+CPU input:
+  task trits uint8[N/T], topology uint32[P*K],
+  LUT uint8[U][32], state uint8[P], candidate metadata
+NPU input:
+  byte-identical fields plus explicit lengths/strides
+NPU output:
+  uint32 score, timeout/status, and optional state/prediction diagnostics
+CPU check:
+  exact field equality, then canonical CPU recomputation before submission
+```
+
+No tolerance is permitted for trits, LUT values, state, score, timeout, or
+indices. Any future padded layout must have an explicit pack/unpack test and
+must not change logical row/stride semantics.
+
+Required contract cases are enumerated in `docs/TESTING.md`. In particular,
+“negative values” means rejection tests for invalid signed input: BPP9000 has
+no negative trit. The value `2` is UNKNOWN and must never be treated as `-1`.
+There is no score saturation/clamp; test the actual bounds and timeout
+sentinel instead.
+
+## Failure and fallback policy
+
+The runtime must distinguish:
+
+- task hash/dimension/trit rejection;
+- stale or zero mining seed;
+- invalid nonce;
+- missing XDNA device or incompatible stack;
+- compile/load/dispatch/synchronization failure;
+- exact CPU/NPU mismatch;
+- node rejection, timeout, or reconnect;
+- unavailable NPU/power telemetry.
+
+An NPU mismatch or failed canonical verification may not submit the result.
+A CPU fallback, if later added, must be explicit in logs and benchmark labels.
