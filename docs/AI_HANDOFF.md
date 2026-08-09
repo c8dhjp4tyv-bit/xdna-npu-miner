@@ -26,7 +26,8 @@ M0, M1, and M2 were externally reviewed and passed. M4 is **NOT STARTED**.
   `749311c16bf40604aab7521625a58f859e6a9d75`
 - M2 completion commit:
   `4ae226a048a65fed67fd7b8ab6a8feee9ec4c696`
-- M3 implementation commit: recorded after the focused checkpoint is created.
+- M3 implementation commit:
+  `f5836e2fb0fd57d03babe6c3c3647db06fd0c269`
 
 ## M0 authority that M1 used
 
