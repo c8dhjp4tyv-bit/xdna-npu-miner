@@ -6,6 +6,11 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+option(XDNA_ENABLE_PRODUCTION_CRYPTO
+    "Build the pinned K12/FourQ production crypto provider and its KATs"
+    OFF
+)
+
 add_library(bpp9000_reference
     src/bpp9000/task.cpp
     src/bpp9000/random.cpp
@@ -172,6 +177,102 @@ target_compile_options(qubic_direct_node_tests PRIVATE
     -Werror
 )
 add_test(NAME qubic_direct_node_tests COMMAND qubic_direct_node_tests)
+
+if(XDNA_ENABLE_PRODUCTION_CRYPTO)
+    # These are intentionally opt-in so the normal CPU/NPU contract build has
+    # no network or third-party crypto dependency. The exact revisions and
+    # selected files are recorded in docs/UPSTREAM.md.
+    enable_language(C)
+    include(FetchContent)
+    if(POLICY CMP0169)
+        cmake_policy(SET CMP0169 OLD)
+    endif()
+
+    FetchContent_Declare(xdna_fourq_source
+        GIT_REPOSITORY https://github.com/microsoft/FourQlib.git
+        GIT_TAG 1031567f23278e1135b35cc04e5d74c2ac88c029
+        GIT_SHALLOW FALSE
+    )
+    FetchContent_Declare(xdna_k12_source
+        GIT_REPOSITORY https://github.com/XKCP/K12.git
+        GIT_TAG f95b0b73e29fe75fe99fbbb24c8000d9fcf0b40e
+        GIT_SHALLOW FALSE
+    )
+    FetchContent_GetProperties(xdna_fourq_source)
+    if(NOT xdna_fourq_source_POPULATED)
+        FetchContent_Populate(xdna_fourq_source)
+    endif()
+    FetchContent_GetProperties(xdna_k12_source)
+    if(NOT xdna_k12_source_POPULATED)
+        FetchContent_Populate(xdna_k12_source)
+    endif()
+
+    set(XDNA_FOURQ_DIR
+        "${xdna_fourq_source_SOURCE_DIR}/FourQ_64bit_and_portable"
+    )
+    add_library(xdna_fourq STATIC
+        "${XDNA_FOURQ_DIR}/eccp2.c"
+        "${XDNA_FOURQ_DIR}/eccp2_no_endo.c"
+        "${XDNA_FOURQ_DIR}/eccp2_core.c"
+        "${XDNA_FOURQ_DIR}/crypto_util.c"
+        "${XDNA_FOURQ_DIR}/schnorrq.c"
+        "${XDNA_FOURQ_DIR}/kex.c"
+        "${xdna_fourq_source_SOURCE_DIR}/random/random.c"
+    )
+    target_include_directories(xdna_fourq SYSTEM PUBLIC
+        "${XDNA_FOURQ_DIR}"
+        "${xdna_fourq_source_SOURCE_DIR}"
+    )
+    target_compile_definitions(xdna_fourq PUBLIC
+        _AMD64_
+        __LINUX__
+        _GENERIC_
+        USE_ENDO
+    )
+    target_compile_options(xdna_fourq PRIVATE -fwrapv)
+
+    set(XDNA_K12_DIR "${xdna_k12_source_SOURCE_DIR}/lib")
+    add_library(xdna_k12 STATIC
+        "${XDNA_K12_DIR}/KangarooTwelve.c"
+        "${XDNA_K12_DIR}/KangarooTwelve-threading.c"
+        "${XDNA_K12_DIR}/Optimized64/KeccakP-1600-opt64.c"
+    )
+    target_include_directories(xdna_k12 SYSTEM PUBLIC
+        "${XDNA_K12_DIR}/Plain64"
+        "${XDNA_K12_DIR}"
+    )
+    target_compile_definitions(xdna_k12 PRIVATE KeccakP1600_disableParallelism)
+
+    add_library(qubic_production_crypto
+        src/qubic/production_crypto.cpp
+    )
+    target_include_directories(qubic_production_crypto PUBLIC src)
+    target_link_libraries(qubic_production_crypto PUBLIC
+        qubic_direct_node
+        xdna_fourq
+        xdna_k12
+    )
+    target_compile_options(qubic_production_crypto PRIVATE
+        -Wall
+        -Wextra
+        -Wpedantic
+        -Wconversion
+        -Wshadow
+        -Werror
+    )
+
+    add_executable(qubic_crypto_tests tests/qubic_crypto_tests.cpp)
+    target_link_libraries(qubic_crypto_tests PRIVATE qubic_production_crypto)
+    target_compile_options(qubic_crypto_tests PRIVATE
+        -Wall
+        -Wextra
+        -Wpedantic
+        -Wconversion
+        -Wshadow
+        -Werror
+    )
+    add_test(NAME qubic_crypto_tests COMMAND qubic_crypto_tests)
+endif()
 
 set(XRT_ROOT "$ENV{XILINX_XRT}" CACHE PATH "XRT installation root")
 if(NOT XRT_ROOT)

@@ -33,8 +33,9 @@ verifies one isolated K1 recurrent tick, M4 verifies one-window scoring, and M5
 provides the verified batch-16/four-column independent-window backend. M6 now
 implements the finite direct-node frame, system-info/work-context, freshness,
 CPU/NPU submission gate, deterministic solution serialization, and bounded
-transport boundary. Production crypto selection and live interoperability are
-still explicit gates; M7's continuous supervisor remains out of scope.
+transport boundary. The optional pinned K12/FourQ provider and its KAT gate
+are implemented; authorized live interoperability remains an explicit gate,
+and M7's continuous supervisor remains out of scope.
 
 ## Current algorithm contract
 

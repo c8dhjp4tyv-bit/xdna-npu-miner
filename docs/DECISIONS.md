@@ -443,3 +443,30 @@ Reason: Qubic's upstream crypto implementation is not reusable under the
 project's clean-room/license boundary. Fabricating a signer, inferring a
 secret, or treating mock bytes as authenticated network evidence would violate
 the correctness and security gates.
+
+## D-033 — M6 selects an optional pinned K12/FourQ provider
+
+**Status:** Accepted for the production-crypto gate; live submission remains
+blocked by endpoint and signing-material authorization
+
+The M6 provider implementation is `K12FourQCryptoProvider` in
+`src/qubic/production_crypto.*`. It is built only when
+`XDNA_ENABLE_PRODUCTION_CRYPTO=ON` and fetches Microsoft FourQlib at commit
+`1031567f23278e1135b35cc04e5d74c2ac88c029` (MIT) plus the XKCP K12 repository at
+commit `f95b0b73e29fe75fe99fbbb24c8000d9fcf0b40e` (selected source files under
+the CC0/public-domain dedication, with the included Brian Gladman endian
+notice). FourQlib's documented hash hook is bound to KT128; its bundled
+SHA-512 implementation and all Qubic/Qiner crypto source are excluded.
+
+`SigningSecret` is explicitly the 32-byte Qubic signing subseed. The provider
+derives the FourQ scalar with K12, checks that the configured public key is the
+matching compressed key, and then supplies K12-backed SchnorrQ signing and
+compressed ECDH. RFC 9861 K12 vectors, the first synthetic Qubic SchnorrQ
+vector, and fixed synthetic public-key/shared-key/gamma vectors are required
+by `qubic_crypto_tests` before this provider is considered usable.
+
+Reason: an independently licensed provider is now available without copying
+the Anti-Military upstream implementation, while the opt-in build and
+injected interface preserve the existing default no-send behavior. This does
+not authorize a live endpoint, real user secret, or automatic provider
+selection; those remain separate M6 gates.

@@ -27,9 +27,9 @@ path with exact CPU verification. M5 adds a fixed-width independent-window
 batch path and verified one-, two-, and four-column artifacts. Mutation
 control remains CPU-owned. M6 now provides the clean-room direct-node framing,
 system-info/work-context, submission-gate, solution-serialization, bounded
-transport, and mock integration boundary around that backend. Production
-crypto selection and live interoperability remain explicit M6 gates; M7's
-continuous supervisor is not implemented.
+transport, and mock integration boundary around that backend. An optional
+K12/FourQ provider is now selected and KAT-verified, but live interoperability
+and the continuous M7 supervisor remain out of scope.
 
 ## System boundary
 
@@ -118,11 +118,26 @@ score evidence and never lets an NPU-only result authorize a message. Solution
 serialization preserves the source/destination/gamming nonce prefix, the
 68-byte encrypted seed/nonce/score payload, and the 64-byte signature. The
 `CryptoProvider` is deliberately injected because Qubic's upstream crypto
-implementation is not reusable under this project's clean-room/license rule;
-`UnavailableCryptoProvider` fails closed. Network submission also requires an
-explicit runtime opt-in, bounded connect/read/write timeouts, and bounded
-reconnect attempts. The test provider is non-cryptographic and is never live
-interoperability evidence.
+implementation is not reusable under this project's clean-room/license rule.
+`UnavailableCryptoProvider` still fails closed. The opt-in
+`K12FourQCryptoProvider` uses the pinned external sources recorded in
+`docs/UPSTREAM.md`, binds FourQlib's hash hook to KT128, treats the configured
+secret as a 32-byte signing subseed, and checks the derived public key before
+signing or ECDH. Its RFC/Qubic/fixed-byte KATs are in
+`tests/qubic_crypto_tests.cpp`; the provider is not automatically selected for
+runtime submission. Network submission also requires an explicit runtime
+opt-in, an authorized endpoint and signing secret, bounded connect/read/write
+timeouts, and bounded reconnect attempts.
+
+### M6 production crypto gate
+
+The default CMake configuration does not fetch or link crypto dependencies.
+`-DXDNA_ENABLE_PRODUCTION_CRYPTO=ON` enables the pinned FourQlib/K12 build and
+registers the seven-test CTest suite, including exact K12, public-key, ECDH,
+SchnorrQ signature, gamming-key, and 68-byte gamma-stream vectors. These tests
+use synthetic values only. Passing them establishes provider correctness for
+the exercised primitives; it does not establish node interoperability or
+authorize a live submission.
 
 ## M2 runtime foundation
 
@@ -351,8 +366,8 @@ mutation/rollback on the CPU and reports all 101 score calls for the default
 100-step search.
 
 M1's `DeterministicFixtureDigest` and `DeterministicFixtureRandom` are test
-seams, not production cryptography. Production K12/random2 integration must
-be independently reviewed and supplied behind the same interface.
+seams, not production cryptography. Production K12/random2 task integration
+must be independently reviewed and supplied behind the same interface.
 
 ## Protocol scope boundary
 

@@ -449,11 +449,12 @@ Record the chosen batch/column contract and transfer/kernel evidence for M6/M7.
 
 **IN PROGRESS** — clean-room framing, system-info parsing, WorkContext
 freshness, CPU/NPU submission gates, deterministic solution serialization,
-bounded transport/reconnect, mock integration, and secret-redacted runtime
-configuration are implemented and covered by offline tests. A production
-K12/FourQ-compatible crypto provider has not yet been selected or license
-reviewed, and no authorized live endpoint or submission secret was configured;
-live interoperability is therefore not exercised. M6 is not complete.
+bounded transport/reconnect, mock integration, secret-redacted runtime
+configuration, and an optional pinned K12/FourQ-compatible provider are
+implemented. The provider passes RFC, synthetic Qubic SchnorrQ, public-key,
+shared-key, gamming-key, and gamma-stream KATs. No authorized live endpoint or
+submission secret was configured; live interoperability is therefore not
+exercised. M6 is not complete.
 
 ### Objective
 
@@ -471,6 +472,7 @@ a stable upstream protocol revision for each adapter.
 - direct-node system-info request/response and task compatibility checks;
 - epoch/seed/threshold freshness and stale-work cancellation;
 - framed signed/encrypted solution broadcast and bounded reconnect;
+- independently reviewed optional K12/FourQ provider with deterministic KATs;
 - captured/mock protocol vectors and authorized interoperability;
 - an optional pool adapter only for a separately pinned stable protocol. Qatum
   and QLI behavior must not be conflated.
@@ -485,7 +487,8 @@ mock packets, and authorized endpoint tests.
 
 - Direct-node adapter passes all committed vectors and demonstrates one
   authorized current-node request/submit interoperability run, or records the
-  external endpoint as unavailable without claiming pass.
+  external endpoint as unavailable without claiming pass. The optional crypto
+  provider must pass its committed K12/FourQ KATs before any live attempt.
 - Every submitted score is CPU-recomputed and exact.
 - The adapter rejects stale/unknown algorithm/task context and never logs
   signing keys/tokens.

@@ -160,20 +160,20 @@ The completed M5 run used the physical `RyzenAI-npu1` / AIE2 device, Fedora
 runtime pins from `runtime-pins.json`, 16 deterministic independent
 candidate/window pairs, two warm-ups, and five measured repeats. The M4
 reference was run first on the same 16 items with one dispatch per item. The
-baseline median was 2.479492 ms (p95 3.015180 ms), 80 physical dispatches,
+baseline median was 2.987789 ms (p95 3.251935 ms), 80 physical dispatches,
 160 H2D syncs, 1,246,800 H2D bytes, 80 D2H syncs, and 10,240 D2H bytes.
 
 | Batch / columns | Median ms (p95) | Dispatches | H2D syncs / bytes | D2H syncs / bytes | Exact items / mismatches |
 |---:|---:|---:|---:|---:|---:|
-| 1 / 1 | 2.655153 (2.836824) | 80 | 160 / 1,249,280 | 80 / 10,240 | 80 / 0 |
-| 2 / 1 | 1.814122 (2.019287) | 40 | 80 / 1,249,280 | 40 / 10,240 | 80 / 0 |
-| 4 / 1 | 1.586132 (1.844287) | 20 | 40 / 1,249,280 | 20 / 10,240 | 80 / 0 |
-| 2 / 2 | 1.966177 (2.239110) | 40 | 80 / 1,249,280 | 40 / 10,240 | 80 / 0 |
-| 4 / 2 | 1.462820 (1.864036) | 20 | 40 / 1,249,280 | 20 / 10,240 | 80 / 0 |
-| 8 / 2 | 1.550024 (1.916814) | 10 | 20 / 1,249,280 | 10 / 10,240 | 80 / 0 |
-| 4 / 4 | 1.405202 (1.514668) | 20 | 40 / 1,249,280 | 20 / 10,240 | 80 / 0 |
-| 8 / 4 | 1.133271 (1.174929) | 10 | 20 / 1,249,280 | 10 / 10,240 | 80 / 0 |
-| 16 / 4 | 1.067016 (1.451890) | 5 | 10 / 1,249,280 | 5 / 10,240 | 80 / 0 |
+| 1 / 1 | 3.610288 (4.909527) | 80 | 160 / 1,249,280 | 80 / 10,240 | 80 / 0 |
+| 2 / 1 | 3.093838 (3.938564) | 40 | 80 / 1,249,280 | 40 / 10,240 | 80 / 0 |
+| 4 / 1 | 1.965079 (2.214187) | 20 | 40 / 1,249,280 | 20 / 10,240 | 80 / 0 |
+| 2 / 2 | 2.489644 (2.997457) | 40 | 80 / 1,249,280 | 40 / 10,240 | 80 / 0 |
+| 4 / 2 | 1.694662 (1.838581) | 20 | 40 / 1,249,280 | 20 / 10,240 | 80 / 0 |
+| 8 / 2 | 1.518220 (1.920385) | 10 | 20 / 1,249,280 | 10 / 10,240 | 80 / 0 |
+| 4 / 4 | 1.792676 (1.981721) | 20 | 40 / 1,249,280 | 20 / 10,240 | 80 / 0 |
+| 8 / 4 | 1.399127 (1.929262) | 10 | 20 / 1,249,280 | 10 / 10,240 | 80 / 0 |
+| 16 / 4 | 1.277969 (1.516637) | 5 | 10 / 1,249,280 | 5 / 10,240 | 80 / 0 |
 
 Batch 16 / four columns is the selected configuration by lowest measured
 median wall time. It reduces physical dispatches from 80 to 5 and H2D/D2H
@@ -201,8 +201,8 @@ fees, pool terms, and assumptions; do not mix it into the benchmark gate.
 
 ## M6 protocol note
 
-M6 direct-node framing, freshness, serialization, and mock transport tests are
-correctness evidence only. They use no live node, no production signer, and
-produce no network throughput, mining-rate, latency, power, energy, or
-profitability claim. The machine-readable state is
+M6 direct-node framing, freshness, serialization, mock transport, and optional
+K12/FourQ KATs are correctness evidence only. They use no live node or
+production signing secret and produce no network throughput, mining-rate,
+latency, power, energy, or profitability claim. The machine-readable state is
 `docs/evidence/m6-direct-node.json`.

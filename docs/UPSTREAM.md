@@ -247,6 +247,54 @@ this repository.
   dependencies selected from the installed environment. No source was copied
   from `hawkpoint-npu-llm`; the related repository remains reference-only.
 
+### Source S-008 — Independently sourced K12/FourQ production provider
+
+- **Purpose:** M6's optional production crypto adapter only. This selection
+  does not copy Qubic core/Qiner crypto and does not enable live submission by
+  itself.
+- **FourQ project:** Microsoft FourQlib v3.1,
+  https://github.com/microsoft/FourQlib
+- **FourQ revision:** `1031567f23278e1135b35cc04e5d74c2ac88c029` (the
+  repository's current `master` at the 2026-08-09 audit; no release tag was
+  available in the checked remote).
+- **FourQ license:** MIT, from the repository LICENSE. The selected API and
+  implementation files are `FourQ_64bit_and_portable/FourQ_api.h`,
+  `eccp2.c`, `eccp2_no_endo.c`, `eccp2_core.c`, `crypto_util.c`,
+  `schnorrq.c`, `kex.c`, and `random/random.c`.
+- **FourQ functions used:** `CompressedPublicKeyGeneration`,
+  `CompressedSecretAgreement`, `SchnorrQ_Sign`, and `SchnorrQ_Verify`.
+  FourQlib's documented `crypto_sha512` hook is supplied by this repository
+  and is backed by KT128; the bundled SHA-512 implementation is not compiled.
+- **K12 project:** XKCP extracted KangarooTwelve implementation,
+  https://github.com/XKCP/K12
+- **K12 revision:** `f95b0b73e29fe75fe99fbbb24c8000d9fcf0b40e` (remote
+  `master` at the 2026-08-09 audit).
+- **K12 selected files:** `lib/KangarooTwelve.c`,
+  `lib/KangarooTwelve-threading.c`,
+  `lib/Optimized64/KeccakP-1600-opt64.c`, plus their K12/Plain64 headers.
+  These selected implementation files carry the implementer's CC0/public-
+  domain dedication. The optimized permutation includes
+  `lib/brg_endian.h`, which carries Brian Gladman's permissive redistribution
+  notice; that notice remains part of the dependency audit.
+- **Adapter files:** `src/qubic/production_crypto.hpp/.cpp`, enabled only by
+  `-DXDNA_ENABLE_PRODUCTION_CRYPTO=ON`. `SigningSecret` is treated as the
+  32-byte Qubic signing subseed; the adapter derives the FourQ scalar as
+  `KT128(subseed, 32 bytes)` and checks the configured public key against that
+  derivation before signing or ECDH.
+- **KAT sources and coverage:** RFC 9861 KangarooTwelve vectors for empty
+  input and one zero byte,
+  https://www.rfc-editor.org/rfc/rfc9861.html; the first synthetic Qubic
+  SchnorrQ vector from
+  https://github.com/qubic/core/blob/a83f935406cd006b5b1a94971139e74d410ecb6d/test/fourq.cpp;
+  and fixed project vectors for FourQ public keys, the shared key, the
+  K12-derived gamming key, and the 68-byte gamma stream in
+  `tests/qubic_crypto_tests.cpp`. The fixed key inputs are synthetic test
+  material, not operator secrets.
+- **Reuse decision:** Approved as an optional external dependency after the
+  file/function/license review above. No Qubic/Qiner crypto source was copied;
+  the provider remains a separately injected component and live system-info or
+  solution submission has not been exercised.
+
 ## Current Qubic algorithm facts
 
 ### Algorithm selection and constants

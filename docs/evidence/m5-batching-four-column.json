@@ -22,9 +22,9 @@
   "baseline": {
     "path": "M4_REFERENCE_ACCEL_PATH",
     "artifact": {
-      "xclbin_sha256": "cf363b394a34d5afc98ff97541c2d17de23416aa0ef12282c53618e57b6888af",
+      "xclbin_sha256": "89425728e3578c04afba4622e4f35fe9557a538131d392ec7c5f20b858ef06d3",
       "instructions_sha256": "cc811e1751208451a5979e117c91dc238809403602c58b098d1acd55edc3a5d6",
-      "uuid": "7285c01a-d7ad-cd75-c688-90c05970f840",
+      "uuid": "0a4a534d-be0f-96e0-fb0c-408fe6a3b11a",
       "kernel": "MLIR_AIE"
     },
     "benchmark": {
@@ -35,44 +35,44 @@
       "measured_repeats": 5,
       "wall_time_ms": {
         "raw": [
-          2.675157,
-          2.533761,
-          2.763633,
-          2.492734,
-          2.56501
+          3.225506,
+          2.987789,
+          3.251935,
+          2.620289,
+          2.793304
         ],
-        "median": 2.56501,
-        "p95": 2.763633
+        "median": 2.987789,
+        "p95": 3.251935
       },
       "host_preparation_time_ms": {
         "raw": [
-          0.372332,
-          0.397125,
-          0.421492,
-          0.378032,
-          0.411393
+          0.625074,
+          0.574669,
+          0.630301,
+          0.445788,
+          0.490119
         ],
-        "median": 0.397125
+        "median": 0.574669
       },
       "cpu_verification_time_ms": {
         "raw": [
-          0.621976,
-          0.601851,
-          0.61785,
-          0.57569,
-          0.635744
+          0.706827,
+          0.645721,
+          0.693303,
+          0.513894,
+          0.554833
         ],
-        "median": 0.61785
+        "median": 0.645721
       },
       "xrt_dispatch_wait_time_ms": {
         "raw": [
-          1.680849,
-          1.534785,
-          1.724291,
-          1.539012,
-          1.517873
+          1.893605,
+          1.767399,
+          1.928331,
+          1.660607,
+          1.748352
         ],
-        "median": 1.539012
+        "median": 1.767399
       },
       "physical_dispatches": 80,
       "successful_dispatches": 80,
@@ -99,9 +99,9 @@
       "columns": 1,
       "status": "ACCEPTED",
       "artifact": {
-        "xclbin_sha256": "d9010483542ec27e3060d0ac9225e65c3437028e0b24ee2e667c38abd0527568",
+        "xclbin_sha256": "7debbdd991ae9ceab12f5d3e3b91dfba9ee142d551ec7bc89bb5f6a81cb0bf20",
         "instructions_sha256": "cc811e1751208451a5979e117c91dc238809403602c58b098d1acd55edc3a5d6",
-        "uuid": "8868a3ce-e0b2-eb15-8088-6c7899e7d22a",
+        "uuid": "79539b68-9740-0c9b-3d1f-04a52357b28e",
         "kernel": "MLIR_AIE",
         "artifact_dir": "build/xdna-m5-b1-c1",
         "target_columns": 1,
@@ -154,44 +154,44 @@
         "measured_repeats": 5,
         "wall_time_ms": {
           "raw": [
-            3.366015,
-            3.029844,
-            3.162543,
-            2.684414,
-            2.83137
+            3.610288,
+            3.48338,
+            3.337686,
+            3.685038,
+            4.909527
           ],
-          "median": 3.029844,
-          "p95": 3.366015
+          "median": 3.610288,
+          "p95": 4.909527
         },
         "host_preparation_time_ms": {
           "raw": [
-            0.317279,
-            0.288293,
-            0.265868,
-            0.258688,
-            0.265459
+            0.422754,
+            0.388969,
+            0.387736,
+            0.420971,
+            0.479621
           ],
-          "median": 0.265868
+          "median": 0.420971
         },
         "cpu_verification_time_ms": {
           "raw": [
-            0.694304,
-            0.56944,
-            0.547749,
-            0.545396,
-            0.641525
+            0.629821,
+            0.579662,
+            0.597763,
+            0.63268,
+            0.795745
           ],
-          "median": 0.56944
+          "median": 0.629821
         },
         "xrt_dispatch_wait_time_ms": {
           "raw": [
-            1.939097,
-            1.825699,
-            2.039312,
-            1.571804,
-            1.59101
+            1.998174,
+            1.919363,
+            1.839572,
+            2.067161,
+            2.954067
           ],
-          "median": 1.825699
+          "median": 1.998174
         },
         "physical_dispatches": 80,
         "successful_dispatches": 80,
@@ -220,9 +220,9 @@
       "columns": 1,
       "status": "ACCEPTED",
       "artifact": {
-        "xclbin_sha256": "b2c83615919f7f7360daeddd7a5b2ad4e6c2a326a859aa5b4a2ae110ac6533d2",
+        "xclbin_sha256": "624f9920fbee1039ba3ce7af0ca914d165defa7023bab3308f5491134d66ce06",
         "instructions_sha256": "ce87a9f1eccd64e85b03d4173262a832cf9cf85200e14a63444ce4873426ca0a",
-        "uuid": "d8769a41-a32a-8d72-07f9-b91d38a73a78",
+        "uuid": "206a6a4b-0ac8-d87d-fbfd-f106bc267942",
         "kernel": "MLIR_AIE",
         "artifact_dir": "build/xdna-m5-b2-c1",
         "target_columns": 1,
@@ -275,44 +275,44 @@
         "measured_repeats": 5,
         "wall_time_ms": {
           "raw": [
-            2.013814,
-            2.331351,
-            1.990731,
-            2.033531,
-            2.054991
+            3.298462,
+            3.938564,
+            2.770501,
+            3.093838,
+            2.779969
           ],
-          "median": 2.033531,
-          "p95": 2.331351
+          "median": 3.093838,
+          "p95": 3.938564
         },
         "host_preparation_time_ms": {
           "raw": [
-            0.264889,
-            0.337852,
-            0.268543,
-            0.295634,
-            0.269267
+            0.496823,
+            0.483767,
+            0.380855,
+            0.414278,
+            0.408886
           ],
-          "median": 0.269267
+          "median": 0.414278
         },
         "cpu_verification_time_ms": {
           "raw": [
-            0.566455,
-            0.700424,
-            0.582043,
-            0.6068,
-            0.5858
+            0.753392,
+            0.791928,
+            0.58604,
+            0.770317,
+            0.563036
           ],
-          "median": 0.5858
+          "median": 0.753392
         },
         "xrt_dispatch_wait_time_ms": {
           "raw": [
-            0.871837,
-            0.919497,
-            0.813408,
-            0.820553,
-            0.870567
+            1.372476,
+            2.019773,
+            1.296774,
+            1.366547,
+            1.33696
           ],
-          "median": 0.870567
+          "median": 1.366547
         },
         "physical_dispatches": 40,
         "successful_dispatches": 40,
@@ -341,9 +341,9 @@
       "columns": 1,
       "status": "ACCEPTED",
       "artifact": {
-        "xclbin_sha256": "a252fa254f2592c055e09b090bb64b7404404f35799c9bcd3384fcb2078d34f9",
+        "xclbin_sha256": "75eabbe7bd36812705198f2c93229da0563259eb9f3f3e744021fd43b2f6edc6",
         "instructions_sha256": "ac2cae0b96c4182f179f5d5ddb0924da8707bf23ab1b70b00aef6ea68ef828e6",
-        "uuid": "e125969a-c69a-54c3-a431-6c709571bf34",
+        "uuid": "135fb7df-1ba3-d7f5-5841-ccb7d2d4fd24",
         "kernel": "MLIR_AIE",
         "artifact_dir": "build/xdna-m5-b4-c1",
         "target_columns": 1,
@@ -396,44 +396,44 @@
         "measured_repeats": 5,
         "wall_time_ms": {
           "raw": [
-            1.862861,
-            1.695496,
-            1.729891,
-            1.567044,
-            1.604635
+            2.214187,
+            1.965079,
+            1.719047,
+            1.968165,
+            1.918572
           ],
-          "median": 1.695496,
-          "p95": 1.862861
+          "median": 1.965079,
+          "p95": 2.214187
         },
         "host_preparation_time_ms": {
           "raw": [
-            0.263735,
-            0.26699,
-            0.294453,
-            0.26074,
-            0.262013
+            0.341621,
+            0.301946,
+            0.291728,
+            0.326743,
+            0.358694
           ],
-          "median": 0.263735
+          "median": 0.326743
         },
         "cpu_verification_time_ms": {
           "raw": [
-            0.566995,
-            0.583106,
-            0.594228,
-            0.558261,
-            0.563029
+            0.553219,
+            0.609915,
+            0.496688,
+            0.556522,
+            0.517723
           ],
-          "median": 0.566995
+          "median": 0.553219
         },
         "xrt_dispatch_wait_time_ms": {
           "raw": [
-            0.731525,
-            0.539994,
-            0.525209,
-            0.450094,
-            0.47897
+            0.616427,
+            0.634742,
+            0.540965,
+            0.663534,
+            0.61854
           ],
-          "median": 0.525209
+          "median": 0.61854
         },
         "physical_dispatches": 20,
         "successful_dispatches": 20,
@@ -462,9 +462,9 @@
       "columns": 2,
       "status": "ACCEPTED",
       "artifact": {
-        "xclbin_sha256": "0c189951639c8a27cabf49704fd1bff7796bfa6a641b2c80ceaed63c2ca0c70a",
+        "xclbin_sha256": "05b17f805770e891f19a7229747fc1b1a840beda05e9aef3e708be17df394547",
         "instructions_sha256": "711028cb290e20365c8d9c579bbaa6a874a06dba47b59220e395e8a0ad16e4e5",
-        "uuid": "f4d13c9a-3f68-f9b2-f187-b8dc7139b6fa",
+        "uuid": "8b08e455-c12f-a617-8b54-67274533af1d",
         "kernel": "MLIR_AIE",
         "artifact_dir": "build/xdna-m5-b2-c2",
         "target_columns": 2,
@@ -522,44 +522,44 @@
         "measured_repeats": 5,
         "wall_time_ms": {
           "raw": [
-            2.131695,
-            1.943893,
-            1.949964,
-            2.342762,
-            2.547707
+            2.997457,
+            2.724093,
+            2.489644,
+            2.489574,
+            2.40805
           ],
-          "median": 2.131695,
-          "p95": 2.547707
+          "median": 2.489644,
+          "p95": 2.997457
         },
         "host_preparation_time_ms": {
           "raw": [
-            0.289315,
-            0.266131,
-            0.26641,
-            0.31388,
-            0.312907
+            0.48926,
+            0.368902,
+            0.396143,
+            0.370315,
+            0.338217
           ],
-          "median": 0.289315
+          "median": 0.370315
         },
         "cpu_verification_time_ms": {
           "raw": [
-            0.574078,
-            0.554535,
-            0.571691,
-            0.689837,
-            0.594509
+            0.651942,
+            0.752993,
+            0.64275,
+            0.604306,
+            0.593482
           ],
-          "median": 0.574078
+          "median": 0.64275
         },
         "xrt_dispatch_wait_time_ms": {
           "raw": [
-            0.952741,
-            0.785818,
-            0.79263,
-            0.960775,
-            1.272109
+            1.269464,
+            1.09318,
+            0.961456,
+            1.046365,
+            1.056253
           ],
-          "median": 0.952741
+          "median": 1.056253
         },
         "physical_dispatches": 40,
         "successful_dispatches": 40,
@@ -588,9 +588,9 @@
       "columns": 2,
       "status": "ACCEPTED",
       "artifact": {
-        "xclbin_sha256": "5ccbd09e725617e25b5933b15a629cc47a98ea70fb695f84b2a9bfe57c7c1002",
+        "xclbin_sha256": "1f035f0dc4d41f8f0b0d914712b0361f3f5bba7dd8b490aabc614feeeb257332",
         "instructions_sha256": "55865478c8bc05447745e970c4d548e4e0fd38b2d74aaff9505aedca6c99e04e",
-        "uuid": "d5562c14-0cdf-a1ad-07ef-efb3483a6810",
+        "uuid": "924c504e-c6bd-1423-a951-5a8a20e64a5b",
         "kernel": "MLIR_AIE",
         "artifact_dir": "build/xdna-m5-b4-c2",
         "target_columns": 2,
@@ -648,44 +648,44 @@
         "measured_repeats": 5,
         "wall_time_ms": {
           "raw": [
-            1.592723,
-            1.793951,
-            2.065441,
-            1.715834,
-            2.062766
+            1.759563,
+            1.663743,
+            1.615823,
+            1.694662,
+            1.838581
           ],
-          "median": 1.793951,
-          "p95": 2.065441
+          "median": 1.694662,
+          "p95": 1.838581
         },
         "host_preparation_time_ms": {
           "raw": [
-            0.269678,
-            0.264958,
-            0.362541,
-            0.3198,
-            0.351761
+            0.336362,
+            0.299902,
+            0.291578,
+            0.312717,
+            0.310323
           ],
-          "median": 0.3198
+          "median": 0.310323
         },
         "cpu_verification_time_ms": {
           "raw": [
-            0.558903,
-            0.568148,
-            0.753012,
-            0.562098,
-            0.791749
+            0.515359,
+            0.501122,
+            0.482606,
+            0.52192,
+            0.535264
           ],
-          "median": 0.568148
+          "median": 0.515359
         },
         "xrt_dispatch_wait_time_ms": {
           "raw": [
-            0.45768,
-            0.659919,
-            0.508697,
-            0.515228,
-            0.538742
+            0.528091,
+            0.519014,
+            0.504126,
+            0.503505,
+            0.558249
           ],
-          "median": 0.515228
+          "median": 0.519014
         },
         "physical_dispatches": 20,
         "successful_dispatches": 20,
@@ -714,9 +714,9 @@
       "columns": 2,
       "status": "ACCEPTED",
       "artifact": {
-        "xclbin_sha256": "218b78cb7257c818b3d91be08f78b9ac70cafcf075ec27b1d29aec249f7762f6",
+        "xclbin_sha256": "aca0518dad7feafd6d4a5f6c7e0980554a11d0ec12083ab0a109d4b387cea91f",
         "instructions_sha256": "dbdff2de716f726f658388d79e9a5921f6b22b9ed29e016cb5eef4085463579d",
-        "uuid": "aba3cfa5-087e-a57a-5341-4a7c35860fb2",
+        "uuid": "b51ee511-c9a1-9620-2f7a-3005494e543b",
         "kernel": "MLIR_AIE",
         "artifact_dir": "build/xdna-m5-b8-c2",
         "target_columns": 2,
@@ -774,44 +774,44 @@
         "measured_repeats": 5,
         "wall_time_ms": {
           "raw": [
-            1.82027,
-            1.665741,
-            1.668465,
-            1.779163,
-            1.570641
+            1.466273,
+            1.567413,
+            1.51822,
+            1.920385,
+            1.462085
           ],
-          "median": 1.668465,
-          "p95": 1.82027
+          "median": 1.51822,
+          "p95": 1.920385
         },
         "host_preparation_time_ms": {
           "raw": [
-            0.364255,
-            0.39389,
-            0.286849,
-            0.374303,
-            0.282882
+            0.313749,
+            0.349897,
+            0.343205,
+            0.471184,
+            0.301295
           ],
-          "median": 0.364255
+          "median": 0.343205
         },
         "cpu_verification_time_ms": {
           "raw": [
-            0.792328,
-            0.574851,
-            0.757924,
-            0.689825,
-            0.556576
+            0.519967,
+            0.501232,
+            0.500761,
+            0.606235,
+            0.490851
           ],
-          "median": 0.689825
+          "median": 0.501232
         },
         "xrt_dispatch_wait_time_ms": {
           "raw": [
-            0.251974,
-            0.274235,
-            0.234501,
-            0.29818,
-            0.415581
+            0.278864,
+            0.284665,
+            0.288542,
+            0.332744,
+            0.278803
           ],
-          "median": 0.274235
+          "median": 0.284665
         },
         "physical_dispatches": 10,
         "successful_dispatches": 10,
@@ -840,9 +840,9 @@
       "columns": 4,
       "status": "ACCEPTED",
       "artifact": {
-        "xclbin_sha256": "20f4eee8d0a2bfc44c5b118b8af6e8f9cd3454b2037a1f967867f57844ad3477",
+        "xclbin_sha256": "4d40bafdac08515b30383be850b33999bbee4f92ee42039c7cca591a2852366b",
         "instructions_sha256": "21624bdfcae16190860b630b2a085e6cd7b8bd6bbb7871443da7ec1f097de80b",
-        "uuid": "6fec589f-9c9d-1410-361d-a126ddc06c18",
+        "uuid": "b9eae87a-517e-715c-0ed8-1e7c6374bc20",
         "kernel": "MLIR_AIE",
         "artifact_dir": "build/xdna-m5-b4-c4",
         "target_columns": 4,
@@ -910,44 +910,44 @@
         "measured_repeats": 5,
         "wall_time_ms": {
           "raw": [
-            1.694874,
-            1.677092,
-            2.143097,
-            1.763303,
-            1.826793
+            1.981721,
+            1.780362,
+            1.705542,
+            1.936946,
+            1.792676
           ],
-          "median": 1.763303,
-          "p95": 2.143097
+          "median": 1.792676,
+          "p95": 1.981721
         },
         "host_preparation_time_ms": {
           "raw": [
-            0.280386,
-            0.291339,
-            0.395753,
-            0.331483,
-            0.314671
+            0.321464,
+            0.313539,
+            0.30757,
+            0.348525,
+            0.335019
           ],
-          "median": 0.314671
+          "median": 0.321464
         },
         "cpu_verification_time_ms": {
           "raw": [
-            0.588913,
-            0.556496,
-            0.775187,
-            0.549092,
-            0.624802
+            0.667944,
+            0.495459,
+            0.491794,
+            0.556826,
+            0.534937
           ],
-          "median": 0.588913
+          "median": 0.534937
         },
         "xrt_dispatch_wait_time_ms": {
           "raw": [
-            0.494509,
-            0.493688,
-            0.517923,
-            0.536367,
-            0.507242
+            0.546937,
+            0.567245,
+            0.553399,
+            0.584276,
+            0.530487
           ],
-          "median": 0.507242
+          "median": 0.553399
         },
         "physical_dispatches": 20,
         "successful_dispatches": 20,
@@ -976,9 +976,9 @@
       "columns": 4,
       "status": "ACCEPTED",
       "artifact": {
-        "xclbin_sha256": "75fc969631e026e61cd5f4fa620ee1bff74e007e0c51e1facccb900e6b45acd9",
+        "xclbin_sha256": "dae6e7f196eef9d13ada94af46121d506149986a139e2a0f38d04d2e6d491a81",
         "instructions_sha256": "be75b2fcab2a78a565fd3a76b158f87b442a591720e39bca9a80f32b60c7f9af",
-        "uuid": "5bab5a55-c0f7-43e6-52be-6d95a6bf5184",
+        "uuid": "50541904-45f2-8ef6-2449-fead6799db1c",
         "kernel": "MLIR_AIE",
         "artifact_dir": "build/xdna-m5-b8-c4",
         "target_columns": 4,
@@ -1046,44 +1046,44 @@
         "measured_repeats": 5,
         "wall_time_ms": {
           "raw": [
-            1.448792,
-            1.449043,
-            1.341541,
-            1.480231,
-            1.5323
+            1.929262,
+            1.352579,
+            1.479407,
+            1.399127,
+            1.328334
           ],
-          "median": 1.449043,
-          "p95": 1.5323
+          "median": 1.399127,
+          "p95": 1.929262
         },
         "host_preparation_time_ms": {
           "raw": [
-            0.298632,
-            0.272723,
-            0.27142,
-            0.298652,
-            0.299923
+            0.430208,
+            0.27651,
+            0.288081,
+            0.311665,
+            0.277942
           ],
-          "median": 0.298632
+          "median": 0.288081
         },
         "cpu_verification_time_ms": {
           "raw": [
-            0.546578,
-            0.564229,
-            0.544924,
-            0.555794,
-            0.599999
+            0.730672,
+            0.483207,
+            0.509056,
+            0.489109,
+            0.493846
           ],
-          "median": 0.555794
+          "median": 0.493846
         },
         "xrt_dispatch_wait_time_ms": {
           "raw": [
-            0.279164,
-            0.303499,
-            0.221165,
-            0.283934,
-            0.252755
+            0.296196,
+            0.268194,
+            0.326654,
+            0.269316,
+            0.242585
           ],
-          "median": 0.279164
+          "median": 0.269316
         },
         "physical_dispatches": 10,
         "successful_dispatches": 10,
@@ -1112,9 +1112,9 @@
       "columns": 4,
       "status": "ACCEPTED",
       "artifact": {
-        "xclbin_sha256": "29759a207719fed66be41160ce43f3c45eaaa62e96da0b7e2e8acebfb8db446b",
+        "xclbin_sha256": "b6ea34031ddd74e36f71070856d3bbeee81421c5d96eda396660f00218989912",
         "instructions_sha256": "8d4aae92b9edde7b9e2c6725ba74b3dbd91bc5d1e2e800ab1c4b1667f9a861f5",
-        "uuid": "c14c307b-349d-1e83-0bd8-f0dc24cb8cf4",
+        "uuid": "388b19e1-b865-2818-b673-cb4727cef277",
         "kernel": "MLIR_AIE",
         "artifact_dir": "build/xdna-m5-b16-c4",
         "target_columns": 4,
@@ -1182,44 +1182,44 @@
         "measured_repeats": 5,
         "wall_time_ms": {
           "raw": [
-            1.363993,
-            1.379001,
-            1.402115,
-            1.628309,
-            1.327945
+            1.260396,
+            1.277969,
+            1.516637,
+            1.457016,
+            1.249516
           ],
-          "median": 1.379001,
-          "p95": 1.628309
+          "median": 1.277969,
+          "p95": 1.516637
         },
         "host_preparation_time_ms": {
           "raw": [
-            0.278854,
-            0.296617,
-            0.286418,
-            0.370186,
-            0.272001
+            0.27215,
+            0.288332,
+            0.27702,
+            0.465594,
+            0.276138
           ],
-          "median": 0.286418
+          "median": 0.27702
         },
         "cpu_verification_time_ms": {
           "raw": [
-            0.583287,
-            0.572554,
-            0.603226,
-            0.580501,
-            0.5734
+            0.479131,
+            0.491163,
+            0.694624,
+            0.498377,
+            0.494809
           ],
-          "median": 0.580501
+          "median": 0.494809
         },
         "xrt_dispatch_wait_time_ms": {
           "raw": [
-            0.181261,
-            0.185168,
-            0.160962,
-            0.256602,
-            0.17031
+            0.136246,
+            0.171922,
+            0.14357,
+            0.162936,
+            0.158909
           ],
-          "median": 0.181261
+          "median": 0.158909
         },
         "physical_dispatches": 5,
         "successful_dispatches": 5,
@@ -1247,7 +1247,7 @@
   "selected_configuration": {
     "batch_size": 16,
     "columns": 4,
-    "median_wall_time_ms": 1.379001,
+    "median_wall_time_ms": 1.277969,
     "rationale": "lowest measured median wall time among exact, runtime-clean configurations"
   },
   "rejected_configurations": [],

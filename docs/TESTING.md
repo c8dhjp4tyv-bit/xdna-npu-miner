@@ -411,10 +411,22 @@ ctest --test-dir build --output-on-failure
 python3 -m json.tool docs/evidence/m6-direct-node.json
 ```
 
-No live endpoint or signing secret is implied by the mock test. Live
-system-info and solution submission must be reported separately, and live
-submission remains disabled until an independently reviewed permissive crypto
-provider is configured and an authorized endpoint is supplied.
+The optional production crypto gate is separate from the default build:
+
+```bash
+cmake -S . -B build-crypto -DCMAKE_BUILD_TYPE=Debug \
+  -DXDNA_ENABLE_PRODUCTION_CRYPTO=ON
+cmake --build build-crypto -j2
+ctest --test-dir build-crypto --output-on-failure
+```
+
+This opt-in run includes `qubic_crypto_tests`, which checks RFC 9861 K12
+vectors, the synthetic Qubic SchnorrQ signature vector, and exact synthetic
+FourQ public-key, shared-key, gamming-key, and gamma-stream bytes. The
+observed gate is 7/7 tests passed. No live endpoint or signing secret is
+implied by either test suite. Live system-info and solution submission remain
+disabled until an explicitly authorized endpoint and safe runtime signing
+material are supplied.
 
 ## Security-oriented tests
 
