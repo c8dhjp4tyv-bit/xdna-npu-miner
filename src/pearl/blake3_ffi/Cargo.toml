@@ -1,0 +1,12 @@
+[package]
+name = "pearl_blake3_ffi"
+version = "0.1.0"
+edition = "2021"
+license = "CC0-1.0 OR Apache-2.0"
+publish = false
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+blake3 = "=1.8.2"

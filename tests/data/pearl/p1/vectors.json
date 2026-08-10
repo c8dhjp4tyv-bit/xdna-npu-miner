@@ -1,0 +1,116 @@
+{
+  "schema": "pearl-p1-cpu-golden/v1",
+  "source_pin": "fe22b6a2b831d95b2f56564808f39d2f498f34a5",
+  "clean_room": true,
+  "wire": {
+    "endianness": "little-endian integers; header hashes reversed on the 76-byte wire form",
+    "header_bytes": 76,
+    "mining_configuration_bytes": 52,
+    "public_data_bytes_dense": 164,
+    "merkle_leaf_bytes": 1024,
+    "transcript_words": 16,
+    "plain_proof_version": 1
+  },
+  "quantization": {
+    "logical_input_boundary": "raw mining matrices [-64,63]; whitepaper +64 is rejected by the current raw path",
+    "quantized_boundary": "[-63,63]",
+    "max_val": 63,
+    "rounding": "fp32 scale and ties-to-even",
+    "zero_point": 0
+  },
+  "fixed_vectors": [
+    {
+      "id": "E-header-config-job-key",
+      "header": "010000200101010101010101010101010101010101010101010101010101010101010101020202020202020202020202020202020202020202020202020202020202020266666666ffff7f20",
+      "config": "00080000800000000701000000000001031f00000000000000000000000000000000000000000000000000000000000000000000",
+      "job_key": "13038bff01365936baf6f890b92cbdc3fc1bc4d5f9ae9cd13dc33ce1bdbb6fb5"
+    },
+    {
+      "id": "F-commitment-roots-and-seeds",
+      "hash_a": "c9e8ab596522cc18141fc06b85f5dc6f7a630ea1924b68b85e125c75909d5fdf",
+      "hash_b": "5c275f3d65b38abee77b3d023f682a7b4583c7543306ac305c768e4e5ace0a54",
+      "commitment_b": "9140b2d61669f1c596abf40f936acde2ae8ac0d1f81205fd0cd8981fd7e66124",
+      "commitment_a": "7d9ec642653bdc89a826c93153753d9244d8df3fa8e79d6dc39fe3852ba8064e"
+    },
+    {
+      "id": "D-noise-fixed",
+      "k": 1024,
+      "rank": 128,
+      "a_rows": [0, 8],
+      "b_columns": "[8j,8j+1] for j=0..31",
+      "noise_a_digest_key_zero": "6d94762e986796b07b09b7b3fe9ea7bb930c52b69a4f14dde5c43d9cb44b7cee",
+      "noise_b_transposed_digest_key_zero": "41969f42aad69861c9e74057eebf3e349a0662b83a0e2047f9722fc80f9dc55b"
+    },
+    {
+      "id": "H-transcript-trace",
+      "matrix_fixture": "A=9x2048 seed=0xA11CE; B=2048x250 seed=0xB0B0; selected rows [0,8]; selected columns [8j,8j+1]",
+      "transcript_words_hex_le_u32": "0000ca65ffffba7effff01bd00001d4dfffee55bfffeba6a0001d39e00027572fffcf4da00027c3400020a79ffffa4f10001ef93000017bbfffd706efffd3dfa",
+      "trace_combined_xor_hex_le_u32": [
+        "0000ca65", "ffffba7e", "ffff01bd", "00001d4d",
+        "fffee55b", "fffeba6a", "0001d39e", "00027572",
+        "fffcf4da", "00027c34", "00020a79", "ffffa4f1",
+        "0001ef93", "000017bb", "fffd706e", "fffd3dfa"
+      ],
+      "jackpot": "98e6852e2dc76e954d18d7008f6433c12ed3a56169e50e00b45e5b9e5014462b"
+    },
+    {
+      "id": "J-merkle-opening",
+      "key": "1111111111111111111111111111111111111111111111111111111111111111",
+      "matrix_fixture": "9x2048 deterministic splitmix64 seed=0x12345678",
+      "root": "64fbfc45892d7d7802f6d43104f966303914b8f14f73880fe8c6522f62f2623a",
+      "tampered_leaf": "reject"
+    },
+    {
+      "id": "J-upstream-merkle-black-box",
+      "input": "2048 bytes 00..ff repeated, padded at 1024-byte boundary",
+      "key": "1111111111111111111111111111111111111111111111111111111111111111",
+      "root": "aa17a0831b07bb7ed899783326e09ee7f4cfde523218c14c7eaedeeb069f7531",
+      "upstream_match": true
+    },
+    {
+      "id": "K-plain-proof-envelope",
+      "version": 1,
+      "m": 9,
+      "n": 250,
+      "k": 2048,
+      "rank": 128,
+      "t_rows": 0,
+      "t_cols": 0,
+      "serialized_bytes": 139736,
+      "round_trip": true,
+      "zk_certificate_generated": false
+    },
+    {
+      "id": "I-target-boundaries",
+      "comparison": "little-endian 256-bit <=",
+      "zero_equals_zero": true,
+      "one_misses_zero": true,
+      "equal_hash_target": true,
+      "maximum_target": true
+    }
+  ],
+  "negative_vectors": [
+    "truncated header/config/pattern/PlainProof",
+    "noncanonical periodic pattern",
+    "nonzero reserved dense trailer",
+    "rank below current 128 floor",
+    "matrix/pattern out of bounds",
+    "quantization length mismatch and nonfinite values",
+    "checked int32 accumulator overflow",
+    "Merkle leaf tamper and missing extraction coverage",
+    "malformed target/PlainProof version"
+  ],
+  "seeded_randomized_cases": 24,
+  "fixed_vector_count": 8,
+  "negative_vector_count": 19,
+  "upstream_comparisons": {
+    "repository": "https://github.com/pearl-research-labs/pearl",
+    "commit": "fe22b6a2b831d95b2f56564808f39d2f498f34a5",
+    "black_box_command": "cargo run --release in /tmp/pearl-p1-blackbox",
+    "pearl_blake3_tests": "35 passed; 0 failed",
+    "job_key_match": true,
+    "merkle_root_match": true,
+    "full_Pearl_miner_binary": "not available in the pinned tree; no claim made"
+  },
+  "benchmark_claims": "none"
+}

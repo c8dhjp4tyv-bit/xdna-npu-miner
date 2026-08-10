@@ -6,15 +6,42 @@ M3 verifies one physical BPP9000 K1 recurrent tick; M4 verifies repeated ticks,
 window scoring, full score reduction, and candidate lifecycle behavior against
 the exact M1 oracle. Performance remains outside M4.
 
-## Pearl P0 testing boundary
+## Pearl P1 CPU-golden testing boundary
 
-Pearl is a separate documentation-only track. Its P0 record is
-[`docs/evidence/pearl-p0.json`](evidence/pearl-p0.json), and its required
-checks are JSON parsing, source-pin/record consistency, independent arithmetic
-formula checks, license/protocol documentation review, and `git diff --check`.
-No Pearl kernel, CPU golden path, live node/pool connection, proof submission,
-or hardware result is claimed in P0. Pearl P1 must establish the CPU oracle
-before any XDNA1 differential test; the Qubic tests below remain unchanged.
+Pearl is a separate clean-room track. P0 remains recorded in
+[`docs/evidence/pearl-p0.json`](evidence/pearl-p0.json); P1's fixed corpus is
+[`tests/data/pearl/p1/vectors.json`](../tests/data/pearl/p1/vectors.json) and
+its evidence is [`docs/evidence/pearl-p1.json`](evidence/pearl-p1.json).
+The focused target is `pearl_cpu_golden_tests`.
+
+P1 checks, in order, are:
+
+- explicit little-endian header/config/public-data/PlainProof round trips;
+- raw `[-64,63]` validation versus fp32 `max_val=63` quantization to
+  `[-63,63]`, ties-to-even boundaries, and zero-point absence;
+- signed int8×int8 products with widened checked accumulation, deterministic
+  rank-dependent noise, exact denoising, selected 2×64 data, and 16-word
+  rotate-left-13 transcript traces;
+- keyed BLAKE3 intermediate/final values, little-endian jackpot target
+  ordering, 1024-byte Merkle roots/openings, and PlainProof derived fields;
+- malformed/truncated/noncanonical/out-of-bounds/overflow fail-closed cases;
+- 24 deterministic seeded cases across rank 32/64/128 and valid k/edge/seed/
+  target combinations.
+
+Run the real checks with:
+
+```bash
+cargo build --manifest-path src/pearl/blake3_ffi/Cargo.toml --release --locked
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j2
+ctest --test-dir build --output-on-failure
+python3 -m json.tool docs/evidence/pearl-p1.json >/dev/null
+git diff --check
+```
+
+No Pearl NPU, live node/pool, proof submission, hardware result, benchmark,
+hashrate, or profitability claim is made by P1. The Qubic tests below remain
+unchanged.
 
 ## Authoritative behavior under test
 

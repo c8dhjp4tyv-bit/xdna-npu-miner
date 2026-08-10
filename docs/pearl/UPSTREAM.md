@@ -87,6 +87,36 @@ library's `nbits_override` allows a share target to be validated, but it does
 not define an external pool transport or payout protocol. Pool support is
 therefore `UNKNOWN` and remains out of P0.
 
+## P1 clean-room and black-box record
+
+P1 inspected the pinned source only to write an independent behavior record;
+the following Pearl hot-component files were not copied, translated, or
+structurally reproduced in `src/pearl/`:
+
+- `miner/pearl-gemm`, `miner/pearl-gateway`, `miner/miner-base`,
+  `py-pearl-mining`, `zk-pow`, and `pearl-blake3`.
+
+The P1 implementation's only cryptographic dependency is the official BLAKE3
+crate `blake3 = 1.8.2`, pinned in
+`src/pearl/blake3_ffi/Cargo.toml` and `Cargo.lock`. Cargo metadata reports
+`CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception`; P1 records the
+compatible `CC0-1.0 OR Apache-2.0` license expression in its manifest. The
+helper uses public one-shot keyed hashing and the public `hazmat` chunk/parent
+CV APIs through a minimal C ABI. It does not use Pearl's local BLAKE3 code.
+
+P1 source facts and black-box checks:
+
+| Behavior | Pinned source/tool | Input/output record | Result |
+|---|---|---|---|
+| BLAKE3 helper/Merkle implementation tests | external `/tmp/pearl-p1-audit/pearl-blake3`, commit `fe22b6a2...` | `cargo test --manifest-path .../pearl-blake3/Cargo.toml`; 35 tests | 35 passed |
+| Job key | external comparator using the pinned `pearl-blake3` crate | 108-byte header/config preimage; `13038bff01365936baf6f890b92cbdc3fc1bc4d5f9ae9cd13dc33ce1bdbb6fb5` | match |
+| 1024-byte Merkle tree | external comparator `cargo run --release` in `/tmp/pearl-p1-blackbox` | 2048 bytes `00..ff` repeated, key `11`×32; root `aa17a0831b07bb7ed899783326e09ee7f4cfde523218c14c7eaedeeb069f7531` | match |
+| Full Pearl miner | no pinned standalone binary/tool available | no observable output | no claim |
+
+The fixed corpus and all P1 output values are in
+`tests/data/pearl/p1/vectors.json`. The P1 evidence record includes the
+corpus SHA-256, dependency details, test counts, and unresolved limitations.
+
 ## License review and code-reuse decision
 
 The root `LICENSE` identifies an ISC root and component-specific licenses:

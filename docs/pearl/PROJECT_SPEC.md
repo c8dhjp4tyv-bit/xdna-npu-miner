@@ -1,11 +1,12 @@
-# Pearl (PRL) Mining Research — P0 Project Specification
+# Pearl (PRL) Mining Research — P1 Project Specification
 
 ## State and scope
 
-This is the active Pearl research track on branch `feat/pearl-m0`. P0 is an
-upstream, protocol, license, kernel, and XDNA1 feasibility audit only. It does
-not add a Pearl miner, a wallet, a pool client, a live node connection, a share
-submission path, or a new NPU kernel.
+This is the active Pearl research track on branch `feat/pearl-p1-cpu-golden`.
+P0 established the pinned protocol/license baseline; P1 adds only the trusted,
+clean-room CPU golden reference and canonical vectors. It does not add a Pearl
+miner, wallet, pool client, live node connection, share submission path, NPU
+kernel, or ZK prover.
 
 The completed Qubic work remains the frozen reference track. Its source,
 Qatum boundary, identities, and M6/M7 state are not being changed by Pearl
@@ -28,6 +29,52 @@ overall Pearl mining path: UNKNOWN_NEEDS_EXPERIMENT
 The primitive is a plausible AIE2 workload, but no Pearl kernel has yet been
 implemented or differentially verified on this host. P0 makes no hashrate,
 latency, energy, profitability, or speedup claim.
+
+## P1 status and gate
+
+P1 is **COMPLETE** only when the focused CPU test target, the full existing
+CTest suite, JSON evidence, corpus digest, and `git diff --check` all pass on
+the same clean-room implementation. The P1 implementation is intentionally
+separate from `src/bpp9000/`, `src/qubic/`, and all Qubic wire types.
+
+The current CPU reference is in [`../../src/pearl/reference.hpp`](../../src/pearl/reference.hpp)
+and [`../../src/pearl/reference.cpp`](../../src/pearl/reference.cpp). The
+canonical corpus is in [`../../tests/data/pearl/p1/vectors.json`](../../tests/data/pearl/p1/vectors.json).
+The CMake target is `pearl_cpu_golden_tests`; it links a small Rust FFI helper
+whose only cryptographic dependency is the official `blake3` crate pinned to
+`1.8.2` and licensed `CC0-1.0 OR Apache-2.0`.
+
+## P1 resolved CPU contracts
+
+- Raw mining matrices are signed int8 values in `[-64,63]`. The current
+  quantizer uses fp32 `scale=max_abs/63`, no zero point, ties-to-even rounding,
+  and clamps quantized output to `[-63,63]`. Thus the whitepaper's `+64` is not
+  accepted by the pinned current raw mining path; `-64` remains a valid raw
+  boundary value. This distinction is recorded in the vectors rather than
+  silently conflated.
+- Every dot product widens signed int8 operands to int64 for accumulation and
+  rejects a result outside int32. No wrapping or saturation is used.
+- Header fields, patterns, dense configuration, public data, openings,
+  transcript words, and P1 PlainProof fields use explicit little-endian
+  widths. Header hash fields use the pinned 76-byte reversed wire order.
+- Noise uses the pinned `A_tensor`/`B_tensor` labels, keyed BLAKE3-derived
+  uniform bytes in `[-32,31]`, sparse `+1/-1` permutation pairs, rank-dependent
+  factors, `noise_range=128`, and `idxs_per_col=2`.
+- The selected data is the current `[0,8]` by `[8j,8j+1]` (`j=0..31`)
+  `2x64` tile. The implementation supports both its compact selected layout
+  and the corresponding full-matrix coordinates. Each full-r cumulative
+  product is XOR-reduced as int32 bit patterns and applied to transcript slot
+  `reduction_index mod 16` with rotate-left 13.
+- Jackpot hashing is keyed BLAKE3 over 16 little-endian u32 words, interpreted
+  as a little-endian 256-bit integer with the pinned `<=` target rule.
+- Merkle leaves are 1024 bytes. Openings are sorted, unique selected rows with
+  canonical sibling ordering and exact root verification. P1's `PlainProof`
+  is a fixed-width candidate envelope immediately before CPU/Rust proof
+  generation; it is not a ZK certificate and no ZK proof is generated.
+
+The full contract, fixed values, negative cases, upstream black-box result,
+and seeded randomized count are recorded in
+[`../../docs/evidence/pearl-p1.json`](../evidence/pearl-p1.json).
 
 ## Authoritative Pearl revision
 
@@ -228,3 +275,14 @@ hashrate is claimed.
 - No claim that four XDNA1 columns improve Pearl throughput until measured.
 
 The staged Pearl work and acceptance gates are in [`MILESTONES.md`](MILESTONES.md).
+
+## P1 non-goals
+
+- No XDNA1/AIE2 kernel, `/dev/accel` access, device dispatch, telemetry, or
+  benchmark.
+- No live Pearl node, gateway, pool, wallet, job parser, share/block
+  submission, persistence, or profitability path.
+- No ZK proving, certificate generation, or claim that a `PlainProof` is
+  submit-ready.
+- No reuse of unclear-license Pearl miner, gateway, proof, binding, or local
+  BLAKE3 source.

@@ -11,6 +11,37 @@ option(XDNA_ENABLE_PRODUCTION_CRYPTO
     OFF
 )
 
+find_program(PEARL_CARGO_EXECUTABLE cargo REQUIRED)
+find_package(Threads REQUIRED)
+
+set(PEARL_BLAKE3_MANIFEST "${CMAKE_CURRENT_SOURCE_DIR}/src/pearl/blake3_ffi/Cargo.toml")
+set(PEARL_BLAKE3_TARGET_DIR "${CMAKE_CURRENT_BINARY_DIR}/pearl-blake3-cargo")
+set(PEARL_BLAKE3_STATIC_LIBRARY
+    "${PEARL_BLAKE3_TARGET_DIR}/release/libpearl_blake3_ffi.a")
+
+add_custom_command(
+    OUTPUT "${PEARL_BLAKE3_STATIC_LIBRARY}"
+    COMMAND ${CMAKE_COMMAND} -E env
+            "CARGO_TARGET_DIR=${PEARL_BLAKE3_TARGET_DIR}"
+            "${PEARL_CARGO_EXECUTABLE}"
+            build --release --locked --manifest-path "${PEARL_BLAKE3_MANIFEST}"
+    DEPENDS
+        "${PEARL_BLAKE3_MANIFEST}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/pearl/blake3_ffi/Cargo.lock"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/pearl/blake3_ffi/src/lib.rs"
+    VERBATIM
+)
+
+add_custom_target(pearl_blake3_ffi_build
+    DEPENDS "${PEARL_BLAKE3_STATIC_LIBRARY}"
+)
+
+add_library(pearl_blake3_ffi STATIC IMPORTED GLOBAL)
+set_target_properties(pearl_blake3_ffi PROPERTIES
+    IMPORTED_LOCATION "${PEARL_BLAKE3_STATIC_LIBRARY}"
+)
+add_dependencies(pearl_blake3_ffi pearl_blake3_ffi_build)
+
 add_library(bpp9000_reference
     src/bpp9000/task.cpp
     src/bpp9000/random.cpp
@@ -41,6 +72,39 @@ target_compile_options(bpp9000_tests PRIVATE
 
 enable_testing()
 add_test(NAME bpp9000_reference_tests COMMAND bpp9000_tests)
+
+add_library(pearl_cpu_reference
+    src/pearl/reference.cpp
+)
+
+target_include_directories(pearl_cpu_reference PUBLIC src)
+target_link_libraries(pearl_cpu_reference PUBLIC
+    pearl_blake3_ffi
+    Threads::Threads
+    ${CMAKE_DL_LIBS}
+    m
+)
+target_compile_options(pearl_cpu_reference PRIVATE
+    -Wall
+    -Wextra
+    -Wpedantic
+    -Wconversion
+    -Wshadow
+    -Werror
+)
+
+add_executable(pearl_cpu_tests tests/pearl_cpu_tests.cpp)
+target_link_libraries(pearl_cpu_tests PRIVATE pearl_cpu_reference)
+target_compile_options(pearl_cpu_tests PRIVATE
+    -Wall
+    -Wextra
+    -Wpedantic
+    -Wconversion
+    -Wshadow
+    -Werror
+)
+
+add_test(NAME pearl_cpu_golden_tests COMMAND pearl_cpu_tests)
 
 add_library(xdna_contract
     src/xdna/buffers.cpp

@@ -5,15 +5,14 @@ engineering agent.
 
 ## Active track
 
-**Pearl (PRL) P0 — upstream/spec/license/kernel/XDNA1 feasibility baseline**
+**Pearl (PRL) P1 — trusted clean-room CPU golden path and canonical vectors**
 
 The active Pearl handoff is [`docs/pearl/AI_HANDOFF.md`](pearl/AI_HANDOFF.md).
-P0 is documentation/evidence only. Its overall gate is
-`UNKNOWN_NEEDS_EXPERIMENT`; no Pearl source implementation, live node/pool
-connection, wallet, or submission path exists. The active branch is
-`feat/pearl-m0`; the exact P0 commit and push result are recorded in the Pearl
-handoff after the documentation checkpoint (`68cf293a1aa4b821eece5cfe0e916215b6953344`). The next exact task is P1's
-clean-room CPU golden path and canonical vectors.
+P1 is CPU-only: the independent oracle and canonical corpus are implemented,
+but no Pearl NPU, node/pool, wallet, live mining, submission, or ZK proof has
+been run. The active branch is `feat/pearl-p1-cpu-golden`, starting at
+`a15ed125295cc4361425a4b11159aa5744f3f160`; the final P1 commit/evidence
+digest must be recorded in the Pearl handoff before handoff.
 
 ## Frozen Qubic reference milestone
 

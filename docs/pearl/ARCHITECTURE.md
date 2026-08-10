@@ -39,9 +39,11 @@ This component will eventually own:
 - CPU reference inputs, commitment hashes, noise seeds, Merkle openings,
   certificate generation, and final verification.
 
-None of these responsibilities is implemented for Pearl in P0.
+The live/network responsibilities remain unimplemented. P1 implements only the
+standalone CPU candidate oracle described below; it does not acquire jobs or
+submit anything.
 
-### Candidate CPU reference
+### Candidate CPU reference (P1 complete)
 
 P1 must define a standalone trusted reference with explicit fixed-width fields:
 
@@ -56,7 +58,23 @@ jackpot/header/config -> target decision and PlainProof fields
 
 The reference must preserve row-major matrix bytes, `B^T` orientation, little
 endian integer serialization, signedness, pattern offsets, rank chunking, and
-all exact seed labels. It is the oracle for every later XDNA result.
+all exact seed labels. It is the oracle for every later XDNA result. P1 now
+implements this boundary in `src/pearl/reference.cpp` with:
+
+- explicit header, periodic-pattern, dense-config, public-data, and PlainProof
+  serializers with truncation/trailing-byte rejection;
+- fp32 symmetric quantization, checked int64-to-int32 scalar GEMM, noised
+  products, denoising correction, deterministic BLAKE3-derived noise, and
+  selected 2x64 transcript tracing;
+- a clean-room 1024-byte Merkle tree/opening verifier and fixed-width
+  pre-prover PlainProof model; and
+- a canonical corpus plus seeded negative/randomized tests under
+  `tests/data/pearl/p1/` and `tests/pearl_cpu_tests.cpp`.
+
+The Rust helper under `src/pearl/blake3_ffi/` uses the official BLAKE3 hazmat
+API only for standard keyed hashing and chunk/parent CV operations. No local
+Pearl BLAKE3 source was used. This is a dependency boundary, not a claim that
+the Pearl `pearl-blake3` component is reusable.
 
 ### Candidate XDNA1 backend
 

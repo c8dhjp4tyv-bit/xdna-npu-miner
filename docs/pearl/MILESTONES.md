@@ -26,12 +26,23 @@ The P0 gate is `UNKNOWN_NEEDS_EXPERIMENT`: the dense int8 MAC primitive is
 
 ## P1 — Trusted CPU golden path
 
-Implement a clean-room, CPU-only Pearl reference using the pinned wire/config
-formats. Define canonical test inputs and expected values for header/config
-serialization, commitments, noise, quantization, noised products, selected
-tiles, XOR/rotate transcript, jackpot target, Merkle openings, and derived
-proof fields. Resolve the `[-64,64]` whitepaper versus current `[-63,63]`
-implementation boundary explicitly.
+**Status: COMPLETE — clean-room CPU oracle and canonical corpus (2026-08-10).**
+
+The implementation in `src/pearl/` uses independently designed C++ types and
+algorithms. The only reused external implementation boundary is an official
+`blake3` 1.8.2 Rust dependency exposed through a minimal C ABI; no Pearl
+hot-component source is copied or translated.
+
+P1 defines and tests canonical header/config/public-data serialization,
+quantization, checked signed products, deterministic low-rank noise,
+commitment seeds, the selected 2x64 tile, transcript trace, keyed jackpot,
+1024-byte Merkle openings, and a fixed-width candidate PlainProof envelope.
+It resolves the raw `[-64,63]` versus quantized `[-63,63]` distinction and
+rejects arithmetic overflow instead of guessing wrap/saturation behavior.
+
+The fixed corpus is `tests/data/pearl/p1/`; the test target is
+`pearl_cpu_golden_tests`. Seeded tests cover rank 32/64/128 and valid k/edge
+cases, while P1 remains CPU-only.
 
 Exit: deterministic vectors pass on repeated runs and invalid dimensions,
 rank, target, layout, and overflow cases fail closed.

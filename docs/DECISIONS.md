@@ -4,14 +4,15 @@ Record material decisions here so later agents do not silently reverse them.
 
 ## D-041 — Pearl is a separate active track; Qubic is frozen reference
 
-**Status:** Accepted for Pearl P0
+**Status:** Accepted for Pearl P0/P1
 
 Pearl (PRL) research proceeds under `docs/pearl/` and branch
-`feat/pearl-m0`. The existing Qubic M0–M6 work, source boundaries, Qatum
+`feat/pearl-p1-cpu-golden`. The existing Qubic M0–M6 work, source boundaries, Qatum
 decision, identities, and evidence are preserved as a frozen reference and
-must not be continued or rewritten by Pearl work. Pearl P0 is documentation
-only, uses a clean-room rule for unclear upstream components, and keeps the
-CPU authoritative for network, proof, verification, and submission.
+must not be continued or rewritten by Pearl work. Pearl P0 was documentation
+only; P1 adds only the isolated clean-room CPU oracle and corpus. Unclear
+upstream components remain clean-room-only, and the CPU remains authoritative
+for network, proof, verification, and submission.
 
 Reason: the Pearl mining path, licenses, and protocol are materially different
 from Qubic. Separate records prevent accidental protocol or source reuse and
@@ -638,3 +639,32 @@ and requires its own resource/wire-compatibility checkpoint before launch.
 Reason: this prevents RPC success, stale hackathon infrastructure, a local
 simulation, or a cross-network identity accident from being mislabeled as the
 required direct-node testnet submission preflight.
+
+## D-042 — Pearl P1 raw versus quantized value boundary
+
+**Status:** Accepted for Pearl P1
+
+The current raw mining matrix contract accepts signed int8 values `[-64,63]`;
+the current quantizer uses `max_val=63` and therefore produces `[-63,63]`.
+P1 does not reinterpret the whitepaper's `+64` as a raw accepted value. It
+uses fp32 `max_abs/63` scales, no zero point, ties-to-even rounding, and
+explicit clamping. The two boundaries are distinct and are represented in the
+canonical corpus.
+
+Reason: P0 observed both source-level conventions. Treating them as one range
+would make a CPU/NPU comparison appear correct while changing the pinned
+mining path.
+
+## D-043 — Pearl P1 checked arithmetic and explicit proof envelope
+
+**Status:** Accepted for Pearl P1
+
+All signed products widen to int64 and reject an int32 result outside the
+representable range. P1 does not choose wrapping or saturation without an
+authoritative rule. The P1 `PlainProof` uses explicit fixed-width little-endian
+fields and stops before CPU/Rust ZK generation; it does not adopt opaque
+bincode or create a certificate.
+
+Reason: P0 did not establish overflow behavior, and the requested P1 boundary
+needs a stable independently testable object before any proof adapter or NPU
+work.

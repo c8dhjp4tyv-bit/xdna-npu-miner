@@ -6,15 +6,17 @@ physical full-score correctness evidence. No throughput, latency, power,
 NPU-activity, speedup, or work/Joule value may be inferred from those
 correctness runs.
 
-## Pearl P0 benchmark boundary
+## Pearl P1 benchmark boundary
 
-Pearl P0 contains only a first-order arithmetic/traffic model in
+Pearl P0 contains only a first-order arithmetic/traffic model, and P1 adds
+only CPU correctness vectors, in
 [`docs/pearl/PROJECT_SPEC.md`](pearl/PROJECT_SPEC.md) and
-[`docs/evidence/pearl-p0.json`](evidence/pearl-p0.json). It contains no Pearl
-throughput, latency, hashrate, power, energy, four-column, or profitability
-measurement. A Pearl benchmark may begin only after the P1 CPU oracle and P2
-XDNA1 differential contract pass, with Pearl source/version, dimensions, rank,
-batch, warm-up, repetitions, correctness, telemetry, and hardware recorded.
+[`docs/evidence/pearl-p0.json`](evidence/pearl-p0.json). P1 contains no Pearl
+throughput, latency, hashrate, power, energy, four-column, NPU, or
+profitability measurement. A Pearl benchmark may begin only after the P1 CPU
+oracle and P2 XDNA1 differential contract pass, with Pearl source/version,
+dimensions, rank, batch, warm-up, repetitions, correctness, telemetry, and
+hardware recorded.
 
 ## Workload identity
 

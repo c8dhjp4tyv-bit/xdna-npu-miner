@@ -12,7 +12,28 @@ Pearl is a separate active research target. Its official revision, mining and
 node path, whitepaper hash, license boundary, and clean-room reuse policy are
 recorded in [`docs/pearl/UPSTREAM.md`](pearl/UPSTREAM.md). Do not mix Pearl
 facts or source with the Qubic records below. Pearl P0 did not copy upstream
-source and did not make a live connection.
+source and did not make a live connection. Pearl P1 adds only an independent
+CPU oracle and a pinned third-party BLAKE3 dependency; it does not reuse Pearl
+hot-component source.
+
+### Pearl P1 implementation dependency record
+
+- `src/pearl/blake3_ffi/` pins the official `blake3` Rust crate at `1.8.2`.
+  The crate metadata declares `CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH
+  LLVM-exception`; the P1 manifest records the compatible `CC0-1.0 OR
+  Apache-2.0` expression.
+- P1 uses the crate's public keyed hash and hazmat chunk/parent-CV APIs only
+  through a minimal C ABI. No code was copied from Pearl's `pearl-blake3`.
+- The pinned Pearl tree is
+  `fe22b6a2b831d95b2f56564808f39d2f498f34a5`. An external black-box checkout
+  ran `cargo test --manifest-path /tmp/pearl-p1-audit/pearl-blake3/Cargo.toml`
+  with 35 passing tests, and a separate comparator matched the P1 job key
+  `13038bff01365936baf6f890b92cbdc3fc1bc4d5f9ae9cd13dc33ce1bdbb6fb5` and
+  Merkle root
+  `aa17a0831b07bb7ed899783326e09ee7f4cfde523218c14c7eaedeeb069f7531`.
+- The comparator used the source checkout only as a black box and wrote no
+  Pearl implementation into this repository. Full-miner binary comparisons
+  were unavailable and are not claimed.
 
 ## Evidence hierarchy
 

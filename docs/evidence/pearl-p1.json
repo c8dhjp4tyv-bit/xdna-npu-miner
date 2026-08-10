@@ -1,0 +1,121 @@
+{
+  "schema": "pearl-p1-evidence/v1",
+  "recorded_at": "2026-08-10",
+  "track": "pearl-prl",
+  "milestone": "P1",
+  "status": "PASS",
+  "branch": "feat/pearl-p1-cpu-golden",
+  "base_commit": "a15ed125295cc4361425a4b11159aa5744f3f160",
+  "implementation_commit": "PENDING_FINAL_COMMIT",
+  "scope": "trusted clean-room CPU golden reference and canonical vectors only",
+  "source_pin": {
+    "repository": "https://github.com/pearl-research-labs/pearl",
+    "branch": "master",
+    "commit": "fe22b6a2b831d95b2f56564808f39d2f498f34a5",
+    "whitepaper_sha256": "0b7dc4f064a926c4e8b6dfb8de12fe5cf041d713d8c0426f983f2833da5b8f3c"
+  },
+  "clean_room": {
+    "pearl_hot_components_copied": false,
+    "pearl_hot_components": [
+      "miner/pearl-gemm",
+      "miner/pearl-gateway",
+      "miner/miner-base",
+      "py-pearl-mining",
+      "zk-pow",
+      "pearl-blake3"
+    ],
+    "implementation_paths": ["src/pearl/reference.cpp", "src/pearl/reference.hpp"],
+    "qubic_types_reused": false
+  },
+  "blake3_dependency": {
+    "crate": "blake3",
+    "version": "1.8.2",
+    "manifest": "src/pearl/blake3_ffi/Cargo.toml",
+    "license": "CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception",
+    "api_boundary": "minimal C ABI around official one-shot keyed hash and public hazmat chunk/parent CV APIs",
+    "pearl_local_blake3_reused": false
+  },
+  "quantization_resolution": {
+    "raw_mining_matrix_range": "[-64,63]",
+    "quantized_output_range": "[-63,63]",
+    "whitepaper_plus_64_raw_input": "rejected by current pinned raw path",
+    "max_val": 63,
+    "scale": "fp32 max_abs/63",
+    "rounding": "ties-to-even",
+    "zero_point": 0,
+    "status": "RESOLVED_BY_SOURCE_AND_VECTORS"
+  },
+  "arithmetic_resolution": {
+    "operand": "signed int8",
+    "accumulator": "widened int64 with checked int32 result",
+    "overflow": "reject",
+    "wrap_or_saturate": "not used",
+    "overflow_stress_vector": "524288 * (127*127) rejects as ArithmeticOverflow",
+    "status": "EXPLICIT_CHECKED_CPU_CONTRACT"
+  },
+  "serialization": {
+    "header_bytes": 76,
+    "mining_configuration_bytes": 52,
+    "dense_public_data_bytes": 164,
+    "plain_proof": "explicit fixed-width little-endian candidate envelope; no ZK certificate generated",
+    "malformed_truncated_oversized_tests": "PASS"
+  },
+  "noise": {
+    "noise_range": 128,
+    "idxs_per_col": 2,
+    "uniform_factor_range": "[-32,31]",
+    "sparse_factor": "+1/-1",
+    "seed_labels": ["A_tensor", "B_tensor"],
+    "ranks_tested": [32, 64, 128],
+    "repeat_seed_and_boundary_tests": "PASS"
+  },
+  "transcript_and_target": {
+    "selected_rows": [0, 8],
+    "selected_columns": "[8j,8j+1], j=0..31",
+    "selected_values": 128,
+    "transcript_words": 16,
+    "rotation": 13,
+    "target_integer_order": "little-endian 256-bit",
+    "comparison": "<=",
+    "zero_equal_greater_tests": "PASS"
+  },
+  "opening_and_plain_proof": {
+    "merkle_leaf_bytes": 1024,
+    "opening_verification": "PASS",
+    "tamper_and_missing_coverage_tests": "PASS",
+    "plain_proof_round_trip": "PASS",
+    "zk_proof_generated": false
+  },
+  "corpus": {
+    "path": "tests/data/pearl/p1/vectors.json",
+    "sha256": "886b95c162e2402d210fc66f7f93257c9ec7a743b5494ff42df1505dabf23dac",
+    "fixed_vector_count": 8,
+    "seeded_randomized_count": 24,
+    "negative_vector_count": 19
+  },
+  "upstream_comparisons": {
+    "pearl_blake3_test_command": "cargo test --manifest-path /tmp/pearl-p1-audit/pearl-blake3/Cargo.toml",
+    "pearl_blake3_tests": "35 passed, 0 failed",
+    "black_box_comparator": "/tmp/pearl-p1-blackbox, cargo run --release",
+    "job_key_match": true,
+    "merkle_root_match": true,
+    "full_miner_binary": "unavailable; no claim"
+  },
+  "checks": {
+    "cargo_build_release_locked": "PASS",
+    "focused_pearl_cpu_golden_tests": "PASS; 67765 assertions",
+    "full_ctest": "PASS; 7/7 tests",
+    "json_parse": "PASS",
+    "git_diff_check": "PASS",
+    "hardware_xdna_execution": "NOT_RUN_BY_P1_SCOPE"
+  },
+  "benchmark_claims": "none",
+  "known_limitations": [
+    "No physical XDNA1 Pearl kernel or telemetry was executed",
+    "No live node/pool/wallet/submission path was implemented",
+    "P1 stops before CPU/Rust ZK proof generation",
+    "Pearl hot-component license grants remain unclear; clean-room rule remains"
+  ],
+  "next_task": "P2 minimal signed int8 tile on physical XDNA1 with exact CPU differential evidence",
+  "qubic_track": "FROZEN_REFERENCE_ONLY"
+}

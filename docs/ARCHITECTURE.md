@@ -4,11 +4,12 @@
 
 Pearl (PRL) is a separate active research track documented in
 [`docs/pearl/ARCHITECTURE.md`](pearl/ARCHITECTURE.md). It does not retarget or
-rewrite the Qubic architecture below. P0 reuses only generic XDNA runtime
-knowledge as a possible implementation aid; Pearl protocol, matrix, proof,
-network, and license decisions are independent. The proposed Pearl boundary
-keeps networking, canonical verification, ZK proof generation, and submission
-on the CPU, with XDNA1 limited to explicitly verified compute buffers.
+rewrite the Qubic architecture below. P1 now contains the clean-room CPU
+oracle under `src/pearl/`; it uses no Qubic types or Pearl hot-component source.
+Pearl protocol, matrix, proof, network, and license decisions remain
+independent. The Pearl boundary keeps networking, canonical verification, ZK
+proof generation, and submission on the CPU, with future XDNA1 limited to
+explicitly verified compute buffers.
 
 ## M0 architecture status
 

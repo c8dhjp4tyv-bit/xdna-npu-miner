@@ -16,6 +16,7 @@ build-crypto/
 dist/
 out/
 cmake-build-*/
+src/pearl/blake3_ffi/target/
 CMakeFiles/
 CMakeCache.txt
 *.o
