@@ -467,6 +467,49 @@ authorized source identity, current computor destination, current task
 compatibility, eligible CPU/NPU candidate, and safe runtime signing material
 are supplied.
 
+The secure local-identity and authorization workflow is exercised separately
+from the default six-test suite:
+
+```bash
+./scripts/test-m6-local-identity.sh
+./scripts/fetch-m6-bpp9000-task.sh
+build-crypto/m6_task_verify --path .local-cache/m6-bpp9000.task
+```
+
+The identity test uses a temporary 0700 directory and a temporary 0600
+subseed file. It checks that the file is ignored by Git, refuses overwrite
+without `--replace`, fails closed on a missing file, keeps secret bytes out of
+stdout/stderr/evidence/diff captures, and erases the file. It never prints the
+temporary secret. The task cache test accepts only the pinned 44,744-byte file
+with SHA-256
+`0c5e9e42c6d86c320af62f4125ca85b2446f2b098893fd6521bcf66c22f7f00a`; the
+production parser verifies the BPP9000 shape and K12 topology/data digests.
+
+The official-state authorization command is read-only and requires an
+explicit local secret path:
+
+```bash
+./scripts/check-m6-local-authorization.sh
+```
+
+It must print `AUTHORIZED` only after verifying SystemInfo, the current
+epoch, the 676-key computor payload and Arbitrator signature, and the source
+entity rule. Current wire parser tests cover the exact 21,698-byte computor
+payload and exact 840-byte entity response. A missing secret, failed query,
+invalid signature, stale epoch, malformed amount, or non-authorized entity
+prints `NOT_AUTHORIZED` and does not start candidate search or submission.
+
+The one-shot final command is intentionally bounded and guarded:
+
+```bash
+XDNA_QUBIC_ALLOW_LIVE_SUBMISSION=1 ./scripts/run-m6-final-live-submit.sh
+```
+
+It runs the production KAT and authorization gate first. Until a production
+random2/candidate-orchestration runner exists, it stops with zero candidate,
+NPU-score, CPU-verification, and frame counts. This is a fail-closed state,
+not a live-submission or performance result.
+
 ## Security-oriented tests
 
 Ensure later code does not:

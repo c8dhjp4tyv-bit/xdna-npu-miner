@@ -459,6 +459,15 @@ and reconnect/context refresh. Live submission remains unexercised because
 the current protocol requires an authorized source identity and current
 computor destination key that were not available. M6 is not complete.
 
+The secure local identity workflow, strict current-computor/entity parsers,
+Arbitrator-signature authorization checker, pinned task cache/parser, and
+guarded one-shot final-runner stages are now implemented and tested. No
+persistent operator identity was created in this checkpoint. The final runner
+still stops before candidate search because production random2/candidate
+orchestration over the pinned task is not wired, and a live authorization
+probe was not completed due to external endpoint streaming/transport failure.
+This is an IN PROGRESS state, not an acceptance or submission result.
+
 ### Objective
 
 Implement and validate the versioned, authorized direct-node work-acquisition

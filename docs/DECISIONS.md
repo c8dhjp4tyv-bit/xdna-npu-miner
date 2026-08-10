@@ -517,3 +517,51 @@ either a current computor secret or a user-owned spectrum identity with at
 least `1000000000` energy. Creating/funding such an identity would require
 external credentials or user funds, so M6 must remain IN PROGRESS and no
 submission may be attempted.
+
+## D-036 — Local identity secrets are generated and erased only through a narrow file boundary
+
+**Status:** Accepted; no persistent operator identity was created by this checkpoint
+
+`m6_identity_tool` uses the Linux CSPRNG, writes the 32-byte signing subseed
+as 64 hexadecimal characters plus an optional newline to an explicit 0600
+regular file owned by the current user, and expects its directory to be 0700.
+It refuses implicit overwrite, does not print the secret, and provides an
+explicit overwrite/erase path. The public identity encoding is implemented
+clean-room from its observable base-26/K12 checksum format and is tested by
+round trips plus the pinned Arbitrator identity. Temporary test identities are
+erased before the test exits; no secret is stored in Git, evidence, or chat.
+
+Reason: environment variables and pasted credentials are too easy to log or
+misroute. A small local-only boundary makes the authorization workflow
+auditable while preserving operator control of any real funds or computor
+credential.
+
+## D-037 — Authorization is a read-only official-state gate before candidate search
+
+**Status:** Accepted; authorization and live submission remain IN PROGRESS
+
+`m6_authorization_check` must query SystemInfo, the current signed computor
+list, and the source entity before it can print `AUTHORIZED`. It verifies the
+current epoch, the 676-key list signature with the pinned Arbitrator identity,
+and the official current-computor or spectrum-energy rule. The first verified
+current computor key is the only deterministic destination selection; no key
+is hard-coded. A query failure prints `NOT_AUTHORIZED` and never starts M5 or
+writes a network frame.
+
+Reason: a public list observation is not sufficient authorization, and a
+successful TCP write is not submission acceptance. State must be cryptographically
+and semantically checked before any future candidate runner is allowed to
+operate.
+
+## D-038 — Pinned task bytes are cached externally and verified before use
+
+**Status:** Accepted; candidate orchestration remains a later M6 task
+
+`scripts/fetch-m6-bpp9000-task.sh` fetches only the exact core revision
+`a83f935406cd006b5b1a94971139e74d410ecb6d`, rejects a mismatched existing
+cache unless `--refresh` is explicit, and checks the 44,744-byte file against
+SHA-256 `0c5e9e42c6d86c320af62f4125ca85b2446f2b098893fd6521bcf66c22f7f00a`.
+`m6_task_verify` then validates the production task using the selected K12
+provider. The task is never committed to this repository. The final runner
+stops before search because the production random2/candidate orchestration
+seam is not yet implemented; it does not fabricate counts or scores.

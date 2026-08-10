@@ -411,6 +411,39 @@ this repository.
   this repository. The M6 live gate remains blocked by the external authorized
   source identity and secret, not by a guessed destination or synthetic task.
 
+### Source S-011 — Read-only authorization, identity encoding, and pinned task cache
+
+- **Audit date:** 2026-08-10. The implementation uses only the pinned core
+  `a83f935406cd006b5b1a94971139e74d410ecb6d` as protocol authority.
+- **Network message enum:**
+  https://raw.githubusercontent.com/qubic/core/a83f935406cd006b5b1a94971139e74d410ecb6d/src/network_messages/network_message_type.h
+  defines `REQUEST_COMPUTORS=11`, `BROADCAST_COMPUTORS=2`,
+  `REQUEST_ENTITY=31`, `RESPOND_ENTITY=32`, `END_RESPONSE=35`, and the
+  system-info types 46/47. The local reader filters ordinary peer/request
+  traffic but never treats `END_RESPONSE` as success.
+- **Entity wire schema:**
+  https://raw.githubusercontent.com/qubic/core/a83f935406cd006b5b1a94971139e74d410ecb6d/src/network_messages/entity.h
+  defines `EntityRecord` as a 64-byte packed record and `RespondEntity` as
+  840 bytes after its 24 sibling public keys. `energy(index)` is
+  `incomingAmount - outgoingAmount` in the pinned spectrum implementation.
+- **Computor authorization:** the packed list is 2-byte epoch + 676 public
+  keys + 64-byte signature (21,698 bytes). Core verifies the signature over
+  the first 21,634 bytes with the pinned Arbitrator public identity and uses
+  the exact `1000000000` dissemination threshold. The project verifies these
+  conditions with the production K12/FourQ provider before printing
+  `AUTHORIZED`; a public observation alone is not authorization.
+- **Observable identity format:** the clean-room 60-character identity helper
+  follows the public base-26/4-chunk plus K12 checksum behavior documented in
+  the Qubic CLI key utility:
+  https://github.com/qubic/qubic-cli/blob/main/key_utils.cpp . No Qubic CLI or
+  core source was copied into this repository, and no private scalar is
+  accepted by the helper.
+- **Task cache:**
+  `https://raw.githubusercontent.com/qubic/core/a83f935406cd006b5b1a94971139e74d410ecb6d/data/bpp9000.task`
+  is cached only after exact size 44,744 and SHA-256
+  `0c5e9e42c6d86c320af62f4125ca85b2446f2b098893fd6521bcf66c22f7f00a`
+  checks. The downloaded bytes are ignored local state and are not committed.
+
 ## Current Qubic algorithm facts
 
 ### Algorithm selection and constants

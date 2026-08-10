@@ -8,7 +8,10 @@ extern "C" {
 #include <algorithm>
 #include <array>
 #include <cstddef>
+#include <cstdint>
+#include <cstring>
 #include <limits>
+#include <string_view>
 
 namespace xdna::qubic {
 
@@ -190,6 +193,108 @@ bool K12FourQCryptoProvider::derive_shared_key(const SigningMaterial& material,
     }
 
     return !all_zero(std::span<const Byte>(shared_key));
+}
+
+std::string public_identity_from_public_key(const PublicKey& public_key)
+{
+    if (public_key.is_zero()) {
+        return {};
+    }
+
+    constexpr std::size_t kPublicKeyChunks = 4U;
+    constexpr std::size_t kChunkBytes = 8U;
+    constexpr std::size_t kChunkCharacters = 14U;
+    constexpr char alphabet[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    std::string identity;
+    identity.reserve(60U);
+    for (std::size_t chunk = 0U; chunk < kPublicKeyChunks; ++chunk) {
+        std::uint64_t value = 0U;
+        std::memcpy(&value,
+                    public_key.bytes.data() + chunk * kChunkBytes,
+                    sizeof(value));
+        for (std::size_t character = 0U; character < kChunkCharacters; ++character) {
+            identity.push_back(alphabet[value % 26U]);
+            value /= 26U;
+        }
+    }
+
+    K12FourQCryptoProvider provider;
+    std::array<Byte, 3U> checksum_bytes{};
+    if (!provider.hash(std::span<const Byte>(public_key.bytes),
+                       std::span<Byte>(checksum_bytes))) {
+        return {};
+    }
+    std::uint32_t checksum = static_cast<std::uint32_t>(checksum_bytes[0U])
+        | (static_cast<std::uint32_t>(checksum_bytes[1U]) << 8U)
+        | (static_cast<std::uint32_t>(checksum_bytes[2U]) << 16U);
+    checksum &= 0x3FFFFU;
+    for (std::size_t character = 0U; character < 4U; ++character) {
+        identity.push_back(alphabet[checksum % 26U]);
+        checksum /= 26U;
+    }
+    return identity;
+}
+
+bool public_key_from_identity(const std::string_view identity,
+                              PublicKey& public_key) noexcept
+{
+    constexpr std::size_t kPublicKeyChunks = 4U;
+    constexpr std::size_t kChunkBytes = 8U;
+    constexpr std::size_t kChunkCharacters = 14U;
+    if (identity.size() != 60U) {
+        public_key.bytes.fill(0U);
+        return false;
+    }
+
+    std::array<Byte, 32U> decoded{};
+    for (std::size_t chunk = 0U; chunk < kPublicKeyChunks; ++chunk) {
+        std::uint64_t value = 0U;
+        const std::size_t start = chunk * kChunkCharacters;
+        for (std::size_t position = kChunkCharacters; position > 0U; --position) {
+            const char character = identity[start + position - 1U];
+            if (character < 'A' || character > 'Z') {
+                public_key.bytes.fill(0U);
+                return false;
+            }
+            const std::uint64_t digit = static_cast<std::uint64_t>(character - 'A');
+            if (value > (std::numeric_limits<std::uint64_t>::max() - digit) / 26U) {
+                public_key.bytes.fill(0U);
+                return false;
+            }
+            value = value * 26U + digit;
+        }
+        std::memcpy(decoded.data() + chunk * kChunkBytes, &value, sizeof(value));
+    }
+
+    std::uint32_t supplied_checksum = 0U;
+    for (std::size_t position = 60U; position > 56U; --position) {
+        const char character = identity[position - 1U];
+        if (character < 'A' || character > 'Z') {
+            public_key.bytes.fill(0U);
+            return false;
+        }
+        supplied_checksum = supplied_checksum * 26U
+            + static_cast<std::uint32_t>(character - 'A');
+    }
+    supplied_checksum &= 0x3FFFFU;
+
+    K12FourQCryptoProvider provider;
+    std::array<Byte, 3U> checksum_bytes{};
+    if (!provider.hash(std::span<const Byte>(decoded), std::span<Byte>(checksum_bytes))) {
+        public_key.bytes.fill(0U);
+        return false;
+    }
+    const std::uint32_t expected_checksum = (static_cast<std::uint32_t>(checksum_bytes[0U])
+                                              | (static_cast<std::uint32_t>(checksum_bytes[1U]) << 8U)
+                                              | (static_cast<std::uint32_t>(checksum_bytes[2U]) << 16U))
+        & 0x3FFFFU;
+    if (supplied_checksum != expected_checksum) {
+        public_key.bytes.fill(0U);
+        return false;
+    }
+
+    std::copy(decoded.begin(), decoded.end(), public_key.bytes.begin());
+    return !public_key.is_zero();
 }
 
 } // namespace xdna::qubic

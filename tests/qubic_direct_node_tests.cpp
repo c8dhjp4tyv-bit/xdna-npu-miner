@@ -444,7 +444,12 @@ void test_mock_system_info_and_bounded_reconnect()
         xdna::qubic::kBroadcastMessage,
         0U,
         broadcast_payload);
+    const std::vector<Byte> unsolicited_request = xdna::qubic::serialize_frame(
+        14U,
+        0U,
+        {});
     response.insert(response.end(), broadcast.begin(), broadcast.end());
+    response.insert(response.end(), unsolicited_request.begin(), unsolicited_request.end());
     response.insert(response.end(), system_info.begin(), system_info.end());
     MemoryFactory factory(response);
     factory.failures_before_success = 2U;
@@ -501,6 +506,113 @@ void test_mock_system_info_failure_modes()
                      "live probe path fails closed when the response stream ends");
 }
 
+void test_current_computor_and_entity_wire_parsers()
+{
+    xdna::qubic::ComputorList expected_computors;
+    expected_computors.epoch = 42U;
+    for (std::size_t index = 0U; index < expected_computors.public_keys.size(); ++index) {
+        expected_computors.public_keys[index].bytes.fill(static_cast<Byte>(index + 1U));
+    }
+    expected_computors.signature.fill(0xA5U);
+    const std::vector<Byte> computor_payload = xdna::qubic::serialize_computors_payload(expected_computors);
+    const Frame computor_frame{xdna::qubic::kBroadcastComputors, 9U, computor_payload};
+    expect(xdna::qubic::parse_computors(computor_frame) == expected_computors,
+           "current computor parser round trips the exact signed payload");
+    expect(xdna::qubic::contains_computor(expected_computors, expected_computors.public_keys[17U]),
+           "current computor membership lookup finds a public key");
+    const Frame computor_request = xdna::qubic::parse_frame(xdna::qubic::make_computors_request(7U));
+    expect(computor_request.type == xdna::qubic::kRequestComputors
+               && computor_request.payload.empty() && computor_request.dejavu == 7U,
+           "current computor request has the exact empty payload");
+
+    auto write_u32 = [](std::vector<Byte>& bytes, std::size_t offset, std::uint32_t value) {
+        bytes[offset] = static_cast<Byte>(value & 0xFFU);
+        bytes[offset + 1U] = static_cast<Byte>((value >> 8U) & 0xFFU);
+        bytes[offset + 2U] = static_cast<Byte>((value >> 16U) & 0xFFU);
+        bytes[offset + 3U] = static_cast<Byte>((value >> 24U) & 0xFFU);
+    };
+    auto write_u64 = [&write_u32](std::vector<Byte>& bytes, std::size_t offset, std::uint64_t value) {
+        write_u32(bytes, offset, static_cast<std::uint32_t>(value & 0xFFFFFFFFULL));
+        write_u32(bytes, offset + 4U, static_cast<std::uint32_t>(value >> 32U));
+    };
+    xdna::qubic::EntityInfo expected_entity;
+    expected_entity.public_key.bytes.fill(0x11U);
+    expected_entity.incoming_amount = 1234567890123LL;
+    expected_entity.outgoing_amount = 34567890123LL;
+    expected_entity.number_of_incoming_transfers = 3U;
+    expected_entity.number_of_outgoing_transfers = 4U;
+    expected_entity.latest_incoming_transfer_tick = 5U;
+    expected_entity.latest_outgoing_transfer_tick = 6U;
+    expected_entity.tick = 7U;
+    expected_entity.spectrum_index = 8;
+    for (std::size_t index = 0U; index < expected_entity.siblings.size(); ++index) {
+        expected_entity.siblings[index].bytes.fill(static_cast<Byte>(0x20U + index));
+    }
+    std::vector<Byte> entity_payload(xdna::qubic::kEntityPayloadBytes, 0U);
+    std::copy(expected_entity.public_key.bytes.begin(),
+              expected_entity.public_key.bytes.end(),
+              entity_payload.begin());
+    write_u64(entity_payload, 32U, static_cast<std::uint64_t>(expected_entity.incoming_amount));
+    write_u64(entity_payload, 40U, static_cast<std::uint64_t>(expected_entity.outgoing_amount));
+    write_u32(entity_payload, 48U, expected_entity.number_of_incoming_transfers);
+    write_u32(entity_payload, 52U, expected_entity.number_of_outgoing_transfers);
+    write_u32(entity_payload, 56U, expected_entity.latest_incoming_transfer_tick);
+    write_u32(entity_payload, 60U, expected_entity.latest_outgoing_transfer_tick);
+    write_u32(entity_payload, 64U, expected_entity.tick);
+    write_u32(entity_payload, 68U, static_cast<std::uint32_t>(expected_entity.spectrum_index));
+    for (std::size_t index = 0U; index < expected_entity.siblings.size(); ++index) {
+        std::copy(expected_entity.siblings[index].bytes.begin(),
+                  expected_entity.siblings[index].bytes.end(),
+                  entity_payload.begin() + static_cast<std::ptrdiff_t>(72U + index * 32U));
+    }
+    const Frame entity_frame{xdna::qubic::kRespondEntity, 10U, entity_payload};
+    expect(xdna::qubic::parse_entity(entity_frame) == expected_entity,
+           "current entity parser round trips the exact 840-byte response");
+    const Frame entity_request = xdna::qubic::parse_frame(
+        xdna::qubic::make_entity_request(expected_entity.public_key, 11U));
+    expect(entity_request.type == xdna::qubic::kRequestEntity
+               && entity_request.payload.size() == expected_entity.public_key.bytes.size()
+               && entity_request.dejavu == 11U,
+           "current entity request carries the requested public key");
+
+    MemoryFactory computor_factory(xdna::qubic::serialize_frame(
+        xdna::qubic::kBroadcastComputors, 12U, computor_payload));
+    DirectNodeClient computor_client(computor_factory,
+                                    NodeEndpoint{"mock", 1234U},
+                                    TransportTimeouts{},
+                                    ReconnectPolicy{1U, std::chrono::milliseconds(0)});
+    expect(computor_client.request_computors() == expected_computors,
+           "mock current computor request parses the bounded response");
+    FrameDecoder computor_decoder;
+    computor_decoder.feed(computor_factory.writes[0U]);
+    (void)computor_decoder.next();
+    const auto computor_request_frame = computor_decoder.next();
+    expect(computor_request_frame.has_value()
+               && computor_request_frame->type == xdna::qubic::kRequestComputors
+               && computor_request_frame->payload.empty(),
+           "mock current computor request sends type 11 after handshake");
+
+    MemoryFactory entity_factory(xdna::qubic::serialize_frame(
+        xdna::qubic::kRespondEntity, 13U, entity_payload));
+    DirectNodeClient entity_client(entity_factory,
+                                   NodeEndpoint{"mock", 1234U},
+                                   TransportTimeouts{},
+                                   ReconnectPolicy{1U, std::chrono::milliseconds(0)});
+    expect(entity_client.request_entity(expected_entity.public_key) == expected_entity,
+           "mock current entity request parses the bounded response");
+    FrameDecoder entity_decoder;
+    entity_decoder.feed(entity_factory.writes[0U]);
+    (void)entity_decoder.next();
+    const auto entity_request_frame = entity_decoder.next();
+    expect(entity_request_frame.has_value()
+               && entity_request_frame->type == xdna::qubic::kRequestEntity
+               && entity_request_frame->payload.size() == expected_entity.public_key.bytes.size()
+               && entity_request_frame->payload
+                   == std::vector<Byte>(expected_entity.public_key.bytes.begin(),
+                                        expected_entity.public_key.bytes.end()),
+           "mock current entity request sends type 31 with the source key");
+}
+
 void test_mock_solution_submission()
 {
     const WorkContext context = make_context();
@@ -554,6 +666,7 @@ int main()
         test_deterministic_solution_serialization();
         test_mock_system_info_and_bounded_reconnect();
         test_mock_system_info_failure_modes();
+        test_current_computor_and_entity_wire_parsers();
         test_mock_solution_submission();
         test_secret_safe_configuration();
         std::cout << "PASS qubic_direct_node\n";

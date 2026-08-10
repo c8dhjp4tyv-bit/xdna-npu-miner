@@ -2,7 +2,9 @@
 
 #include "qubic/direct_node.hpp"
 
+#include <string>
 #include <span>
+#include <string_view>
 
 namespace xdna::qubic {
 
@@ -31,5 +33,12 @@ public:
                               std::span<const Byte> digest,
                               std::span<const Byte> signature) const noexcept;
 };
+
+// Clean-room implementation of the observable 60-character Qubic identity
+// encoding. It uses this provider's K12 implementation only for the public
+// three-byte checksum; it never exposes or accepts a private scalar.
+[[nodiscard]] std::string public_identity_from_public_key(const PublicKey& public_key);
+[[nodiscard]] bool public_key_from_identity(std::string_view identity,
+                                            PublicKey& public_key) noexcept;
 
 } // namespace xdna::qubic

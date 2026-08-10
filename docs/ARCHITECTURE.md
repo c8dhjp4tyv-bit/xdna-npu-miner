@@ -147,6 +147,39 @@ constructs a context from the recorded task identity, labels full live task
 compatibility as unproven, and does not submit. The production task remains
 the pinned, hash-verified upstream core input rather than a SystemInfo field.
 
+### M6 local identity and authorization boundary
+
+`m6_identity_tool` is the only supported local identity workflow. `generate`
+uses Linux `getrandom()` for a fresh 32-byte signing subseed and stores only
+lowercase hexadecimal text in an explicitly named owner-only 0600 file under a
+0700 directory. `show` derives and prints only the public key and clean-room
+60-character identity; `erase` overwrites, synchronizes, closes, and unlinks
+the explicit file. The secret is never placed in environment variables,
+evidence JSON, logs, command output, or the repository. The suggested paths
+are ignored by Git, but an operator must still inspect the path before any
+authorized use.
+
+`m6_authorization_check` is read-only. It queries SystemInfo, the current
+type-11/type-2 computor list, and the type-31/type-32 entity record; verifies
+the current epoch, all 676 nonzero keys, and the 64-byte computor signature
+with the pinned Arbitrator public identity; then applies the official
+`incomingAmount - outgoingAmount >= 1000000000` rule. A source is authorized
+only when it is a verified current computor or a verified funded spectrum
+entity. The first key in the verified current list is the deterministic
+destination selection; no destination key is hard-coded. The entity response
+is exactly 840 bytes and the computor response is exactly 21,698 bytes.
+
+The pinned task is fetched only through
+`scripts/fetch-m6-bpp9000-task.sh`, which rejects a mismatched existing cache
+unless `--refresh` is explicit and verifies the exact size/SHA-256 before an
+atomic move. `m6_task_verify` then parses the cached bytes with the production
+K12 digest provider. `scripts/run-m6-final-live-submit.sh` requires explicit
+opt-in, runs the production KAT, performs the authorization check before any
+candidate search, and currently stops with zero candidate/score/frame counts
+because a production random2/candidate-orchestration runner over the pinned
+task is not yet wired. It never fabricates a WorkContext, NPU score, CPU
+verification, signature, retry, or submission.
+
 ### M6 production crypto gate
 
 The default CMake configuration does not fetch or link crypto dependencies.

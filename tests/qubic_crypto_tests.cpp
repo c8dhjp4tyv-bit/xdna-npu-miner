@@ -146,6 +146,24 @@ int main()
         expect_bytes<32U>("Qubic public-key KAT",
                           signing_public_key.bytes,
                           "f6ef25559eb0ebf767e9a1d30db7e75680adf0a1de527ed0d249a09794c880d6");
+        const std::string signing_identity =
+            xdna::qubic::public_identity_from_public_key(signing_public_key);
+        expect(signing_identity.size() == 60U, "Qubic public identity has 60 characters");
+        PublicKey decoded_identity_key{};
+        expect(xdna::qubic::public_key_from_identity(signing_identity, decoded_identity_key)
+                   && decoded_identity_key == signing_public_key,
+               "Qubic public identity round trips the public key");
+        auto tampered_identity = signing_identity;
+        tampered_identity.back() = tampered_identity.back() == 'A' ? 'B' : 'A';
+        expect(!xdna::qubic::public_key_from_identity(tampered_identity, decoded_identity_key),
+               "tampered Qubic public identity checksum rejects");
+        constexpr std::string_view arbitrator_identity =
+            "AFZPUAIYVPNUYGJRQVLUKOPPVLHAZQTGLYAAUUNBXFTVTAMSBKQBLEIEPCVJ";
+        PublicKey arbitrator_key{};
+        expect(xdna::qubic::public_key_from_identity(arbitrator_identity, arbitrator_key)
+                   && xdna::qubic::public_identity_from_public_key(arbitrator_key)
+                       == arbitrator_identity,
+               "pinned Qubic arbitrator identity decodes and re-encodes");
 
         std::array<Byte, 64U> signature{};
         signing_material.public_key = signing_public_key;

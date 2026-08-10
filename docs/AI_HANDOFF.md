@@ -18,6 +18,58 @@ live submission remains unexercised because no authorized source identity,
 eligible candidate, or runtime signing secret was available. Do not start M7
 or Qatum work.
 
+## Latest M6 secure-identity checkpoint — 2026-08-10
+
+- Branch: `main`; the pre-existing commits were pushed before this checkpoint
+  and the current implementation changes are uncommitted until final
+  verification/commit below. M6 remains **IN PROGRESS**. No persistent local
+  identity was generated, no signing secret was printed or committed, and no
+  funds or submission frame were used.
+- Added `m6_identity_tool` with Linux CSPRNG generation, strict current-user
+  0600 file loading, 0700 directory workflow, clean-room public identity
+  encode/decode, overwrite refusal, and explicit secure erase. The safety
+  script uses only temporary identities and verifies secret absence from
+  stdout, stderr, evidence, and diff captures.
+- Added strict official type-11/type-2 computor and type-31/type-32 entity
+  parsers/requests. The current list is 21,698 bytes; the entity response is
+  840 bytes. `m6_authorization_check` verifies list epoch, nonzero keys,
+  pinned Arbitrator signature, and the official current-computor or
+  `incomingAmount - outgoingAmount >= 1000000000` entity rule. It prints
+  `AUTHORIZED` or `NOT_AUTHORIZED` only; it never submits.
+- Added the pinned task fetch/cache and K12 parser path. The cache uses the
+  core revision `a83f935406cd006b5b1a94971139e74d410ecb6d`, exact 44,744-byte
+  size, and SHA-256
+  `0c5e9e42c6d86c320af62f4125ca85b2446f2b098893fd6521bcf66c22f7f00a`.
+  The ignored local cache was fetched and parsed successfully in this
+  session; task bytes are not in Git.
+- Added `scripts/run-m6-final-live-submit.sh`. It requires explicit opt-in,
+  runs the production KAT and authorization gate first, and stops before any
+  candidate search because the production random2/candidate-orchestration
+  runner is not wired. It reports zero candidate/NPU/CPU/frame counts and
+  does not fabricate a WorkContext, score, signature, retry, or send.
+- Verification so far: production build and CTest `7/7`, direct-node parser
+  tests, identity safety test, shell syntax checks, pinned task fetch and
+  `m6_task_verify` all pass. A temporary read-only authorization probe was
+  attempted against `corenet.qubic.li:21841`; it returned `NOT_AUTHORIZED`
+  with an external protocol/transport failure before a complete decision.
+
+### Exact continuation commands
+
+```bash
+cd /home/umutcagand/xdna-npu-miner
+cmake --build build-crypto -j2
+ctest --test-dir build-crypto --output-on-failure
+./scripts/test-m6-local-identity.sh
+python3 -m json.tool docs/evidence/m6-direct-node.json
+git diff --check
+```
+
+Do not generate an operator identity, request funding, paste a secret into
+chat, start M7/Qatum, or claim M6 complete. The next implementation task is
+only the bounded production random2/candidate runner after legitimate local
+authorization is available; until then preserve the fail-closed no-send
+state.
+
 ## Latest M6 authorization/data checkpoint — 2026-08-10
 
 - Current official remote tips were revalidated with `git ls-remote`: core
@@ -61,23 +113,19 @@ or Qatum work.
   threshold 3838, stale aborts 0, frame sent false, acknowledgement not
   applicable. TCP write is not an acceptance and no result classification from
   the four live-send outcomes is claimed.
-- Exact next authorized-only command template, with values supplied through a
-  local secret-safe environment (never chat), is:
+- Exact next authorized-only command template uses the explicit local secret
+  file and never places a signing value in the environment or chat:
 
   ```bash
-  XDNA_QUBIC_ALLOW_LIVE_SUBMISSION=1 \
-  XDNA_QUBIC_SIGNING_PUBLIC_KEY_HEX="$LOCAL_PUBLIC_KEY_HEX" \
-  XDNA_QUBIC_SIGNING_SECRET_HEX="$LOCAL_SIGNING_SUBSEED_HEX" \
-  ./scripts/run-m6-live-submit.sh
+  ./scripts/setup-m6-local-identity.sh
+  ./scripts/check-m6-local-authorization.sh
+  XDNA_QUBIC_ALLOW_LIVE_SUBMISSION=1 ./scripts/run-m6-final-live-submit.sh
   ```
 
-  In the current checkout this command remains deliberately guarded and
-  reports no frame; it is not evidence of a send. A future continuation may
-  replace only the minimum one-shot glue needed to consume the current task,
-  select a live computor key, run actual M5 batch-16/four-column scoring plus
-  CPU recomputation, refresh SystemInfo, and send exactly once after the local
-  identity is genuinely authorized. Do not turn it into a supervisor or retry
-  loop.
+  In the current checkout the final command remains deliberately guarded and
+  stops before candidate search because the production random2/candidate
+  runner is not wired; it is not evidence of a send. Do not request funding,
+  paste a secret, or turn the command into a supervisor or retry loop.
 
 ## Final M6 checkpoint for this session — 2026-08-10
 

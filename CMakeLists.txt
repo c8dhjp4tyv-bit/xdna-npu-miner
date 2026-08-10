@@ -256,6 +256,7 @@ if(XDNA_ENABLE_PRODUCTION_CRYPTO)
 
     add_library(qubic_production_crypto
         src/qubic/production_crypto.cpp
+        src/qubic/local_identity.cpp
     )
     target_include_directories(qubic_production_crypto PUBLIC src)
     target_link_libraries(qubic_production_crypto PUBLIC
@@ -283,6 +284,39 @@ if(XDNA_ENABLE_PRODUCTION_CRYPTO)
         -Werror
     )
     add_test(NAME qubic_crypto_tests COMMAND qubic_crypto_tests)
+
+    add_executable(m6_task_verify src/qubic/m6_task_verify.cpp)
+    target_link_libraries(m6_task_verify PRIVATE qubic_production_crypto)
+    target_compile_options(m6_task_verify PRIVATE
+        -Wall
+        -Wextra
+        -Wpedantic
+        -Wconversion
+        -Wshadow
+        -Werror
+    )
+
+    add_executable(m6_identity_tool src/qubic/m6_identity_tool.cpp)
+    target_link_libraries(m6_identity_tool PRIVATE qubic_production_crypto)
+    target_compile_options(m6_identity_tool PRIVATE
+        -Wall
+        -Wextra
+        -Wpedantic
+        -Wconversion
+        -Wshadow
+        -Werror
+    )
+
+    add_executable(m6_authorization_check src/qubic/m6_authorization_check.cpp)
+    target_link_libraries(m6_authorization_check PRIVATE qubic_production_crypto)
+    target_compile_options(m6_authorization_check PRIVATE
+        -Wall
+        -Wextra
+        -Wpedantic
+        -Wconversion
+        -Wshadow
+        -Werror
+    )
 endif()
 
 set(XRT_ROOT "$ENV{XILINX_XRT}" CACHE PATH "XRT installation root")

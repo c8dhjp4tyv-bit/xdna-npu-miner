@@ -27,6 +27,15 @@ using bpp9000::PublicKey;
 constexpr std::size_t kRequestResponseHeaderBytes = 8U;
 constexpr std::size_t kExchangePublicPeersPayloadBytes = 16U;
 constexpr std::size_t kSystemInfoPayloadBytes = 128U;
+constexpr std::size_t kComputorCount = 676U;
+constexpr std::size_t kComputorsSignatureBytes = 64U;
+constexpr std::size_t kComputorsSignedPayloadBytes = 2U + kComputorCount * 32U;
+constexpr std::size_t kComputorsPayloadBytes = kComputorsSignedPayloadBytes + kComputorsSignatureBytes;
+constexpr std::size_t kEntitySiblingCount = 24U;
+// EntityRecord is 64 bytes in the current core wire layout: public key,
+// two int64 amounts, two transfer counts and two latest-tick fields. The
+// response adds tick, spectrum index and 24 sibling public keys.
+constexpr std::size_t kEntityPayloadBytes = 64U + 4U + 4U + kEntitySiblingCount * 32U;
 constexpr std::size_t kBroadcastPayloadBytes = 228U;
 constexpr std::size_t kEncryptedSolutionBytes = 68U;
 constexpr std::size_t kSignatureBytes = 64U;
@@ -34,8 +43,13 @@ constexpr std::uint32_t kMaximumFrameBytes = 0x00FFFFFFU;
 
 constexpr std::uint8_t kExchangePublicPeers = 0U;
 constexpr std::uint8_t kBroadcastMessage = 1U;
+constexpr std::uint8_t kBroadcastComputors = 2U;
+constexpr std::uint8_t kRequestComputors = 11U;
 constexpr std::uint8_t kRequestSystemInfo = 46U;
 constexpr std::uint8_t kRespondSystemInfo = 47U;
+constexpr std::uint8_t kRequestEntity = 31U;
+constexpr std::uint8_t kRespondEntity = 32U;
+constexpr std::uint8_t kEndResponse = 35U;
 constexpr std::uint8_t kSolutionMessage = 0U;
 
 enum class ProtocolErrorCode : std::uint8_t {
@@ -105,6 +119,9 @@ private:
 
 [[nodiscard]] std::vector<Byte> make_system_info_request(std::uint32_t dejavu = 0U);
 [[nodiscard]] std::vector<Byte> make_exchange_public_peers(std::uint32_t dejavu = 0U);
+[[nodiscard]] std::vector<Byte> make_computors_request(std::uint32_t dejavu = 0U);
+[[nodiscard]] std::vector<Byte> make_entity_request(const PublicKey& public_key,
+                                                     std::uint32_t dejavu = 0U);
 
 struct SystemInfo {
     std::int16_t version = 0;
@@ -137,6 +154,36 @@ struct SystemInfo {
 
 [[nodiscard]] SystemInfo parse_system_info(const Frame& frame);
 [[nodiscard]] std::vector<Byte> serialize_system_info_payload(const SystemInfo& info);
+
+struct ComputorList {
+    std::uint16_t epoch = 0U;
+    std::array<PublicKey, kComputorCount> public_keys{};
+    std::array<Byte, kComputorsSignatureBytes> signature{};
+
+    friend bool operator==(const ComputorList&, const ComputorList&) = default;
+};
+
+[[nodiscard]] ComputorList parse_computors(const Frame& frame);
+[[nodiscard]] std::vector<Byte> serialize_computors_payload(const ComputorList& computors);
+[[nodiscard]] bool contains_computor(const ComputorList& computors,
+                                      const PublicKey& public_key) noexcept;
+
+struct EntityInfo {
+    PublicKey public_key{};
+    std::int64_t incoming_amount = 0;
+    std::int64_t outgoing_amount = 0;
+    std::uint32_t number_of_incoming_transfers = 0U;
+    std::uint32_t number_of_outgoing_transfers = 0U;
+    std::uint32_t latest_incoming_transfer_tick = 0U;
+    std::uint32_t latest_outgoing_transfer_tick = 0U;
+    std::uint32_t tick = 0U;
+    std::int32_t spectrum_index = -1;
+    std::array<PublicKey, kEntitySiblingCount> siblings{};
+
+    friend bool operator==(const EntityInfo&, const EntityInfo&) = default;
+};
+
+[[nodiscard]] EntityInfo parse_entity(const Frame& frame);
 
 enum class Algorithm : std::uint8_t {
     Bpp9000 = 1U,
@@ -423,6 +470,8 @@ public:
     }
 
     [[nodiscard]] SystemInfo request_system_info();
+    [[nodiscard]] ComputorList request_computors();
+    [[nodiscard]] EntityInfo request_entity(const PublicKey& public_key);
     [[nodiscard]] bool submit_frame(std::span<const Byte> frame);
     [[nodiscard]] const NodeEndpoint& endpoint() const noexcept
     {

@@ -127,12 +127,37 @@ void append_bytes(std::vector<Byte>& destination, std::span<const Byte> source)
     switch (frame.type) {
     case kExchangePublicPeers:
     case kBroadcastMessage:
-    case 2U:  // BROADCAST_COMPUTORS
+    case kBroadcastComputors:
     case 3U:  // BROADCAST_TICK
     case 8U:  // BROADCAST_FUTURE_TICK_DATA
     case 24U: // BROADCAST_TRANSACTION
     case 68U: // BROADCAST_CUSTOM_MINING_TASK
     case 69U: // BROADCAST_CUSTOM_MINING_SOLUTION
+    // A peer can also put ordinary request traffic on this stream. These
+    // are not responses to the bounded request made by this client.
+    case 11U:  // REQUEST_COMPUTORS
+    case 14U:  // REQUEST_QUORUM_TICK
+    case 16U:  // REQUEST_TICK_DATA
+    case 26U:  // REQUEST_TRANSACTION_INFO
+    case 27U:  // REQUEST_CURRENT_TICK_INFO
+    case 29U:  // REQUEST_TICK_TRANSACTIONS
+    case 31U:  // REQUEST_ENTITY
+    case 33U:  // REQUEST_CONTRACT_IPO
+    case 36U:  // REQUEST_ISSUED_ASSETS
+    case 38U:  // REQUEST_OWNED_ASSETS
+    case 40U:  // REQUEST_POSSESSED_ASSETS
+    case 42U:  // REQUEST_CONTRACT_FUNCTION
+    case 44U:  // REQUEST_LOG
+    case 46U:  // REQUEST_SYSTEM_INFO
+    case 48U:  // REQUEST_LOG_ID_RANGE_FROM_TX
+    case 50U:  // REQUEST_ALL_LOG_ID_RANGES_FROM_TX
+    case 52U:  // REQUEST_ASSETS
+    case 56U:  // REQUEST_PRUNING_LOG
+    case 58U:  // REQUEST_LOG_STATE_DIGEST
+    case 64U:  // REQUEST_ACTIVE_IPOS
+    case 66U:  // REQUEST_ORACLE_DATA
+    case 70U:  // REQUEST_REVENUE_DATA
+    case 201U: // REQUEST_TX_STATUS
         return true;
     default:
         return false;
@@ -357,6 +382,57 @@ private:
     return std::getenv(owned.c_str());
 }
 
+[[nodiscard]] Frame request_read_only(ConnectionFactory& factory,
+                                      const NodeEndpoint& endpoint,
+                                      const TransportTimeouts& timeouts,
+                                      const ReconnectPolicy& reconnect,
+                                      std::span<const Byte> request,
+                                      std::uint8_t response_type,
+                                      std::string_view operation)
+{
+    if (endpoint.host.empty() || endpoint.port == 0U) {
+        throw ProtocolError(ProtocolErrorCode::InvalidEndpoint,
+                            std::string(operation) + " endpoint is not configured");
+    }
+    const std::uint32_t attempts = reconnect.max_attempts == 0U ? 1U : reconnect.max_attempts;
+    std::string last_error;
+    for (std::uint32_t attempt = 0U; attempt < attempts; ++attempt) {
+        try {
+            std::unique_ptr<ByteStream> stream = factory.connect(endpoint, timeouts);
+            if (!stream) {
+                throw TransportError("connection factory returned no stream");
+            }
+            FramedConnection connection(*stream);
+            connection.write_frame(make_exchange_public_peers(next_dejavu()));
+            connection.write_frame(request);
+            constexpr std::uint32_t kMaximumIgnoredFrames = 64U;
+            for (std::uint32_t ignored = 0U; ignored < kMaximumIgnoredFrames; ++ignored) {
+                const Frame response = connection.read_frame();
+                if (response.type == response_type) {
+                    stream->close();
+                    return response;
+                }
+                if (!is_unsolicited_network_frame(response)) {
+                    throw ProtocolError(ProtocolErrorCode::WrongMessageType,
+                                        std::string(operation)
+                                            + " received unexpected response frame type "
+                                            + std::to_string(response.type));
+                }
+            }
+            throw TransportError(std::string(operation)
+                                 + " response was not received before the unsolicited-frame limit");
+        } catch (const ProtocolError&) {
+            throw;
+        } catch (const TransportError& error) {
+            last_error = error.what();
+            if (attempt + 1U < attempts && reconnect.delay.count() > 0) {
+                std::this_thread::sleep_for(reconnect.delay);
+            }
+        }
+    }
+    throw TransportError(last_transport_error(operation, last_error));
+}
+
 } // namespace
 
 std::vector<Byte> serialize_frame(std::uint8_t type,
@@ -443,6 +519,16 @@ std::vector<Byte> make_exchange_public_peers(std::uint32_t dejavu)
     return serialize_frame(kExchangePublicPeers, dejavu, no_public_peers);
 }
 
+std::vector<Byte> make_computors_request(std::uint32_t dejavu)
+{
+    return serialize_frame(kRequestComputors, dejavu, {});
+}
+
+std::vector<Byte> make_entity_request(const PublicKey& public_key, std::uint32_t dejavu)
+{
+    return serialize_frame(kRequestEntity, dejavu, public_key.bytes);
+}
+
 SystemInfo parse_system_info(const Frame& frame)
 {
     if (frame.type != kRespondSystemInfo) {
@@ -509,6 +595,88 @@ std::vector<Byte> serialize_system_info_payload(const SystemInfo& info)
     write_u64(output, 112U, info.reserve3);
     write_u64(output, 120U, info.reserve4);
     return bytes;
+}
+
+ComputorList parse_computors(const Frame& frame)
+{
+    if (frame.type != kBroadcastComputors) {
+        throw ProtocolError(ProtocolErrorCode::WrongMessageType,
+                            "frame is not BROADCAST_COMPUTORS");
+    }
+    if (frame.payload.size() != kComputorsPayloadBytes) {
+        throw ProtocolError(ProtocolErrorCode::InvalidPayloadSize,
+                            "computors payload has an unexpected size");
+    }
+    const std::span<const Byte> bytes(frame.payload);
+    ComputorList computors;
+    computors.epoch = read_u16(bytes, 0U);
+    std::size_t offset = 2U;
+    for (PublicKey& public_key : computors.public_keys) {
+        std::copy_n(bytes.begin() + static_cast<std::ptrdiff_t>(offset),
+                    public_key.bytes.size(),
+                    public_key.bytes.begin());
+        offset += public_key.bytes.size();
+    }
+    std::copy_n(bytes.begin() + static_cast<std::ptrdiff_t>(offset),
+                computors.signature.size(),
+                computors.signature.begin());
+    return computors;
+}
+
+std::vector<Byte> serialize_computors_payload(const ComputorList& computors)
+{
+    std::vector<Byte> bytes(kComputorsPayloadBytes, 0U);
+    const std::span<Byte> output(bytes);
+    write_u16(output, 0U, computors.epoch);
+    std::size_t offset = 2U;
+    for (const PublicKey& public_key : computors.public_keys) {
+        std::copy(public_key.bytes.begin(),
+                  public_key.bytes.end(),
+                  output.begin() + static_cast<std::ptrdiff_t>(offset));
+        offset += public_key.bytes.size();
+    }
+    std::copy(computors.signature.begin(),
+              computors.signature.end(),
+              output.begin() + static_cast<std::ptrdiff_t>(offset));
+    return bytes;
+}
+
+bool contains_computor(const ComputorList& computors, const PublicKey& public_key) noexcept
+{
+    return std::any_of(computors.public_keys.begin(),
+                       computors.public_keys.end(),
+                       [&public_key](const PublicKey& candidate) { return candidate == public_key; });
+}
+
+EntityInfo parse_entity(const Frame& frame)
+{
+    if (frame.type != kRespondEntity) {
+        throw ProtocolError(ProtocolErrorCode::WrongMessageType,
+                            "frame is not RESPOND_ENTITY");
+    }
+    if (frame.payload.size() != kEntityPayloadBytes) {
+        throw ProtocolError(ProtocolErrorCode::InvalidPayloadSize,
+                            "entity payload has an unexpected size");
+    }
+    const std::span<const Byte> bytes(frame.payload);
+    EntityInfo entity;
+    std::copy_n(bytes.begin(), entity.public_key.bytes.size(), entity.public_key.bytes.begin());
+    entity.incoming_amount = static_cast<std::int64_t>(read_u64(bytes, 32U));
+    entity.outgoing_amount = static_cast<std::int64_t>(read_u64(bytes, 40U));
+    entity.number_of_incoming_transfers = read_u32(bytes, 48U);
+    entity.number_of_outgoing_transfers = read_u32(bytes, 52U);
+    entity.latest_incoming_transfer_tick = read_u32(bytes, 56U);
+    entity.latest_outgoing_transfer_tick = read_u32(bytes, 60U);
+    entity.tick = read_u32(bytes, 64U);
+    entity.spectrum_index = static_cast<std::int32_t>(read_u32(bytes, 68U));
+    std::size_t offset = 72U;
+    for (PublicKey& sibling : entity.siblings) {
+        std::copy_n(bytes.begin() + static_cast<std::ptrdiff_t>(offset),
+                    sibling.bytes.size(),
+                    sibling.bytes.begin());
+        offset += sibling.bytes.size();
+    }
+    return entity;
 }
 
 bool is_supported_algorithm(Algorithm algorithm) noexcept
@@ -820,51 +988,45 @@ void FramedConnection::write_frame(std::span<const Byte> frame)
 
 SystemInfo DirectNodeClient::request_system_info()
 {
-    if (endpoint_.host.empty() || endpoint_.port == 0U) {
-        throw ProtocolError(ProtocolErrorCode::InvalidEndpoint, "direct-node endpoint is not configured");
+    const std::vector<Byte> request = make_system_info_request(next_dejavu());
+    const Frame response = request_read_only(factory_,
+                                              endpoint_,
+                                              timeouts_,
+                                              reconnect_,
+                                              request,
+                                              kRespondSystemInfo,
+                                              "system-info request");
+    return parse_system_info(response);
+}
+
+ComputorList DirectNodeClient::request_computors()
+{
+    const std::vector<Byte> request = make_computors_request(next_dejavu());
+    const Frame response = request_read_only(factory_,
+                                              endpoint_,
+                                              timeouts_,
+                                              reconnect_,
+                                              request,
+                                              kBroadcastComputors,
+                                              "computors request");
+    return parse_computors(response);
+}
+
+EntityInfo DirectNodeClient::request_entity(const PublicKey& public_key)
+{
+    if (public_key.is_zero()) {
+        throw ProtocolError(ProtocolErrorCode::InvalidEndpoint,
+                            "entity request public key must be nonzero");
     }
-    const std::uint32_t attempts = reconnect_.max_attempts == 0U ? 1U : reconnect_.max_attempts;
-    std::string last_error;
-    for (std::uint32_t attempt = 0U; attempt < attempts; ++attempt) {
-        try {
-            std::unique_ptr<ByteStream> stream = factory_.connect(endpoint_, timeouts_);
-            if (!stream) {
-                throw TransportError("connection factory returned no stream");
-            }
-            FramedConnection connection(*stream);
-            connection.write_frame(make_exchange_public_peers(next_dejavu()));
-            const std::uint32_t request_dejavu = next_dejavu();
-            const std::vector<Byte> request = make_system_info_request(request_dejavu);
-            connection.write_frame(request);
-            constexpr std::uint32_t kMaximumIgnoredFrames = 64U;
-            SystemInfo info;
-            bool received_response = false;
-            for (std::uint32_t ignored = 0U; ignored < kMaximumIgnoredFrames; ++ignored) {
-                const Frame response = connection.read_frame();
-                if (response.type == kRespondSystemInfo) {
-                    info = parse_system_info(response);
-                    received_response = true;
-                    break;
-                }
-                if (!is_unsolicited_network_frame(response)) {
-                    (void)parse_system_info(response);
-                }
-            }
-            if (!received_response) {
-                throw TransportError("system-info response was not received before the unsolicited-frame limit");
-            }
-            stream->close();
-            return info;
-        } catch (const ProtocolError&) {
-            throw;
-        } catch (const TransportError& error) {
-            last_error = error.what();
-            if (attempt + 1U < attempts && reconnect_.delay.count() > 0) {
-                std::this_thread::sleep_for(reconnect_.delay);
-            }
-        }
-    }
-    throw TransportError(last_transport_error("system-info request", last_error));
+    const std::vector<Byte> request = make_entity_request(public_key, next_dejavu());
+    const Frame response = request_read_only(factory_,
+                                              endpoint_,
+                                              timeouts_,
+                                              reconnect_,
+                                              request,
+                                              kRespondEntity,
+                                              "entity request");
+    return parse_entity(response);
 }
 
 bool DirectNodeClient::submit_frame(std::span<const Byte> frame)

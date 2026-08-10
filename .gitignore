@@ -53,6 +53,8 @@ weights/
 config.local.*
 *.pem
 *.key
+.local-secrets/
+.local-cache/
 
 # Editors / OS
 .vscode/
