@@ -408,6 +408,16 @@ struct TransportTimeouts {
     std::chrono::milliseconds write{3000};
 };
 
+// Bounds a read-only request/response demultiplexing operation. The deadline
+// is absolute and is shared by all reconnect attempts; unsolicited traffic
+// never refreshes it. The byte/frame ceilings are defensive DoS guards, not
+// normal success criteria.
+struct ReadOnlyRequestLimits {
+    std::chrono::milliseconds deadline{15000};
+    std::size_t maximum_ignored_bytes{16U * 1024U * 1024U};
+    std::uint32_t maximum_ignored_frames{8192U};
+};
+
 struct ReconnectPolicy {
     std::uint32_t max_attempts = 3U;
     std::chrono::milliseconds delay{25};
@@ -424,6 +434,9 @@ public:
 class ByteStream {
 public:
     virtual ~ByteStream() = default;
+    // Called before each blocking read so a request's absolute deadline can
+    // cap the socket timeout to its remaining lifetime.
+    virtual void set_read_timeout(std::chrono::milliseconds timeout) = 0;
     [[nodiscard]] virtual std::size_t read_some(std::span<Byte> destination) = 0;
     [[nodiscard]] virtual std::size_t write_some(std::span<const Byte> source) = 0;
     virtual void close() noexcept = 0;
@@ -449,7 +462,8 @@ public:
     {
     }
 
-    [[nodiscard]] Frame read_frame();
+    [[nodiscard]] Frame read_frame_until(std::chrono::steady_clock::time_point deadline,
+                                         std::chrono::milliseconds maximum_read_timeout);
     void write_frame(std::span<const Byte> frame);
 
 private:
@@ -461,11 +475,13 @@ public:
     DirectNodeClient(ConnectionFactory& factory,
                      NodeEndpoint endpoint,
                      TransportTimeouts timeouts = {},
-                     ReconnectPolicy reconnect = {})
+                     ReconnectPolicy reconnect = {},
+                     ReadOnlyRequestLimits read_only_limits = {})
         : factory_(factory),
           endpoint_(std::move(endpoint)),
           timeouts_(timeouts),
-          reconnect_(reconnect)
+          reconnect_(reconnect),
+          read_only_limits_(read_only_limits)
     {
     }
 
@@ -483,6 +499,7 @@ private:
     NodeEndpoint endpoint_;
     TransportTimeouts timeouts_;
     ReconnectPolicy reconnect_;
+    ReadOnlyRequestLimits read_only_limits_;
 };
 
 struct AdapterSubmitResult {
@@ -513,6 +530,7 @@ struct RuntimeConfig {
     NodeEndpoint endpoint{"127.0.0.1", 21850U};
     TransportTimeouts timeouts{};
     ReconnectPolicy reconnect{};
+    ReadOnlyRequestLimits read_only_limits{};
     std::optional<SigningMaterial> signing_material;
     bool allow_live_submission = false;
 

@@ -199,6 +199,17 @@ public:
         close();
     }
 
+    void set_read_timeout(std::chrono::milliseconds timeout) override
+    {
+        timeval receive_timeout{};
+        const auto read_ms = timeout_milliseconds(timeout);
+        receive_timeout.tv_sec = static_cast<decltype(receive_timeout.tv_sec)>(read_ms / 1000);
+        receive_timeout.tv_usec = static_cast<decltype(receive_timeout.tv_usec)>((read_ms % 1000) * 1000);
+        if (::setsockopt(fd_, SOL_SOCKET, SO_RCVTIMEO, &receive_timeout, sizeof(receive_timeout)) != 0) {
+            throw TransportError(std::string("TCP read-timeout setup failed: ") + std::strerror(errno));
+        }
+    }
+
     [[nodiscard]] std::size_t read_some(std::span<Byte> destination) override
     {
         if (destination.empty()) {
@@ -386,6 +397,7 @@ private:
                                       const NodeEndpoint& endpoint,
                                       const TransportTimeouts& timeouts,
                                       const ReconnectPolicy& reconnect,
+                                      const ReadOnlyRequestLimits& limits,
                                       std::span<const Byte> request,
                                       std::uint8_t response_type,
                                       std::string_view operation)
@@ -394,21 +406,52 @@ private:
         throw ProtocolError(ProtocolErrorCode::InvalidEndpoint,
                             std::string(operation) + " endpoint is not configured");
     }
+    if (limits.deadline.count() <= 0 || limits.maximum_ignored_bytes == 0U
+        || limits.maximum_ignored_frames == 0U) {
+        throw ProtocolError(ProtocolErrorCode::InvalidEndpoint,
+                            std::string(operation) + " read-only limits must be nonzero");
+    }
+    const std::uint32_t request_dejavu = parse_frame(request).dejavu;
+    const auto started = std::chrono::steady_clock::now();
+    const auto deadline = started + limits.deadline;
+    const auto elapsed = [&started]() {
+        return std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - started).count();
+    };
+    const auto deadline_error = [&](std::uint32_t ignored_frames, std::size_t ignored_bytes) {
+        return std::string(operation) + " request_deadline_exceeded"
+            + " ignored_frames=" + std::to_string(ignored_frames)
+            + " ignored_bytes=" + std::to_string(ignored_bytes)
+            + " elapsed_ms=" + std::to_string(elapsed());
+    };
     const std::uint32_t attempts = reconnect.max_attempts == 0U ? 1U : reconnect.max_attempts;
     std::string last_error;
+    std::uint32_t ignored_frames = 0U;
+    std::size_t ignored_bytes = 0U;
     for (std::uint32_t attempt = 0U; attempt < attempts; ++attempt) {
+        if (std::chrono::steady_clock::now() >= deadline) {
+            throw TransportError(deadline_error(ignored_frames, ignored_bytes));
+        }
         try {
-            std::unique_ptr<ByteStream> stream = factory.connect(endpoint, timeouts);
+            const auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(
+                deadline - std::chrono::steady_clock::now());
+            TransportTimeouts attempt_timeouts = timeouts;
+            attempt_timeouts.connect = std::min(timeouts.connect, remaining);
+            attempt_timeouts.read = std::min(timeouts.read, remaining);
+            attempt_timeouts.write = std::min(timeouts.write, remaining);
+            std::unique_ptr<ByteStream> stream = factory.connect(endpoint, attempt_timeouts);
             if (!stream) {
                 throw TransportError("connection factory returned no stream");
             }
             FramedConnection connection(*stream);
             connection.write_frame(make_exchange_public_peers(next_dejavu()));
             connection.write_frame(request);
-            constexpr std::uint32_t kMaximumIgnoredFrames = 64U;
-            for (std::uint32_t ignored = 0U; ignored < kMaximumIgnoredFrames; ++ignored) {
-                const Frame response = connection.read_frame();
-                if (response.type == response_type) {
+            while (true) {
+                if (std::chrono::steady_clock::now() >= deadline) {
+                    throw TransportError(deadline_error(ignored_frames, ignored_bytes));
+                }
+                const Frame response = connection.read_frame_until(deadline, timeouts.read);
+                if (response.type == response_type && response.dejavu == request_dejavu) {
                     stream->close();
                     return response;
                 }
@@ -418,19 +461,42 @@ private:
                                             + " received unexpected response frame type "
                                             + std::to_string(response.type));
                 }
+                const std::size_t frame_bytes = response.payload.size() + kRequestResponseHeaderBytes;
+                if (frame_bytes > limits.maximum_ignored_bytes - ignored_bytes) {
+                    throw TransportError(std::string(operation) + " ignored_byte_ceiling_exceeded"
+                                         + " ignored_frames=" + std::to_string(ignored_frames)
+                                         + " ignored_bytes=" + std::to_string(ignored_bytes)
+                                         + " elapsed_ms=" + std::to_string(elapsed()));
+                }
+                ++ignored_frames;
+                ignored_bytes += frame_bytes;
+                if (ignored_frames > limits.maximum_ignored_frames) {
+                    throw TransportError(std::string(operation) + " ignored_frame_ceiling_exceeded"
+                                         + " ignored_frames=" + std::to_string(ignored_frames)
+                                         + " ignored_bytes=" + std::to_string(ignored_bytes)
+                                         + " elapsed_ms=" + std::to_string(elapsed()));
+                }
             }
-            throw TransportError(std::string(operation)
-                                 + " response was not received before the unsolicited-frame limit");
         } catch (const ProtocolError&) {
             throw;
         } catch (const TransportError& error) {
             last_error = error.what();
+            if (std::chrono::steady_clock::now() >= deadline) {
+                throw TransportError(deadline_error(ignored_frames, ignored_bytes));
+            }
             if (attempt + 1U < attempts && reconnect.delay.count() > 0) {
-                std::this_thread::sleep_for(reconnect.delay);
+                const auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    deadline - std::chrono::steady_clock::now());
+                if (remaining.count() > 0) {
+                    std::this_thread::sleep_for(std::min(reconnect.delay, remaining));
+                }
             }
         }
     }
-    throw TransportError(last_transport_error(operation, last_error));
+    throw TransportError(last_transport_error(operation, last_error)
+                         + " ignored_frames=" + std::to_string(ignored_frames)
+                         + " ignored_bytes=" + std::to_string(ignored_bytes)
+                         + " elapsed_ms=" + std::to_string(elapsed()));
 }
 
 } // namespace
@@ -940,17 +1006,29 @@ std::unique_ptr<ByteStream> TcpConnectionFactory::connect(const NodeEndpoint& en
     return TcpByteStream::open(endpoint, timeouts);
 }
 
-Frame FramedConnection::read_frame()
+Frame FramedConnection::read_frame_until(std::chrono::steady_clock::time_point deadline,
+                                         std::chrono::milliseconds maximum_read_timeout)
 {
-    std::array<Byte, kRequestResponseHeaderBytes> header{};
-    std::size_t offset = 0U;
-    while (offset < header.size()) {
-        const std::size_t count = stream_.read_some(std::span<Byte>(header).subspan(offset));
-        if (count == 0U) {
-            throw TransportError("connection closed during frame header");
+    const auto read_exact = [&](std::span<Byte> destination, std::string_view phase) {
+        std::size_t offset = 0U;
+        while (offset < destination.size()) {
+            const auto now = std::chrono::steady_clock::now();
+            if (now >= deadline) {
+                throw TransportError("request_deadline_exceeded during frame " + std::string(phase));
+            }
+            const auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(deadline - now);
+            const auto timeout = std::min(maximum_read_timeout, remaining);
+            stream_.set_read_timeout(timeout.count() > 0 ? timeout : std::chrono::milliseconds(1));
+            const std::size_t count = stream_.read_some(destination.subspan(offset));
+            if (count == 0U) {
+                throw TransportError("connection closed during frame " + std::string(phase));
+            }
+            offset += count;
         }
-        offset += count;
-    }
+    };
+
+    std::array<Byte, kRequestResponseHeaderBytes> header{};
+    read_exact(std::span<Byte>(header), "header");
     const std::uint32_t declared_size = static_cast<std::uint32_t>(header[0U])
         | (static_cast<std::uint32_t>(header[1U]) << 8U)
         | (static_cast<std::uint32_t>(header[2U]) << 16U);
@@ -962,14 +1040,7 @@ Frame FramedConnection::read_frame()
     }
     std::vector<Byte> encoded(declared_size, 0U);
     std::copy(header.begin(), header.end(), encoded.begin());
-    offset = kRequestResponseHeaderBytes;
-    while (offset < encoded.size()) {
-        const std::size_t count = stream_.read_some(std::span<Byte>(encoded).subspan(offset));
-        if (count == 0U) {
-            throw TransportError("connection closed during frame payload");
-        }
-        offset += count;
-    }
+    read_exact(std::span<Byte>(encoded).subspan(kRequestResponseHeaderBytes), "payload");
     return parse_frame(encoded);
 }
 
@@ -993,6 +1064,7 @@ SystemInfo DirectNodeClient::request_system_info()
                                               endpoint_,
                                               timeouts_,
                                               reconnect_,
+                                              read_only_limits_,
                                               request,
                                               kRespondSystemInfo,
                                               "system-info request");
@@ -1006,6 +1078,7 @@ ComputorList DirectNodeClient::request_computors()
                                               endpoint_,
                                               timeouts_,
                                               reconnect_,
+                                              read_only_limits_,
                                               request,
                                               kBroadcastComputors,
                                               "computors request");
@@ -1023,6 +1096,7 @@ EntityInfo DirectNodeClient::request_entity(const PublicKey& public_key)
                                               endpoint_,
                                               timeouts_,
                                               reconnect_,
+                                              read_only_limits_,
                                               request,
                                               kRespondEntity,
                                               "entity request");
@@ -1119,6 +1193,43 @@ RuntimeConfig load_runtime_config_from_environment(std::string_view prefix)
             throw ProtocolError(ProtocolErrorCode::InvalidEndpoint, "node port is outside 1..65535");
         }
         config.endpoint.port = static_cast<std::uint16_t>(value);
+    }
+
+    const auto read_timeout_name = std::string(prefix) + "READ_TIMEOUT_MS";
+    if (const char* read_timeout = environment_value(read_timeout_name); read_timeout != nullptr) {
+        const std::uint64_t value = parse_unsigned_env(read_timeout, read_timeout_name);
+        if (value == 0U || value > 60000U) {
+            throw ProtocolError(ProtocolErrorCode::InvalidEndpoint,
+                                read_timeout_name + " is outside 1..60000");
+        }
+        config.timeouts.read = std::chrono::milliseconds(value);
+    }
+    const auto deadline_name = std::string(prefix) + "REQUEST_DEADLINE_MS";
+    if (const char* deadline = environment_value(deadline_name); deadline != nullptr) {
+        const std::uint64_t value = parse_unsigned_env(deadline, deadline_name);
+        if (value == 0U || value > 120000U) {
+            throw ProtocolError(ProtocolErrorCode::InvalidEndpoint,
+                                deadline_name + " is outside 1..120000");
+        }
+        config.read_only_limits.deadline = std::chrono::milliseconds(value);
+    }
+    const auto ignored_bytes_name = std::string(prefix) + "MAX_IGNORED_BYTES";
+    if (const char* ignored_bytes = environment_value(ignored_bytes_name); ignored_bytes != nullptr) {
+        const std::uint64_t value = parse_unsigned_env(ignored_bytes, ignored_bytes_name);
+        if (value < kRequestResponseHeaderBytes || value > 64U * 1024U * 1024U) {
+            throw ProtocolError(ProtocolErrorCode::InvalidEndpoint,
+                                ignored_bytes_name + " is outside 8..67108864");
+        }
+        config.read_only_limits.maximum_ignored_bytes = static_cast<std::size_t>(value);
+    }
+    const auto attempts_name = std::string(prefix) + "ATTEMPTS";
+    if (const char* attempts = environment_value(attempts_name); attempts != nullptr) {
+        const std::uint64_t value = parse_unsigned_env(attempts, attempts_name);
+        if (value == 0U || value > 4U) {
+            throw ProtocolError(ProtocolErrorCode::InvalidEndpoint,
+                                attempts_name + " is outside 1..4");
+        }
+        config.reconnect.max_attempts = static_cast<std::uint32_t>(value);
     }
 
     const std::string public_name = std::string(prefix) + "SIGNING_PUBLIC_KEY_HEX";

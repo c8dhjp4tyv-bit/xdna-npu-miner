@@ -78,7 +78,18 @@
     "solution_encryption": "32-byte mining seed + 32-byte nonce + little-endian uint32 score",
     "solution_signature_bytes": 64,
     "partial_tcp_reads": "covered by FramedConnection and one-byte mock reads",
-    "bounded_reconnect": "covered by three-attempt mock request with two injected failures"
+    "bounded_reconnect": "covered by three-attempt mock request with two injected failures",
+    "read_only_demultiplexing": {
+      "policy": "absolute steady-clock deadline; per-read timeout capped by remaining deadline; valid known unsolicited frames only; no unsolicited frame resets the deadline",
+      "defaults": {
+        "request_deadline_ms": 15000,
+        "read_timeout_ms": 3000,
+        "maximum_ignored_bytes": 16777216,
+        "maximum_ignored_frames": 8192
+      },
+      "response_correlation": "The pinned core processRequestComputors and processRequestEntity echo RequestResponseHeader.dejavu in enqueueResponse; requested responses require both expected type and matching dejavu. Other types are ignored only when in the explicit known asynchronous allowlist.",
+      "regression": "PASS: mock SystemInfo response after 200 valid BROADCAST_TICK frames; byte ceiling, defensive frame ceiling, absolute deadline/read-timeout, unknown type, malformed frame, close, and bounded reconnect fail closed."
+    }
   },
   "implementation": {
     "files": [
@@ -310,16 +321,20 @@
   "authorization_workflow": {
     "implementation_commit": "fb40336",
     "tool": "m6_authorization_check",
-    "status": "NOT_COMPLETED_EXTERNAL_ENDPOINT_PROTOCOL_OR_TRANSPORT_FAILURE",
+    "status": "CHECK_UNAVAILABLE_SYSTEM_INFO_REQUEST_DEADLINE_EXCEEDED",
     "read_only": true,
-    "persistent_operator_identity_available": false,
-    "temporary_identity_used_for_probe": true,
+    "persistent_operator_identity_available": true,
+    "temporary_identity_used_for_probe": false,
     "secret_printed": false,
     "secret_committed": false,
     "funding_or_submission_performed": false,
     "last_probe_endpoint": "corenet.qubic.li:21841",
-    "last_probe_result": "NOT_AUTHORIZED",
-    "last_probe_reason": "system-info request reached external endpoint but bounded query failed before complete authorization decision",
+    "last_probe_result": "CHECK_UNAVAILABLE",
+    "last_probe_stage": "system_info",
+    "last_probe_reason": "request_deadline_exceeded",
+    "last_probe_ignored_frames": 5220,
+    "last_probe_ignored_bytes": 3423184,
+    "last_probe_elapsed_ms": 15005,
     "candidate_search_started": false,
     "frame_sent": false
   },

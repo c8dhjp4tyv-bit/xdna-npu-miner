@@ -41,14 +41,14 @@ def read_exact(conn, count):
         data.extend(chunk)
     return bytes(data)
 
-def system_info_frame():
+def system_info_frame(dejavu):
     payload = bytearray(128)
     struct.pack_into("<hHIIIHBBBBBBII", payload, 0,
                      301, 7, 100, 1, 99, 123, 2, 3, 4, 5, 6, 26, 11, 12)
     payload[32:64] = bytes(range(0x40, 0x60))
     struct.pack_into("<iQQIQQQQQ", payload, 64, 2, 13, 14, 15, 16, 17, 18, 19, 20)
     total = 8 + len(payload)
-    return bytes((total & 0xff, (total >> 8) & 0xff, (total >> 16) & 0xff, 47)) + struct.pack("<I", 0) + payload
+    return bytes((total & 0xff, (total >> 8) & 0xff, (total >> 16) & 0xff, 47)) + struct.pack("<I", dejavu) + payload
 
 def read_frame(conn):
     header = read_exact(conn, 8)
@@ -74,11 +74,12 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
             if len(request) != 8 or request[3] != 46 or request_payload:
                 raise SystemExit("probe did not send REQUEST_SYSTEM_INFO")
             if mode == "success":
+                request_dejavu = struct.unpack("<I", request[4:])[0]
                 # A direct node may stream its own peer exchange and ordinary
                 # broadcast traffic before the response we requested.
                 unsolicited_peer = bytes((24, 0, 0, 0, 0, 0, 0, 0)) + bytes(16)
                 unsolicited_broadcast = bytes((8, 0, 0, 1, 0, 0, 0, 0))
-                conn.sendall(unsolicited_peer + unsolicited_broadcast + system_info_frame())
+                conn.sendall(unsolicited_peer + unsolicited_broadcast + system_info_frame(request_dejavu))
             elif mode == "wrong-frame":
                 conn.sendall(bytes((8, 0, 0, 99, 0, 0, 0, 0)))
             elif mode == "truncated":

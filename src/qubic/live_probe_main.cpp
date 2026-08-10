@@ -229,7 +229,8 @@ int main(int argc, char** argv)
 
         xdna::qubic::TcpConnectionFactory factory;
         xdna::qubic::DirectNodeClient client(
-            factory, options.config.endpoint, options.config.timeouts, options.config.reconnect);
+            factory, options.config.endpoint, options.config.timeouts, options.config.reconnect,
+            options.config.read_only_limits);
         const TaskIdentity task = recorded_production_task_identity();
         WorkContextTracker tracker;
         std::optional<WorkContext> previous;

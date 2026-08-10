@@ -8,6 +8,7 @@
 #include <span>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -179,17 +180,58 @@ struct MemoryStream final : ByteStream {
     MemoryStream(std::vector<Byte> incoming_bytes,
                  std::vector<Byte>& written_bytes,
                  std::size_t read_chunk_bytes = 1U,
-                 std::size_t write_chunk_bytes = 2U)
+                 std::size_t write_chunk_bytes = 2U,
+                 std::chrono::milliseconds empty_read_delay = std::chrono::milliseconds(0),
+                 bool timeout_on_empty_read = false)
         : incoming(std::move(incoming_bytes)),
           written(written_bytes),
           read_chunk(read_chunk_bytes),
-          write_chunk(write_chunk_bytes)
+          write_chunk(write_chunk_bytes),
+          empty_delay(empty_read_delay),
+          timeout_on_empty(timeout_on_empty_read)
     {
+    }
+
+    void set_read_timeout(std::chrono::milliseconds timeout) override
+    {
+        last_read_timeout = timeout;
     }
 
     [[nodiscard]] std::size_t read_some(std::span<Byte> destination) override
     {
+        if (!response_dejavu_prepared) {
+            FrameDecoder decoder;
+            decoder.feed(written);
+            (void)decoder.next();
+            const auto request = decoder.next();
+            if (request.has_value()) {
+                for (std::size_t offset = 0U; offset + xdna::qubic::kRequestResponseHeaderBytes <= incoming.size();) {
+                    const std::size_t size = static_cast<std::size_t>(incoming[offset])
+                        | (static_cast<std::size_t>(incoming[offset + 1U]) << 8U)
+                        | (static_cast<std::size_t>(incoming[offset + 2U]) << 16U);
+                    if (size < xdna::qubic::kRequestResponseHeaderBytes || size > incoming.size() - offset) {
+                        break;
+                    }
+                    if (incoming[offset + 3U] == xdna::qubic::kRespondSystemInfo
+                        || incoming[offset + 3U] == xdna::qubic::kBroadcastComputors
+                        || incoming[offset + 3U] == xdna::qubic::kRespondEntity) {
+                        for (std::size_t byte = 0U; byte < 4U; ++byte) {
+                            incoming[offset + 4U + byte] = static_cast<Byte>(
+                                (request->dejavu >> (byte * 8U)) & 0xFFU);
+                        }
+                    }
+                    offset += size;
+                }
+            }
+            response_dejavu_prepared = true;
+        }
         if (read_offset == incoming.size()) {
+            if (empty_delay.count() > 0) {
+                std::this_thread::sleep_for(empty_delay);
+            }
+            if (timeout_on_empty) {
+                throw TransportError("injected read timeout");
+            }
             return 0U;
         }
         const std::size_t count = std::min({destination.size(), read_chunk, incoming.size() - read_offset});
@@ -217,6 +259,10 @@ struct MemoryStream final : ByteStream {
     std::size_t read_chunk = 1U;
     std::size_t write_chunk = 2U;
     std::size_t read_offset = 0U;
+    std::chrono::milliseconds last_read_timeout{0};
+    std::chrono::milliseconds empty_delay{0};
+    bool timeout_on_empty = false;
+    bool response_dejavu_prepared = false;
     bool closed = false;
 };
 
@@ -236,13 +282,16 @@ public:
             throw TransportError("injected connection failure");
         }
         writes.emplace_back();
-        return std::make_unique<MemoryStream>(response_, writes.back(), read_chunk, write_chunk);
+        return std::make_unique<MemoryStream>(response_, writes.back(), read_chunk, write_chunk,
+                                              empty_delay, timeout_on_empty);
     }
 
     std::vector<Byte> response_;
     std::vector<std::vector<Byte>> writes;
     std::size_t read_chunk = 1U;
     std::size_t write_chunk = 2U;
+    std::chrono::milliseconds empty_delay{0};
+    bool timeout_on_empty = false;
     std::size_t failures_before_success = 0U;
     std::size_t connects = 0U;
 };
@@ -473,6 +522,74 @@ void test_mock_system_info_and_bounded_reconnect()
     expect(!decoder.next().has_value(), "mock system-info request contains only handshake and request frames");
 }
 
+void test_read_only_demultiplexing_allows_many_unsolicited_frames()
+{
+    const SystemInfo expected = make_system_info();
+    std::vector<Byte> response;
+    // This deliberately exceeds the former 64-frame limit. These are known
+    // asynchronous BROADCAST_TICK frames, followed by the requested response.
+    for (std::uint32_t index = 0U; index < 200U; ++index) {
+        const std::array<Byte, 4U> tick_payload{
+            static_cast<Byte>(index & 0xFFU), 0U, 0U, 0U};
+        const std::vector<Byte> unsolicited = xdna::qubic::serialize_frame(
+            3U, index + 1U, tick_payload);
+        response.insert(response.end(), unsolicited.begin(), unsolicited.end());
+    }
+    const std::vector<Byte> desired = xdna::qubic::serialize_frame(
+        xdna::qubic::kRespondSystemInfo,
+        0U,
+        xdna::qubic::serialize_system_info_payload(expected));
+    response.insert(response.end(), desired.begin(), desired.end());
+
+    MemoryFactory factory(response);
+    const xdna::qubic::ReadOnlyRequestLimits limits{
+        std::chrono::milliseconds(1000), 64U * 1024U, 512U};
+    DirectNodeClient client(factory,
+                            NodeEndpoint{"mock", 1234U},
+                            TransportTimeouts{},
+                            ReconnectPolicy{1U, std::chrono::milliseconds(0)},
+                            limits);
+    expect(client.request_system_info() == expected,
+           "requested response succeeds after more than 64 valid unsolicited frames");
+}
+
+void test_read_only_demultiplexing_resource_and_deadline_limits()
+{
+    const std::array<Byte, 16U> payload{};
+    const std::vector<Byte> unsolicited = xdna::qubic::serialize_frame(3U, 1U, payload);
+
+    MemoryFactory byte_factory(unsolicited);
+    DirectNodeClient byte_client(
+        byte_factory, NodeEndpoint{"mock", 1234U}, TransportTimeouts{},
+        ReconnectPolicy{1U, std::chrono::milliseconds(0)},
+        xdna::qubic::ReadOnlyRequestLimits{std::chrono::milliseconds(1000), 16U, 512U});
+    expect_transport([&] { (void)byte_client.request_system_info(); },
+                     "ignored-byte ceiling fails closed before accepting an absent response");
+
+    std::vector<Byte> many_frames;
+    for (std::uint32_t index = 0U; index < 3U; ++index) {
+        const std::vector<Byte> frame = xdna::qubic::serialize_frame(3U, index + 1U, {});
+        many_frames.insert(many_frames.end(), frame.begin(), frame.end());
+    }
+    MemoryFactory frame_factory(many_frames);
+    DirectNodeClient frame_client(
+        frame_factory, NodeEndpoint{"mock", 1234U}, TransportTimeouts{},
+        ReconnectPolicy{1U, std::chrono::milliseconds(0)},
+        xdna::qubic::ReadOnlyRequestLimits{std::chrono::milliseconds(1000), 1024U, 2U});
+    expect_transport([&] { (void)frame_client.request_system_info(); },
+                     "high defensive frame ceiling remains a fail-closed DoS guard");
+
+    MemoryFactory timeout_factory({});
+    timeout_factory.empty_delay = std::chrono::milliseconds(20);
+    timeout_factory.timeout_on_empty = true;
+    DirectNodeClient timeout_client(
+        timeout_factory, NodeEndpoint{"mock", 1234U}, TransportTimeouts{},
+        ReconnectPolicy{1U, std::chrono::milliseconds(0)},
+        xdna::qubic::ReadOnlyRequestLimits{std::chrono::milliseconds(10), 1024U, 32U});
+    expect_transport([&] { (void)timeout_client.request_system_info(); },
+                     "absolute request deadline fails closed after a read timeout");
+}
+
 void test_mock_system_info_failure_modes()
 {
     const std::vector<Byte> wrong_type = xdna::qubic::serialize_frame(
@@ -665,6 +782,8 @@ int main()
         test_submission_gates_and_no_send();
         test_deterministic_solution_serialization();
         test_mock_system_info_and_bounded_reconnect();
+        test_read_only_demultiplexing_allows_many_unsolicited_frames();
+        test_read_only_demultiplexing_resource_and_deadline_limits();
         test_mock_system_info_failure_modes();
         test_current_computor_and_entity_wire_parsers();
         test_mock_solution_submission();

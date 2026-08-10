@@ -18,6 +18,41 @@ live submission remains unexercised because no authorized source identity,
 eligible candidate, or runtime signing secret was available. Do not start M7
 or Qatum work.
 
+## Current M6 direct-node demultiplexing checkpoint — 2026-08-10
+
+- Branch: `main`; M6 remains **IN PROGRESS**. The existing ignored local
+  operator subseed was preserved; `setup-m6-local-identity.sh` was not run,
+  no identity was replaced, and no secret was printed, committed, funded, or
+  used for submission.
+- Root cause of the old false `NOT_AUTHORIZED`: `request_read_only()` treated
+  64 valid asynchronous frames as a failure. The public stream delivered more
+  than that before a requested reply, so this was transport incompleteness—not
+  an authoritative authorization decision.
+- The reader now uses one absolute `steady_clock` deadline per request across
+  all reconnects (default 15,000 ms), caps each socket read to the remaining
+  deadline and configured 3,000-ms read timeout, and allows only known
+  asynchronous Qubic message types. It also has finite 16-MiB ignored-byte
+  and 8,192-frame defensive ceilings. Valid broadcasts never extend the
+  deadline. Type-2/32 responses require the current official core's echoed
+  request `dejavu`; system-info follows the same request/response rule.
+- Offline `qubic_direct_node_tests` passes a response after **200** valid
+  `BROADCAST_TICK` frames plus immediate-response, byte/frame ceiling,
+  deadline/read-timeout, unknown-frame, malformed-frame, close, and reconnect
+  paths. The production and default CTest suites remain green.
+- Live after the change: `run-m6-live-system-info.sh` passed twice (epoch 225,
+  ticks 73321785/73321793, threshold 3838); `run-m6-live-computors.sh` passed
+  with epoch 225, exact 21,698-byte payload and 676 nonzero keys after 96
+  ignored frames / 34,224 ignored bytes in 779 ms. The local authorization
+  gate stayed **CHECK_UNAVAILABLE**, correctly at `stage=system_info`,
+  `reason=request_deadline_exceeded` after 5,220 ignored frames / 3,423,184
+  ignored bytes / 15,005 ms. It is not `NOT_AUTHORIZED`; entity state and
+  energy were not authoritatively obtained.
+- Exact next task: investigate why this endpoint can continuously stream
+  broadcasts without returning SystemInfo within the finite 15-s policy, or
+  repeat only bounded read-only checks against an official endpoint. Do not
+  fund/replace the identity, submit, search candidates, start M7, or add
+  Qatum.
+
 ## Latest M6 secure-identity checkpoint — 2026-08-10
 
 - Branch: `main`; implementation commit `fb40336`

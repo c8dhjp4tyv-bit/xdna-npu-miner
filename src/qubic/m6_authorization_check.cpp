@@ -84,9 +84,27 @@ constexpr std::uint64_t kMessageDisseminationThreshold = 1'000'000'000ULL;
     return !secret_path.empty() && !endpoint.host.empty() && endpoint.port != 0U;
 }
 
-void print_failure(std::string_view reason)
+[[nodiscard]] std::string_view classify_transport_reason(std::string_view detail) noexcept
 {
-    std::cout << "NOT_AUTHORIZED\n";
+    if (detail.find("request_deadline_exceeded") != std::string_view::npos) {
+        return "request_deadline_exceeded";
+    }
+    if (detail.find("ignored_byte_ceiling_exceeded") != std::string_view::npos) {
+        return "ignored_byte_ceiling_exceeded";
+    }
+    if (detail.find("ignored_frame_ceiling_exceeded") != std::string_view::npos) {
+        return "ignored_frame_ceiling_exceeded";
+    }
+    if (detail.find("Resource temporarily unavailable") != std::string_view::npos) {
+        return "transport_timeout";
+    }
+    return "transport_check_failed";
+}
+
+void print_unavailable(std::string_view stage, std::string_view reason)
+{
+    std::cout << "CHECK_UNAVAILABLE\n";
+    std::cout << "stage=" << stage << '\n';
     std::cout << "reason=" << reason << '\n';
 }
 
@@ -174,7 +192,7 @@ int main(int argc, char** argv)
     };
     if (const char* port = std::getenv("XDNA_QUBIC_NODE_PORT"); port != nullptr
         && !parse_port(port, endpoint.port)) {
-        print_failure("invalid_endpoint");
+        print_unavailable("configuration", "invalid_endpoint");
         return 3;
     }
     std::filesystem::path secret_path;
@@ -185,33 +203,35 @@ int main(int argc, char** argv)
     SigningSecret secret;
     std::string error;
     if (!xdna::qubic::load_signing_subseed_file(secret_path, secret, error)) {
-        print_failure("local_identity_unavailable");
+        print_unavailable("local_identity", "local_identity_unavailable");
         std::cerr << error << '\n';
         return 3;
     }
     K12FourQCryptoProvider provider;
     PublicKey source_public_key{};
     if (!provider.derive_public_key(std::span<const Byte>(secret.bytes), source_public_key)) {
-        print_failure("public_key_derivation_failed");
+        print_unavailable("local_identity", "public_key_derivation_failed");
         return 3;
     }
 
+    std::string stage = "system_info";
     try {
+        const xdna::qubic::RuntimeConfig runtime = xdna::qubic::load_runtime_config_from_environment();
         TcpConnectionFactory factory;
         DirectNodeClient client(factory,
                                 endpoint,
-                                TransportTimeouts{std::chrono::milliseconds(3000),
-                                                  std::chrono::milliseconds(3000),
-                                                  std::chrono::milliseconds(3000)},
-                                ReconnectPolicy{2U, std::chrono::milliseconds(100)});
+                                runtime.timeouts,
+                                runtime.reconnect,
+                                runtime.read_only_limits);
         const SystemInfo system_info = client.request_system_info();
+        stage = "computors";
         const ComputorList computors = client.request_computors();
         const bool epoch_matches = computors.epoch == system_info.epoch;
         const bool keys_nonzero = all_computor_keys_nonzero(computors);
 
         PublicKey arbitrator_public_key{};
         if (!xdna::qubic::public_key_from_identity(kArbitratorIdentity, arbitrator_public_key)) {
-            print_failure("arbitrator_identity_decode_failed");
+            print_unavailable("computors", "arbitrator_identity_decode_failed");
             return 3;
         }
         const std::vector<Byte> computors_payload = xdna::qubic::serialize_computors_payload(computors);
@@ -223,10 +243,20 @@ int main(int argc, char** argv)
             && provider.verify(arbitrator_public_key,
                                std::span<const Byte>(digest),
                                std::span<const Byte>(computors.signature));
+        if (!epoch_matches || !keys_nonzero || !signature_verified) {
+            print_unavailable("computors", !epoch_matches ? "stale_or_mismatched_epoch"
+                : (!keys_nonzero ? "zero_computor_key" : "invalid_computor_signature"));
+            return 3;
+        }
 
+        stage = "entity";
         const EntityInfo entity = client.request_entity(source_public_key);
-        const bool source_is_computor = epoch_matches && keys_nonzero && signature_verified
-            && xdna::qubic::contains_computor(computors, source_public_key);
+        if (entity.public_key != source_public_key || entity.incoming_amount < 0 || entity.outgoing_amount < 0) {
+            print_unavailable("entity", entity.public_key != source_public_key
+                ? "response_key_mismatch" : "invalid_entity_amount");
+            return 3;
+        }
+        const bool source_is_computor = xdna::qubic::contains_computor(computors, source_public_key);
         const bool source_is_funded = entity.spectrum_index >= 0 && energy_meets_threshold(entity);
         const bool authorized = source_is_computor || source_is_funded;
         const PublicKey destination = computors.public_keys.front();
@@ -244,15 +274,15 @@ int main(int argc, char** argv)
                             destination);
         return authorized ? 0 : 2;
     } catch (const xdna::qubic::ProtocolError& protocol_error) {
-        print_failure("protocol_check_failed");
+        print_unavailable(stage, "protocol_check_failed");
         std::cerr << protocol_error.what() << '\n';
         return 3;
     } catch (const TransportError& transport_error) {
-        print_failure("transport_check_failed");
+        print_unavailable(stage, classify_transport_reason(transport_error.what()));
         std::cerr << transport_error.what() << '\n';
         return 3;
     } catch (const std::exception& exception) {
-        print_failure("authorization_check_failed");
+        print_unavailable(stage, "authorization_check_failed");
         std::cerr << exception.what() << '\n';
         return 3;
     }
