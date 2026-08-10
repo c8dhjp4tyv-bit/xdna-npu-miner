@@ -129,11 +129,24 @@ runtime submission. Network submission also requires an explicit runtime
 opt-in, an authorized endpoint and signing secret, bounded connect/read/write
 timeouts, and bounded reconnect attempts.
 
+Read-only queries retain one absolute 15,000-ms deadline across reconnects and
+use at most eight attempts. `TcpConnectionFactory` rotates the starting
+address across the current IPv4 answers for the official `corenet.qubic.li`
+hostname on each fresh connection; it does not embed or discover arbitrary
+third-party peers. This is a bounded availability policy for the observed
+official DNS fan-out, not a deadline extension. Optional
+`ReadOnlyRequestDiagnostics` reports only request/response metadata, elapsed
+time, resource totals, and aggregate ignored message-type counts; payloads and
+signing material are never logged.
+
 The live direct-node connection begins with a type-0 `EXCHANGE_PUBLIC_PEERS`
 frame containing 16 zero bytes and a nonzero per-connection dejavu, followed
 by the type-46 system-info request. A node can send the peer-exchange frame
 and ordinary broadcast traffic asynchronously, so the bounded reader ignores
-those network frames and accepts only the type-47 system-info response. The
+those network frames and accepts only the desired response type plus exact
+request-dejavu correlation (type 47 for SystemInfo, type 2 for Computors, and
+type 32 for Entity). A same-type wrong-dejavu frame fails closed before the
+asynchronous allowlist is consulted. The
 read-only executable is `qubic_live_probe`, driven by
 `scripts/run-m6-live-system-info.sh`; it keeps the safe localhost default in
 `RuntimeConfig` unchanged and sets the official public endpoint explicitly.

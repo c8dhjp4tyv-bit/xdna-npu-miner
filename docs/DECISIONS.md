@@ -545,8 +545,9 @@ list, and the source entity before it can print `AUTHORIZED`. It verifies the
 current epoch, the 676-key list signature with the pinned Arbitrator identity,
 and the official current-computor or spectrum-energy rule. The first verified
 current computor key is the only deterministic destination selection; no key
-is hard-coded. A query failure prints `NOT_AUTHORIZED` and never starts M5 or
-writes a network frame.
+is hard-coded. A transport/protocol/incomplete-state failure prints
+`CHECK_UNAVAILABLE`; only a complete valid state can print `NOT_AUTHORIZED`.
+The check never starts M5 or writes a network frame.
 
 Reason: a public list observation is not sufficient authorization, and a
 successful TCP write is not submission acceptance. State must be cryptographically
@@ -565,3 +566,29 @@ SHA-256 `0c5e9e42c6d86c320af62f4125ca85b2446f2b098893fd6521bcf66c22f7f00a`.
 provider. The task is never committed to this repository. The final runner
 stops before search because the production random2/candidate orchestration
 seam is not yet implemented; it does not fabricate counts or scores.
+
+## D-039 — Bounded official-DNS rotation for read-only query availability
+
+**Status:** Accepted; read-only authorization path verified, submission still disabled
+
+The official `corenet.qubic.li:21841` hostname is the only configured public
+endpoint. Because it resolves to multiple public IPv4 direct-node targets and
+some targets can accept a TCP connection while returning only asynchronous
+traffic during the bounded window, `TcpConnectionFactory` rotates the starting
+address across the current `getaddrinfo` answer set for each fresh connection.
+Read-only requests use at most eight attempts within the existing 15,000-ms
+absolute deadline; connect/read/write timeouts remain 3,000 ms and ignored
+byte/frame ceilings remain terminal. No IP is hard-coded, no random
+third-party peer is selected, and response validation is unchanged.
+
+The opt-in diagnostics executable records safe request/response metadata and
+aggregate ignored message-type counts. A complete live
+SystemInfo → signed Computors → Entity(source) check now returns
+`NOT_AUTHORIZED` because the preserved local identity is neither a current
+computor nor funded to the exact `1000000000` entity-energy threshold. This
+decision is trusted read-only state; it does not authorize funding, candidate
+search, submission, M7, or Qatum work.
+
+Reason: the observed failure was endpoint target/load nondeterminism, not a
+correlation or handshake defect. Increasing the deadline or weakening
+same-type dejavu checks would hide the cause and reduce correctness.

@@ -365,6 +365,23 @@ signature-verification limitation are recorded in
 SystemInfo; its current hash-verified source is the pinned upstream
 `data/bpp9000.task` input documented in `docs/UPSTREAM.md`.
 
+The bounded read-only diagnostic matrix is opt-in and aggregates ignored
+message types without printing payloads. It covers standalone SystemInfo,
+authorization's SystemInfo stage, SystemInfo/Computors/Entity stop points,
+both two-query orders, and the complete three-query sequence:
+
+```bash
+./scripts/run-m6-read-only-diagnostics.sh
+```
+
+Its default policy is a 15,000-ms absolute deadline, 3,000-ms connect/read/
+write timeouts, 16-MiB/8,192-frame ceilings, and at most eight attempts across
+the official endpoint's current DNS IPv4 answers. The matrix also verifies
+that every accepted type-47, type-2, and type-32 response echoes the request
+dejavu. The official endpoint can remain load-variable; an unavailable query
+is recorded as such and never becomes `NOT_AUTHORIZED` through fallback or
+relaxed correlation.
+
 The guarded submission surface is intentionally non-operative without an
 authorized identity and candidate. `scripts/run-m6-live-submit.sh` exits
 nonzero and records the external protocol requirement without sending a
@@ -496,8 +513,10 @@ It must print `AUTHORIZED` only after verifying SystemInfo, the current
 epoch, the 676-key computor payload and Arbitrator signature, and the source
 entity rule. Current wire parser tests cover the exact 21,698-byte computor
 payload and exact 840-byte entity response. A missing secret, failed query,
-invalid signature, stale epoch, malformed amount, or non-authorized entity
-prints `NOT_AUTHORIZED` and does not start candidate search or submission.
+invalid signature, stale epoch, malformed amount, or transport/deadline
+failure prints `CHECK_UNAVAILABLE`; only a complete, valid three-stage query
+can print `AUTHORIZED` or `NOT_AUTHORIZED`. The check never starts candidate
+search or submission.
 
 The one-shot final command is intentionally bounded and guarded:
 

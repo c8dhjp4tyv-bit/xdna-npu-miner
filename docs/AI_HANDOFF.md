@@ -18,7 +18,95 @@ live submission remains unexercised because no authorized source identity,
 eligible candidate, or runtime signing secret was available. Do not start M7
 or Qatum work.
 
-## Current M6 direct-node demultiplexing checkpoint — 2026-08-10
+## Current focused M6 read-only authorization checkpoint — 2026-08-10
+
+Implementation commit: `6a5f25fcdc35aee3b5a352f3e93041d13bf4252b`.
+
+The remaining authorization-query failure is isolated and fixed at the
+read-only endpoint policy boundary. It was not a SystemInfo dejavu bug or a
+handshake-order race. `corenet.qubic.li` currently resolves to many official
+IPv4 direct-node targets (43 unique addresses observed in this session). Some
+targets accept TCP and stream peer/broadcast traffic but do not return the
+requested response within the bounded request. The old standalone script also
+used only two reconnect attempts, while the authorization path used its old
+three-attempt default. Separate processes could therefore select different
+resolver-ordered targets. The old authorization failure was exactly this
+behavior: SystemInfo reached the 15,000-ms absolute deadline after 5,220
+ignored frames / 3,423,184 bytes.
+
+The fix keeps the 15,000-ms deadline and all existing framing/resource
+hardening. Each fresh read-only connection rotates the starting address in the
+current official hostname resolution, with a finite maximum of eight bounded
+attempts. No public IP is hard-coded, no third-party peer is used, and the
+submission path is not broadened. The standalone live script now uses the same
+eight-attempt policy. Some official targets remain load-variable; when all
+targets selected within the deadline are unresponsive, the result remains
+`CHECK_UNAVAILABLE` rather than weakening response validation.
+
+### Pinned-core protocol facts
+
+- In core revision `a83f935406cd006b5b1a94971139e74d410ecb6d`,
+  `src/qubic.cpp:1362-1401` constructs type-47 `RespondSystemInfo` and calls
+  `enqueueResponse(..., header->dejavu(), ...)`. SystemInfo therefore echoes
+  the request dejavu exactly; it does not set zero, generate a new value, or
+  suppress the response under a hidden correlation condition. Dispatch is the
+  direct `REQUEST_SYSTEM_INFO` case at `src/qubic.cpp:2086-2089`.
+- `processExchangePublicPeers` at `src/qubic.cpp:510-541` consumes the type-0
+  peer exchange and marks state without enqueueing a reply. The core's new
+  connection loop sends type 0 immediately; it does not require the client to
+  wait for a peer-exchange response before sending its request. The client
+  therefore keeps the deterministic type-0-then-request order without a sleep.
+- Core Computors type 2 and Entity type 32 handlers also pass the request
+  dejavu unchanged. The reader checks desired response type first, accepts
+  only exact dejavu equality, fails closed on same-type wrong dejavu, and only
+  then consults the asynchronous allowlist. Type 2 remains allowlisted for
+  unsolicited broadcast traffic but cannot swallow a desired type-2 response.
+- `next_dejavu()` uses an atomic `uint32_t` counter initialized at 1, relaxed
+  `fetch_add`, skips zero on wrap, and is serialized/read in the existing
+  little-endian frame helpers. Deterministic tests cover nonzero, unique,
+  exact request/response correlation and wrong-dejavu boundaries.
+
+### Controlled matrix and final live state
+
+The opt-in aggregate diagnostic matrix covers A–H: standalone SystemInfo,
+authorization SystemInfo stage, each single stop, both two-query orders, and
+the complete SystemInfo → Computors → Entity sequence. The primary post-fix
+three-repeat run accepted all 36 query steps. An additional three-repeat load
+observation accepted 34/36; the two failures were A/B SystemInfo attempts that
+received only five type-0 frames before the same deadline. Across that
+observation the ignored-frame distribution was type 3: 11,146; type 0: 43;
+type 24: 42; types 8 and 29: 20 and 43; type 14: 20; type 16: 3; and types 1
+and 68: 1 each. No payloads or signing bytes are logged.
+
+The complete live authorization check now succeeds through all three trusted
+read-only stages and returns:
+
+```text
+NOT_AUTHORIZED
+system_epoch=225
+computors_epoch=225
+computors_signature_verified=true
+entity_incoming_amount=0
+entity_outgoing_amount=0
+entity_energy=0
+required_threshold=1000000000
+source_is_current_computor=false
+submission_performed=false
+```
+
+Standalone SystemInfo also passed twice at epoch 225, threshold 3838, with
+ticks 73338141 and 73338143. Computors passed with epoch 225, a 21,698-byte
+response, 676 nonzero keys, and key-list SHA-256
+`58ef30a7fece845226c91502ff616747e1d50aab34ef530e68e15a36231aa9bf`.
+The existing local identity was not replaced or funded; its signing subseed
+was never printed. No candidate search, submission, M7, or Qatum work was
+started. The exact next task is to stop at this trusted read-only decision.
+
+All older checkpoint sections below are historical records. Their continuation
+templates for identity generation, funding, candidate search, or submission
+must not be followed for this focused task.
+
+## Historical M6 direct-node demultiplexing checkpoint — before the focused fix
 
 - Branch: `main`; M6 remains **IN PROGRESS**. The existing ignored local
   operator subseed was preserved; `setup-m6-local-identity.sh` was not run,
@@ -48,11 +136,9 @@ or Qatum work.
   `reason=request_deadline_exceeded` after 5,220 ignored frames / 3,423,184
   ignored bytes / 15,005 ms. It is not `NOT_AUTHORIZED`; entity state and
   energy were not authoritatively obtained.
-- Exact next task: investigate why this endpoint can continuously stream
-  broadcasts without returning SystemInfo within the finite 15-s policy, or
-  repeat only bounded read-only checks against an official endpoint. Do not
-  fund/replace the identity, submit, search candidates, start M7, or add
-  Qatum.
+- Superseded by the focused read-only authorization checkpoint above. The
+  endpoint behavior described here remains useful as the pre-fix reproduction;
+  the final trusted result is recorded above and in the evidence JSON.
 
 ## Latest M6 secure-identity checkpoint — 2026-08-10
 

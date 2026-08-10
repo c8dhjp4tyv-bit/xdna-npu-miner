@@ -444,6 +444,65 @@ this repository.
   `0c5e9e42c6d86c320af62f4125ca85b2446f2b098893fd6521bcf66c22f7f00a`
   checks. The downloaded bytes are ignored local state and are not committed.
 
+### Source S-012 — Pinned direct-node response correlation and official target behavior
+
+- **Audit date and revision:** 2026-08-10, pinned core
+  `a83f935406cd006b5b1a94971139e74d410ecb6d` (`v1.301.3`). The exact local
+  source is `/home/umutcagand/qubic-m0.WHEa7H/core`; the source links below
+  are immutable GitHub views of the same revision.
+- **SystemInfo dejavu semantics:**
+  `src/qubic.cpp::processRequestSystemInfo` at lines 1362–1401 fills the
+  packed `RespondSystemInfo` payload and calls
+  `enqueueResponse(peer, sizeof(respondedSystemInfo), RespondSystemInfo::type(),
+  header->dejavu(), &respondedSystemInfo)`. Type 47 therefore echoes the
+  exact request `RequestResponseHeader.dejavu`. This handler does not zero it,
+  generate a new value, or contain a condition that suppresses the response
+  based on the correlation field. The request dispatch is the direct
+  `RequestSystemInfo::type()` branch at lines 2086–2089.
+- **Comparable response semantics:**
+  `processRequestComputors` at lines 1049–1058 enqueues type 2 with
+  `header->dejavu()`, and the Entity handler at lines 1253–1284 enqueues type
+  32 with the same field. The clean-room client consequently uses exact
+  type-plus-dejavu correlation for SystemInfo, Computors, and Entity. A same-
+  type wrong-dejavu frame is rejected before asynchronous classification; type
+  2 is still an allowlisted unsolicited broadcast type only when it is not the
+  desired response for the current request.
+- **Handshake order:** `processExchangePublicPeers` at lines 510–541 marks the
+  exchange state and consumes the peer list; it does not enqueue a response.
+  The new-connection path at lines 7840–7903 queues type 0 immediately. Core
+  does not require an incoming client to wait for a peer-exchange response or
+  sleep before sending the following request. The implementation therefore
+  sends type 0 followed immediately by the requested frame on every fresh
+  connection.
+- **Dejavu generation and wire representation:** the client uses an atomic
+  `uint32_t` counter initialized to 1 and relaxed `fetch_add`; zero is skipped
+  on wrap. Frame serialization and parsing use the existing four-byte
+  little-endian helpers. Deterministic tests cover nonzero/unique generated
+  values, exact response equality, wrong-dejavu SystemInfo/Computors/Entity,
+  late/deadline, no-response, and reconnect cases.
+- **Observed endpoint behavior:** the official endpoint source remains the
+  Qubic Team direct-network article in Source S-009. On 2026-08-10,
+  `corenet.qubic.li` returned 43 unique public IPv4 addresses in one DNS
+  observation. Some targets accepted TCP and streamed type-0 peer exchange or
+  broadcast traffic without returning the requested frame during the bounded
+  window. The first implementation selected the resolver's first address on
+  every connection, which made standalone and authorization processes
+  nondeterministically land on different busy targets. The bounded fix rotates
+  the starting address across the current official DNS answer set for fresh
+  read-only connections, at most eight attempts within the same 15-second
+  absolute deadline. It does not add hard-coded/random third-party peers or
+  weaken response validation.
+- **Source links:**
+  https://github.com/qubic/core/blob/a83f935406cd006b5b1a94971139e74d410ecb6d/src/qubic.cpp#L510-L541,
+  https://github.com/qubic/core/blob/a83f935406cd006b5b1a94971139e74d410ecb6d/src/qubic.cpp#L1049-L1058,
+  https://github.com/qubic/core/blob/a83f935406cd006b5b1a94971139e74d410ecb6d/src/qubic.cpp#L1253-L1284,
+  https://github.com/qubic/core/blob/a83f935406cd006b5b1a94971139e74d410ecb6d/src/qubic.cpp#L1362-L1401,
+  https://github.com/qubic/core/blob/a83f935406cd006b5b1a94971139e74d410ecb6d/src/qubic.cpp#L2086-L2089,
+  https://github.com/qubic/core/blob/a83f935406cd006b5b1a94971139e74d410ecb6d/src/qubic.cpp#L7840-L7903.
+- **Reuse decision:** protocol facts are source-pinned and independently
+  reimplemented. No core or Qiner source was copied. The target rotation is
+  limited to the official endpoint's live DNS answers and is read-only.
+
 ## Current Qubic algorithm facts
 
 ### Algorithm selection and constants

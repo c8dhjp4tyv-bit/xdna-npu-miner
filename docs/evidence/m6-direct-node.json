@@ -2,12 +2,13 @@
   "schema_version": 1,
   "milestone": "M6",
   "status": "IN_PROGRESS",
-  "captured_utc": "2026-08-10T06:19:39Z",
+  "captured_utc": "2026-08-10T09:18:17Z",
   "recovery": {
     "crash_recovery": true,
     "head": "61458661dc700c60109d83da257dc3055199fe84",
     "current_checkpoint_before_crypto": "9e5342f8611c65fa8b249500b15d9bd563e6da1e",
     "branch": "main",
+    "current_worktree_base": "f24520d0000a748915f58e221471bec55d69c1a1",
     "origin_main_matches_head": true,
     "origin_main_matches_current_checkpoint": false,
     "git_fsck": "six dangling objects only; no missing or corrupt object reported",
@@ -78,7 +79,7 @@
     "solution_encryption": "32-byte mining seed + 32-byte nonce + little-endian uint32 score",
     "solution_signature_bytes": 64,
     "partial_tcp_reads": "covered by FramedConnection and one-byte mock reads",
-    "bounded_reconnect": "covered by three-attempt mock request with two injected failures",
+      "bounded_reconnect": "covered by deterministic reconnect tests; production read-only queries use at most eight bounded attempts without changing the 15000-ms absolute deadline",
     "read_only_demultiplexing": {
       "policy": "absolute steady-clock deadline; per-read and per-write timeout capped by remaining deadline; valid known unsolicited frames only; no unsolicited frame resets the deadline; resource ceilings are terminal across reconnects",
       "defaults": {
@@ -87,8 +88,81 @@
         "maximum_ignored_bytes": 16777216,
         "maximum_ignored_frames": 8192
       },
-      "response_correlation": "The pinned core processRequestComputors and processRequestEntity echo RequestResponseHeader.dejavu in enqueueResponse; requested responses require both expected type and matching dejavu. Other types are ignored only when in the explicit known asynchronous allowlist.",
-      "regression": "PASS: mock SystemInfo response after 200 valid BROADCAST_TICK frames; byte ceiling, defensive frame ceiling, absolute deadline/read-timeout, unknown type, malformed frame, close, and bounded reconnect fail closed."
+      "response_correlation": "The pinned core processRequestSystemInfo, processRequestComputors, and processRequestEntity handlers all pass header->dejavu() unchanged to enqueueResponse. Requested responses require the expected type and exact matching dejavu; a same-type wrong-dejavu frame fails closed before asynchronous classification. Other types are ignored only when in the explicit known asynchronous allowlist.",
+      "system_info_core_semantics": "core/src/qubic.cpp::processRequestSystemInfo at lines 1362-1401 constructs RespondSystemInfo and enqueues type 47 with header->dejavu(); it does not zero, regenerate, or conditionally suppress the correlation field. Dispatch is the direct REQUEST_SYSTEM_INFO case at lines 2086-2089.",
+      "handshake_core_semantics": "core/src/qubic.cpp::processExchangePublicPeers at lines 510-541 marks exchange state and consumes the peer list without enqueueing a response; the new-connection loop sends type 0 immediately. The client may send the requested frame immediately after its type-0 handshake; no arbitrary sleep or response wait is required.",
+      "regression": "PASS: mock SystemInfo response after 200 and 5000 valid BROADCAST_TICK frames; correct near-deadline response, late response, no-response deadline, reconnect within one deadline, wrong-dejavu SystemInfo/Computors/Entity, byte/frame ceilings, unknown type, malformed frame, and close paths fail or pass closed as specified."
+    }
+  },
+  "read_only_diagnostics": {
+    "status": "PASS_WITH_BOUNDED_OFFICIAL_DNS_TARGET_ROTATION",
+    "command": "./scripts/run-m6-read-only-diagnostics.sh",
+    "endpoint": "corenet.qubic.li:21841",
+    "official_dns_unique_ipv4_addresses_observed": 43,
+    "endpoint_policy": "Only the official corenet hostname is used. TcpConnectionFactory rotates the start address across the current getaddrinfo IPv4 answer set for each fresh query/reconnect; no IP is hard-coded and no third-party peer is used.",
+    "configuration": {
+      "connect_timeout_ms": 3000,
+      "read_timeout_ms": 3000,
+      "write_timeout_ms": 3000,
+      "absolute_deadline_ms": 15000,
+      "maximum_ignored_bytes": 16777216,
+      "maximum_ignored_frames": 8192,
+      "maximum_reconnect_attempts": 8,
+      "fresh_tcp_connection_per_query": true,
+      "handshake": "EXCHANGE_PUBLIC_PEERS then requested frame without sleep",
+      "diagnostics": "opt-in aggregate numeric message-type counters; no payload or signing material"
+    },
+    "standalone_vs_authorization_before_fix": {
+      "qubic_live_probe_script_attempts": 2,
+      "m6_authorization_default_attempts": 3,
+      "shared": "same clean-room DirectNodeClient, official endpoint, 3000-ms transport timeouts, 15000-ms read-only deadline, ignored-resource ceilings, handshake order, nonzero dejavu generator, and fresh TCP connection per query",
+      "material_difference": "The standalone script was hard-coded to two attempts and both executables could receive a different resolver-ordered first official target in separate processes. Authorization failed at its first SystemInfo stage before sequence state could pollute it; the live stream was target/load dependent.",
+      "after_fix": "Both the standalone script and authorization path use the bounded eight-attempt official-DNS rotation policy; the absolute deadline remains 15000 ms."
+    },
+    "pre_fix_matrix_attempts_3": {
+      "A_qubic_live_probe_system_info": "2/3 pass",
+      "B_m6_authorization_system_info_stage": "1/3 pass",
+      "C_system_info_stop": "1/3 pass",
+      "D_computors_stop": "0/3 pass",
+      "E_entity_stop": "2/3 pass",
+      "F_system_info_computors": "0/3 pass",
+      "G_computors_system_info": "0/3 pass",
+      "H_system_info_computors_entity": "0/3 pass"
+    },
+    "post_fix_primary_matrix_attempts_8": {
+      "repeat_count": 3,
+      "requests": 36,
+      "passes": 36,
+      "sequences": [
+        "A_qubic_live_probe_system_info 3/3",
+        "B_m6_authorization_system_info_stage 3/3",
+        "C_system_info_stop 3/3",
+        "D_computors_stop 3/3",
+        "E_entity_stop 3/3",
+        "F_system_info_computors 6/6",
+        "G_computors_system_info 6/6",
+        "H_system_info_computors_entity 9/9"
+      ],
+      "accepted_dejavu": "Every accepted response's dejavu exactly equaled its request dejavu for types 47, 2, and 32."
+    },
+    "additional_load_observation": {
+      "repeat_count": 3,
+      "requests": 36,
+      "accepted": 34,
+      "deadline_failures": 2,
+      "failed_sequences": ["A_qubic_live_probe_system_info 1/3", "B_m6_authorization_system_info_stage 1/3"],
+      "failure_shape": "The two failed attempts reached the 15000-ms deadline after five connections and only type-0 peer-exchange frames; no response was accepted and validation was not weakened.",
+      "aggregate_ignored_message_type_counts": {
+        "0": 43,
+        "1": 1,
+        "3": 11146,
+        "8": 20,
+        "14": 20,
+        "16": 3,
+        "24": 42,
+        "29": 43,
+        "68": 1
+      }
     }
   },
   "implementation": {
@@ -104,6 +178,7 @@
       "src/qubic/m6_identity_tool.cpp",
       "src/qubic/m6_authorization_check.cpp",
       "src/qubic/m6_task_verify.cpp",
+      "src/qubic/m6_read_only_diagnostics.cpp",
       "tests/qubic_crypto_tests.cpp",
       "scripts/setup-m6-local-identity.sh",
       "scripts/check-m6-local-authorization.sh",
@@ -114,6 +189,7 @@
       "CMakeLists.txt",
       "scripts/run-m6-live-system-info.sh",
       "scripts/run-m6-live-computors.sh",
+      "scripts/run-m6-read-only-diagnostics.sh",
       "scripts/run-m6-live-submit.sh",
       "scripts/test-qubic-live-probe-offline.sh"
     ],
@@ -210,7 +286,7 @@
     "system_info": {
       "status": "PASS",
       "interoperability_status": "LIVE_SYSTEM_INFO_PASS",
-      "utc": "2026-08-10T06:08:24Z/2026-08-10T06:08:25Z",
+      "utc": "2026-08-10T09:18:12Z/2026-08-10T09:18:13Z",
       "protocol_version": 301,
       "protocol_core_revision": "v1.301.3@a83f935406cd006b5b1a94971139e74d410ecb6d",
       "peer_exchange_frame_type": 0,
@@ -227,8 +303,8 @@
         {
           "version": 301,
           "epoch": 225,
-          "tick": 73300794,
-          "latest_created_tick": 73300794,
+          "tick": 73338141,
+          "latest_created_tick": 73338140,
           "threshold": 3838,
           "mining_seed_nonzero": true,
           "mining_seed_fingerprint_fnv1a64": "dcbf4ce1f2ecce8f",
@@ -237,8 +313,8 @@
         {
           "version": 301,
           "epoch": 225,
-          "tick": 73300797,
-          "latest_created_tick": 73300797,
+          "tick": 73338143,
+          "latest_created_tick": 73338142,
           "threshold": 3838,
           "mining_seed_nonzero": true,
           "mining_seed_fingerprint_fnv1a64": "dcbf4ce1f2ecce8f",
@@ -261,8 +337,12 @@
       "request_frame_type": 11,
       "response_frame_type": 2,
       "response_payload_bytes": 21698,
-      "utc": "2026-08-10T06:19:39Z",
+      "ignored_frames": 188,
+      "ignored_bytes": 67240,
+      "elapsed_ms": 973,
+      "utc": "2026-08-10T09:18:17Z",
       "endpoint": "corenet.qubic.li:21841",
+      "responsive_address": "32.221.253.134",
       "epoch": 225,
       "system_info_epoch_match": true,
       "computor_count": 676,
@@ -270,6 +350,7 @@
       "computor_keys_sha256": "58ef30a7fece845226c91502ff616747e1d50aab34ef530e68e15a36231aa9bf",
       "signature_sha256": "be0db535e84b1ac1e78f689b86c882f17031558b6729cce727a8f937011e0ff6",
       "signature_verified_by_probe": false,
+      "signature_verified_by_authorization_check": true,
       "selected_destination_public_key": null,
       "source": "Official REQUEST_COMPUTORS/BROADCAST_COMPUTORS path; no key hard-coded"
     },
@@ -319,9 +400,9 @@
     }
   },
   "authorization_workflow": {
-    "implementation_commit": "fb40336",
+    "implementation_commit": "6a5f25fcdc35aee3b5a352f3e93041d13bf4252b",
     "tool": "m6_authorization_check",
-    "status": "CHECK_UNAVAILABLE_SYSTEM_INFO_REQUEST_DEADLINE_EXCEEDED",
+    "status": "NOT_AUTHORIZED_TRUSTED_READ_ONLY_DECISION",
     "read_only": true,
     "persistent_operator_identity_available": true,
     "temporary_identity_used_for_probe": false,
@@ -329,14 +410,26 @@
     "secret_committed": false,
     "funding_or_submission_performed": false,
     "last_probe_endpoint": "corenet.qubic.li:21841",
-    "last_probe_result": "CHECK_UNAVAILABLE",
-    "last_probe_stage": "system_info",
-    "last_probe_reason": "request_deadline_exceeded",
-    "last_probe_ignored_frames": 5220,
-    "last_probe_ignored_bytes": 3423184,
-    "last_probe_elapsed_ms": 15005,
+    "last_probe_result": "NOT_AUTHORIZED",
+    "last_probe_stage": "complete",
+    "last_probe_reason": "source_is_not_current_computor_and_entity_energy_is_below_threshold",
+    "last_probe_system_epoch": 225,
+    "last_probe_system_tick": 73338188,
+    "last_probe_computors_epoch": 225,
+    "last_probe_computors_signature_verified": true,
+    "last_probe_entity_tick": 73338192,
+    "last_probe_entity_incoming_amount": 0,
+    "last_probe_entity_outgoing_amount": 0,
+    "last_probe_entity_energy": 0,
+    "last_probe_required_threshold": 1000000000,
+    "last_probe_source_is_current_computor": false,
+    "last_probe_entity_energy_threshold_met": false,
+    "last_probe_ignored_frames": null,
+    "last_probe_ignored_bytes": null,
+    "last_probe_elapsed_ms": null,
     "candidate_search_started": false,
-    "frame_sent": false
+    "frame_sent": false,
+    "safe_metadata_only": true
   },
   "final_runner": {
     "command": "XDNA_QUBIC_ALLOW_LIVE_SUBMISSION=1 ./scripts/run-m6-final-live-submit.sh",
@@ -388,6 +481,10 @@
       "selected_median_wall_time_ms": 1.277969
     },
     "inherited_evidence": "M2-M5 records were regenerated by their authoritative post-recovery validation commands and committed in 75e0a78",
-    "production_crypto_kat": "PASS (build-crypto CTest 7/7)"
+    "production_crypto_kat": "PASS (build-crypto CTest 7/7)",
+    "m6_direct_node_tests": "PASS (default and production-crypto qubic_direct_node_tests)",
+    "m6_diagnostics": "PASS: deterministic correlation/deadline regressions and bounded live matrix; official endpoint remains load-variable on some target selections",
+    "m6_live_authorization": "PASS: complete SystemInfo -> signed current Computors -> Entity(source) read-only path returned NOT_AUTHORIZED",
+    "physical_m3_m4_m5_rerun": "NOT RUN per focused M6 request"
   }
 }
