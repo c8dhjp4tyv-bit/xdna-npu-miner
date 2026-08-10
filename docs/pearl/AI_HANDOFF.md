@@ -8,7 +8,7 @@ active.
 
 **P1 — trusted clean-room CPU golden path and canonical vectors**
 
-**COMPLETE — implementation commit `4d91323f0a22e2f03b82d34fbf84791fa5bd83d5`.** P1 is CPU-only. No NPU,
+**COMPLETE — implementation commit `4d9132344f4f2a50c824164433a084f31ef135b7`.** P1 is CPU-only. No NPU,
 node, pool, wallet, live mining, share/block submission, or ZK proof was run.
 
 ## Branch and commit
@@ -16,8 +16,8 @@ node, pool, wallet, live mining, share/block submission, or ZK proof was run.
 - Branch: `feat/pearl-p1-cpu-golden`
 - Starting `HEAD`: `a15ed125295cc4361425a4b11159aa5744f3f160`
 - Pinned Pearl source: `fe22b6a2b831d95b2f56564808f39d2f498f34a5`
-- Implementation commit: `4d91323f0a22e2f03b82d34fbf84791fa5bd83d5`
-- Final evidence/handoff commit: this follow-up commit.
+- Implementation commit: `4d9132344f4f2a50c824164433a084f31ef135b7`
+- Final evidence/handoff commit: `dde69536f7e2f1dfd906692f2e7750887b19a630`.
 
 ## Completed work
 

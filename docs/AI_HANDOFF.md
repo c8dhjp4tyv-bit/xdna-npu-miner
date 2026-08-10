@@ -12,7 +12,7 @@ P1 is CPU-only: the independent oracle and canonical corpus are implemented,
 but no Pearl NPU, node/pool, wallet, live mining, submission, or ZK proof has
 been run. The active branch is `feat/pearl-p1-cpu-golden`, starting at
 `a15ed125295cc4361425a4b11159aa5744f3f160`. P1 implementation commit
-`4d91323f0a22e2f03b82d34fbf84791fa5bd83d5` and the final evidence digest are
+`4d9132344f4f2a50c824164433a084f31ef135b7` and the final evidence digest are
 recorded in the Pearl handoff.
 
 ## Frozen Qubic reference milestone
