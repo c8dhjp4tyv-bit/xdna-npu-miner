@@ -6,7 +6,7 @@
   "status": "PASS",
   "branch": "feat/pearl-p1-cpu-golden",
   "base_commit": "a15ed125295cc4361425a4b11159aa5744f3f160",
-  "implementation_commit": "PENDING_FINAL_COMMIT",
+  "implementation_commit": "4d91323f0a22e2f03b82d34fbf84791fa5bd83d5",
   "scope": "trusted clean-room CPU golden reference and canonical vectors only",
   "source_pin": {
     "repository": "https://github.com/pearl-research-labs/pearl",
