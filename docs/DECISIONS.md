@@ -592,3 +592,34 @@ search, submission, M7, or Qatum work.
 Reason: the observed failure was endpoint target/load nondeterminism, not a
 correlation or handshake defect. Increasing the deadline or weakening
 same-type dejavu checks would hide the cause and reduce correctness.
+
+## D-040 — Testnet requires an official raw endpoint and a separate trust domain
+
+**Status:** Accepted; public raw testnet endpoint unavailable at the current
+preflight
+
+An HTTPS testnet RPC does not satisfy M6 direct-node interoperability. A
+testnet endpoint counts only when a current Qubic-controlled source identifies
+the raw node, or Qubic supplies a dedicated node explicitly, and the bounded
+client completes the existing handshake/SystemInfo path. A historical
+official IP that merely accepts TCP but resets before SystemInfo is not a
+verified endpoint and must not be promoted into configuration.
+
+Testnet configuration, identities, Arbitrator policy, task inputs, caches, and
+submission opt-in must be isolated from mainnet. `XDNA_QUBIC_NETWORK=testnet`
+will be required by any future testnet command, but an environment label alone
+is not sufficient: the runtime must enforce network-specific defaults and
+must refuse cross-network secret paths. Identity creation and candidate work
+remain forbidden until SystemInfo, signed Computors, and Entity all pass in
+read-only mode.
+
+Current Qubic docs at `qubic/docs`
+`236365d69ffb8819e9b621e0bc40006175cb1a78` expose only
+`https://testnet-rpc.qubic.org`. Official Core Lite
+`df31a9b0dff195b7b4956fe0601ce83baafea9ef` is the accepted source-pinned
+local alternative, but a local testnet is separate from public endpoint proof
+and requires its own resource/wire-compatibility checkpoint before launch.
+
+Reason: this prevents RPC success, stale hackathon infrastructure, a local
+simulation, or a cross-network identity accident from being mislabeled as the
+required direct-node testnet submission preflight.

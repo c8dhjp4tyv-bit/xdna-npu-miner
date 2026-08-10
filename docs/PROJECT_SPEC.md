@@ -34,8 +34,11 @@ provides the verified batch-16/four-column independent-window backend. M6 now
 implements the finite direct-node frame, system-info/work-context, freshness,
 CPU/NPU submission gate, deterministic solution serialization, and bounded
 transport boundary. The optional pinned K12/FourQ provider and its KAT gate
-are implemented; authorized live interoperability remains an explicit gate,
-and M7's continuous supervisor remains out of scope.
+are implemented; authorized live interoperability remains an explicit gate.
+A safe official-source testnet preflight found only the public HTTPS RPC and
+no raw endpoint that completed SystemInfo, so it records
+`TESTNET_DIRECT_NODE_NOT_AVAILABLE` and stops before identity/candidate work.
+M7's continuous supervisor remains out of scope.
 
 ## Current algorithm contract
 

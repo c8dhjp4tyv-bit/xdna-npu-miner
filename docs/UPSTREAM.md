@@ -503,6 +503,64 @@ this repository.
   reimplemented. No core or Qiner source was copied. The target rotation is
   limited to the official endpoint's live DNS answers and is read-only.
 
+### Source S-013 — Official testnet discovery and raw-endpoint availability
+
+- **Audit date:** 2026-08-10. This source record is a safe M6 preflight only;
+  it does not authorize a testnet identity, candidate search, or submission.
+- **Current official documentation:** `qubic/docs` commit
+  `236365d69ffb8819e9b621e0bc40006175cb1a78` (2026-08-04), path
+  `docs/developers/testnet-resources.md`, published at
+  https://docs.qubic.org/developers/testnet-resources/. It identifies
+  `https://testnet-rpc.qubic.org` as the public testnet node and says dedicated
+  projects may receive their own IP/RPC endpoint. It does not publish a raw
+  direct-node host/port for general use.
+- **Current official core testnet refs:** `qubic/core` ref `testnet` =
+  `11625533bfa79fbdc6dd28e9c14455dd1769c749` (2026-07-29),
+  `testnets/2026-07-15-bpp9000-mining-algorithm` =
+  `d5f95395f25c0769c8d737dab0746c58223518b7`,
+  `testnets/2026-07-30-optimize-vote-signing` =
+  `29f19e19e438387ae55feb1eb0111ee4e0f966b6`, and
+  `testnets/release-301-3` =
+  `5be60c894ac2288020887643d269c8adbcf35667`. The current testnet snapshot
+  reports version 1.301.0, configured epoch 224, the special BPP9000 threshold
+  5,400, the same 44,744-byte task SHA-256
+  `0c5e9e42c6d86c320af62f4125ca85b2446f2b098893fd6521bcf66c22f7f00a`,
+  and byte-identical header/message-type/SystemInfo/Computors/Entity source
+  blobs to the pinned mainnet core revision. Its checked-in
+  `knownPublicPeers` is only the localhost placeholder, so it is protocol/task
+  evidence, not a public endpoint source.
+- **Observed current public service:** `testnet-rpc.qubic.org` resolved to
+  Cloudflare edge IPv4 addresses `104.20.18.240` and `172.66.163.101`. TCP
+  31841 and 21841 timed out. HTTPS `/` and `/v1/tick-info` returned Cloudflare
+  522 during the bounded observation. Even a healthy HTTPS response would be
+  RPC evidence only and would not satisfy the direct-node M6 gate.
+- **Historical official dedicated-node references:** official
+  `qubic/qubic-hackathon` commit
+  `ac830bd518b5802010199e7514a55d16d9b0b26f` (2025-08-01) names project-
+  specific/shared testnet hosts and raw port 31841. The named dedicated
+  example at `185.84.224.158:31841` refused TCP, the deployment example at
+  `162.120.18.26:31841` timed out, and the historical shared-testnet host
+  `91.210.226.146:31841` accepted TCP but reset all three bounded
+  type-0/type-46 attempts before any frame was received. These stale/project-
+  specific observations are not a verified current public endpoint.
+- **Official local alternative:** `qubic/core-lite` main commit
+  `df31a9b0dff195b7b4956fe0601ce83baafea9ef` (2026-08-05),
+  https://github.com/qubic/core-lite, documents a self-contained local testnet
+  on default raw port 31841 with no initial state files and carries the same
+  BPP9000 task SHA-256. Its documented normal local-testnet requirement is 16
+  GiB RAM. Long-run mode reports about 32 GiB normally or about 7 GiB with
+  `TESTNET_LITE_RAM`, which is explicitly wire/snapshot-incompatible with
+  non-LITE nodes. It was investigated but not launched in this checkpoint.
+- **Result:** `TESTNET_DIRECT_NODE_NOT_AVAILABLE`. No raw endpoint completed
+  SystemInfo, so Computors, Entity, identity creation, authorization,
+  candidate work, and submission were not attempted. The full safe evidence
+  is `docs/evidence/m6-testnet-preflight.json`.
+- **License/reuse decision:** core and Core Lite remain custom Anti-Military
+  licensed reference implementations under the existing clean-room rule.
+  Official docs/endpoint facts are re-expressed with source links; no upstream
+  source, testnet seed, task bytes, or identity material was copied into this
+  repository.
+
 ## Current Qubic algorithm facts
 
 ### Algorithm selection and constants

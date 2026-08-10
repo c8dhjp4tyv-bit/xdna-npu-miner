@@ -387,6 +387,49 @@ authorized identity and candidate. `scripts/run-m6-live-submit.sh` exits
 nonzero and records the external protocol requirement without sending a
 frame; it must not be converted into an M7 supervisor.
 
+### 9a. Safe testnet preflight
+
+Testnet discovery must use current official Qubic documentation/repositories
+and must not probe arbitrary community nodes. An HTTPS RPC response is not a
+direct-node result. Before any identity is created, the allowed progression is
+raw TCP connect, type-0 handshake, type-46/47 SystemInfo, signed Computors,
+then Entity. Each failure stops the later stages.
+
+The 2026-08-10 recovery found no prior testnet changes or evidence. The
+current official docs published only `https://testnet-rpc.qubic.org`; raw TCP
+ports 31841/21841 timed out and HTTPS returned 522 during the observation.
+Historical official dedicated/shared examples refused, timed out, or reset
+before SystemInfo. The only protocol request executed was bounded and
+secretless:
+
+```bash
+env -u XDNA_QUBIC_SIGNING_PUBLIC_KEY_HEX \
+    -u XDNA_QUBIC_SIGNING_SECRET_HEX \
+    XDNA_QUBIC_NETWORK=testnet \
+    XDNA_QUBIC_NODE_HOST=91.210.226.146 \
+    XDNA_QUBIC_NODE_PORT=31841 \
+    XDNA_QUBIC_ALLOW_LIVE_SUBMISSION=0 \
+    XDNA_QUBIC_REQUEST_DEADLINE_MS=10000 \
+    XDNA_QUBIC_ATTEMPTS=3 \
+    ./build/qubic_live_probe --host 91.210.226.146 --port 31841 \
+      --repeat 1 --attempts 3 --timeout-ms 3000
+```
+
+It opened TCP but all three attempts reset after the request, with zero
+accepted/ignored frames. The required classification is
+`TESTNET_DIRECT_NODE_NOT_AVAILABLE`; Computors, Entity, identity creation,
+candidate scoring, and submission are `NOT_ATTEMPTED`. Validate the complete
+machine-readable record with:
+
+```bash
+python3 -m json.tool docs/evidence/m6-testnet-preflight.json
+```
+
+Official Core Lite at the pinned revision in `docs/UPSTREAM.md` is the only
+currently identified local raw-node alternative. A Core Lite run needs its
+own resource/configuration checkpoint and must be labeled local simulation,
+not public testnet interoperability.
+
 ### 10. Endurance/recovery tests (M10)
 
 Exercise epoch/seed changes, reconnects, device errors, queue restarts, bounded

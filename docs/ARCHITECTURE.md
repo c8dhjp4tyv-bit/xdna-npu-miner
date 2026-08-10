@@ -203,6 +203,27 @@ use synthetic values only. Passing them establishes provider correctness for
 the exercised primitives; it does not establish node interoperability or
 authorize a live submission.
 
+### M6 testnet isolation boundary
+
+Testnet is a separate trust domain, not an endpoint override on the mainnet
+identity workflow. Any future testnet path must require an explicit network
+selection, a network-specific endpoint and Arbitrator/task policy, and
+separate secret/cache paths. A mainnet identity file must never be a fallback
+for testnet, and a testnet identity must never be accepted by a mainnet
+command. Read-only discovery must run with signing material absent and live
+submission disabled.
+
+The 2026-08-10 preflight found no currently verifiable official public raw
+testnet endpoint. Current official docs expose only an HTTPS RPC service;
+historical official dedicated/shared hosts refused, timed out, or reset the
+connection before SystemInfo. Therefore no testnet-specific runtime or
+identity configuration is installed yet, and no Computors, Entity, candidate,
+or submission stage is allowed to run. Official Core Lite at
+`df31a9b0dff195b7b4956fe0601ce83baafea9ef` is the source-pinned local
+alternative on port 31841, but provisioning it is a distinct resource and
+wire-compatibility gate. A local simulation must be labeled separately from
+public testnet interoperability.
+
 ## M2 runtime foundation
 
 The M2 runtime is a standalone host-side C++20/XRT layer under `src/xdna/`.

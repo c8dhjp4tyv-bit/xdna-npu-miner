@@ -1,0 +1,182 @@
+{
+  "schema_version": 1,
+  "milestone": "M6",
+  "status": "IN_PROGRESS",
+  "captured_utc": "2026-08-10T16:26:22Z",
+  "objective": "SAFE_TESTNET_PREFLIGHT_OF_COMPLETE_M6_SUBMISSION_PATH",
+  "recovery": {
+    "branch": "main",
+    "initial_head": "ac3714c6b7069e5957b7d547341317f580fdc6b4",
+    "initial_origin_main": "ac3714c6b7069e5957b7d547341317f580fdc6b4",
+    "head_matched_origin_main": true,
+    "worktree_clean": true,
+    "staged_changes": false,
+    "untracked_changes": false,
+    "interrupted_project_processes": false,
+    "build_tree_present": true,
+    "production_crypto_build_tree_present": true,
+    "git_integrity": "no missing or corrupt objects; the only dangling commit was an older M0 documentation commit and contained no testnet work",
+    "work_recovered": false,
+    "work_resumed_from_clean_checkpoint": true
+  },
+  "previous_testnet_checkpoint": {
+    "official_testnet_discovery_completed": false,
+    "official_raw_direct_node_found": false,
+    "testnet_configuration_added": false,
+    "testnet_identity_created": false,
+    "candidate_runner_started": false,
+    "testnet_commit_created_before_crash": false,
+    "prior_evidence_file_present": false,
+    "local_secret_metadata_check": "one existing regular file was the preserved default mainnet identity path; no testnet-named or second identity file existed",
+    "secret_contents_read": false
+  },
+  "official_sources": {
+    "documentation": {
+      "repository": "https://github.com/qubic/docs",
+      "revision": "236365d69ffb8819e9b621e0bc40006175cb1a78",
+      "revision_utc": "2026-08-04T14:08:32Z",
+      "testnet_resources_path": "docs/developers/testnet-resources.md",
+      "testnet_resources_url": "https://docs.qubic.org/developers/testnet-resources/",
+      "published_public_endpoint": "https://testnet-rpc.qubic.org",
+      "published_transport": "HTTPS RPC",
+      "raw_direct_node_endpoint_published": false,
+      "dedicated_node_policy": "project-specific IP address and RPC endpoint may be provided by Qubic developers"
+    },
+    "core_testnet": {
+      "repository": "https://github.com/qubic/core",
+      "branches": {
+        "testnet": "11625533bfa79fbdc6dd28e9c14455dd1769c749",
+        "testnets/2026-07-15-bpp9000-mining-algorithm": "d5f95395f25c0769c8d737dab0746c58223518b7",
+        "testnets/2026-07-30-optimize-vote-signing": "29f19e19e438387ae55feb1eb0111ee4e0f966b6",
+        "testnets/release-301-3": "5be60c894ac2288020887643d269c8adbcf35667"
+      },
+      "current_testnet_snapshot": {
+        "version": "1.301.0",
+        "configured_epoch": 224,
+        "bpp9000_threshold": 5400,
+        "bpp9000_task_sha256": "0c5e9e42c6d86c320af62f4125ca85b2446f2b098893fd6521bcf66c22f7f00a",
+        "protocol_schema_matches_pinned_mainnet": true,
+        "known_public_peer_configuration": "localhost placeholder only",
+        "public_raw_endpoint_published": false
+      }
+    },
+    "historical_official_dedicated_node_reference": {
+      "repository": "https://github.com/qubic/qubic-hackathon",
+      "revision": "ac830bd518b5802010199e7514a55d16d9b0b26f",
+      "revision_utc": "2025-08-01T08:58:19Z",
+      "status": "historical project-specific guidance, not current public endpoint authority"
+    },
+    "local_testnet_alternative": {
+      "repository": "https://github.com/qubic/core-lite",
+      "revision": "df31a9b0dff195b7b4956fe0601ce83baafea9ef",
+      "revision_utc": "2026-08-05T12:57:30Z",
+      "supports_local_testnet": true,
+      "default_raw_port": 31841,
+      "documented_ram_requirement_gib": 16,
+      "long_run_default_ram_observation_gib": 32,
+      "testnet_lite_ram_option_gib": 7,
+      "testnet_lite_ram_limitation": "wire/snapshot-incompatible with non-LITE nodes",
+      "bpp9000_task_sha256": "0c5e9e42c6d86c320af62f4125ca85b2446f2b098893fd6521bcf66c22f7f00a",
+      "launched_in_this_checkpoint": false
+    }
+  },
+  "endpoint_checks": {
+    "current_public_rpc": {
+      "endpoint": "https://testnet-rpc.qubic.org",
+      "dns_ipv4": [
+        "104.20.18.240",
+        "172.66.163.101"
+      ],
+      "dns_classification": "Cloudflare edge addresses",
+      "https_root_status": 522,
+      "https_tick_info_status": 522,
+      "raw_tcp_31841": "TIMEOUT",
+      "raw_tcp_21841": "TIMEOUT",
+      "direct_node_verified": false
+    },
+    "historical_dedicated_candidates": [
+      {
+        "endpoint": "185.84.224.158:31841",
+        "official_source_classification": "historical dedicated-node example",
+        "tcp_result": "CONNECTION_REFUSED",
+        "direct_node_verified": false
+      },
+      {
+        "endpoint": "91.210.226.146:31841",
+        "official_source_classification": "historical shared-testnet frontend host",
+        "tcp_result": "CONNECTED",
+        "protocol_attempts": 3,
+        "protocol_result": "CONNECTION_RESET_BEFORE_SYSTEM_INFO",
+        "ignored_frames": 0,
+        "ignored_bytes": 0,
+        "elapsed_ms": 904,
+        "direct_node_verified": false
+      },
+      {
+        "endpoint": "162.120.18.26:31841",
+        "official_source_classification": "documentation example for a locally deployed node",
+        "tcp_result": "TIMEOUT",
+        "direct_node_verified": false
+      }
+    ]
+  },
+  "read_only_testnet_flow": {
+    "required_network_environment": "XDNA_QUBIC_NETWORK=testnet",
+    "network_environment_set_for_protocol_probe": true,
+    "network_environment_runtime_enforced": false,
+    "network_isolation_note": "No identity-capable command was run; the future runtime must enforce the network label and isolated paths before testnet identity creation.",
+    "signing_environment_unset": true,
+    "live_submission_disabled": true,
+    "tcp_connect": "PARTIAL_ONLY_HISTORICAL_HOST_ACCEPTED_TCP",
+    "peer_exchange_handshake": "SENT_TO_HISTORICAL_HOST",
+    "system_info": "FAIL_NO_RESPONSE_FRAME",
+    "computors": "NOT_ATTEMPTED_SYSTEM_INFO_GATE_FAILED",
+    "entity": "NOT_ATTEMPTED_SYSTEM_INFO_GATE_FAILED",
+    "testnet_identity": "NOT_CREATED",
+    "authorization_rule_verified_live": false,
+    "candidate_runner": "NOT_STARTED",
+    "npu_evaluations": 0,
+    "cpu_candidate_verifications": 0,
+    "submission_frames": 0
+  },
+  "host_resource_observation": {
+    "physical_memory_gib": 14,
+    "available_memory_gib": 6.2,
+    "swap_total_gib": 23,
+    "filesystem_available_gib": 77,
+    "logical_cpus": 16,
+    "conclusion": "The documented 16-GiB normal Core Lite local-testnet requirement is not met by physical RAM; launching a local node requires a separate bounded resource/compatibility plan."
+  },
+  "verification": {
+    "captured_utc": "2026-08-10T16:30:13Z",
+    "configure": "PASS: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug",
+    "build": "PASS: cmake --build build -j2",
+    "focused_test": "PASS: ctest --test-dir build -R ^qubic_direct_node_tests$ --output-on-failure (1/1)",
+    "full_default_ctest": "PASS: 6/6",
+    "production_crypto_build": "PASS: cmake --build build-crypto -j2",
+    "production_crypto_ctest": "PASS: 7/7",
+    "identity_safety": "PASS: ./scripts/test-m6-local-identity.sh",
+    "json_validation": "PASS: m6-direct-node.json and m6-testnet-preflight.json",
+    "git_diff_check": "PASS",
+    "physical_npu_rerun": "NOT_RUN_DOCUMENTATION_AND_NETWORK_PREFLIGHT_ONLY"
+  },
+  "safety": {
+    "mainnet_identity_replaced": false,
+    "mainnet_secret_read": false,
+    "mainnet_secret_printed": false,
+    "mainnet_funding_performed": false,
+    "testnet_seed_used": false,
+    "testnet_identity_created": false,
+    "secret_committed": false,
+    "submission_attempted": false,
+    "m7_started": false,
+    "qatum_modified": false
+  },
+  "result": {
+    "testnet_status": "TESTNET_DIRECT_NODE_NOT_AVAILABLE",
+    "verified_raw_direct_node_endpoint": null,
+    "m6_status": "IN_PROGRESS",
+    "mainnet_blocker": "MAINNET_IDENTITY_NOT_AUTHORIZED",
+    "next_exact_step": "Obtain a current official raw testnet node endpoint from Qubic developers, or separately approve and provision the source-pinned Core Lite local-testnet path. Before creating any testnet identity, add enforced network-specific configuration and isolated secret/cache paths; then rerun SystemInfo -> signed Computors -> Entity. Do not start candidate mining until all three read-only stages pass."
+  }
+}

@@ -15,8 +15,120 @@ read-only system-info probe passes against the official direct-node endpoint,
 including the peer-exchange handshake and reconnect/context refresh. The
 current computor-list and pinned production-task sources are now verified, but
 live submission remains unexercised because no authorized source identity,
-eligible candidate, or runtime signing secret was available. Do not start M7
-or Qatum work.
+eligible candidate, or runtime signing secret was available. A recovered safe
+testnet preflight found no currently verifiable official public raw direct-node
+endpoint; only the official HTTPS RPC and source-pinned local/dedicated-node
+alternatives are documented. Do not start M7 or Qatum work.
+
+## Current M6 safe-testnet preflight checkpoint — 2026-08-10
+
+Recovery started from clean `main` at
+`ac3714c6b7069e5957b7d547341317f580fdc6b4`, exactly matching
+`origin/main`. There were no staged, unstaged, or untracked files and no
+interrupted miner/build/test process. Both build trees were present.
+`git fsck --full --no-reflogs` found no missing or corrupt object; its only
+dangling commit was an older M0 documentation snapshot, not interrupted
+testnet work. No reset, clean, restore, rebase, or secret/cache deletion was
+performed.
+
+The prior testnet task had not reached a checkpoint. Before this continuation
+there was no `docs/evidence/m6-testnet-preflight.json`, testnet configuration,
+testnet identity, candidate runner, or testnet commit. Metadata-only inspection
+showed exactly one regular file under `.local-secrets/`, at the existing
+default mainnet identity path, and no second/testnet-named identity. Its
+contents were not opened or printed. `.local-cache/` was also preserved.
+
+### Official discovery and bounded endpoint result
+
+- Current Qubic documentation at `qubic/docs`
+  `236365d69ffb8819e9b621e0bc40006175cb1a78` publishes only the HTTPS RPC
+  endpoint `https://testnet-rpc.qubic.org`. It says project-specific dedicated
+  nodes may be supplied with their own IP/RPC endpoint; it publishes no raw
+  direct-node host/port for general use.
+- Current official core testnet refs were fetched and inspected without
+  copying source. `testnet` is
+  `11625533bfa79fbdc6dd28e9c14455dd1769c749`; the current BPP9000 test branch
+  is `d5f95395f25c0769c8d737dab0746c58223518b7`; and
+  `testnets/release-301-3` is
+  `5be60c894ac2288020887643d269c8adbcf35667`. The testnet snapshot uses the
+  same 44,744-byte BPP9000 task SHA-256 as the pinned mainnet source, protocol
+  schemas match the pinned mainnet revision, and its special threshold is
+  5,400. Its checked-in public-peer configuration contains only the localhost
+  placeholder, not a public direct endpoint.
+- The current RPC hostname resolved only to Cloudflare edge addresses. TCP
+  31841 and 21841 timed out; HTTPS `/` and `/v1/tick-info` returned 522 during
+  this checkpoint. RPC availability would not count as raw direct-node proof
+  even if HTTP recovered.
+- The older official `qubic/qubic-hackathon` checkpoint
+  `ac830bd518b5802010199e7514a55d16d9b0b26f` contains historical dedicated
+  and shared testnet examples. `185.84.224.158:31841` refused TCP and the
+  documentation example `162.120.18.26:31841` timed out. TCP to the historical
+  shared-testnet host `91.210.226.146:31841` opened, but all three bounded
+  clean-room attempts were reset after the type-0 handshake/type-46 request
+  and before any response frame: zero ignored frames/bytes, 904 ms total. It
+  is not a verified endpoint.
+
+The authoritative outcome is therefore:
+
+```text
+TESTNET_DIRECT_NODE_NOT_AVAILABLE
+verified_raw_direct_node_endpoint=NONE
+system_info=FAIL_NO_RESPONSE_FRAME
+computors=NOT_ATTEMPTED_SYSTEM_INFO_GATE_FAILED
+entity=NOT_ATTEMPTED_SYSTEM_INFO_GATE_FAILED
+candidate_runner=NOT_STARTED
+submission_performed=false
+```
+
+Every testnet protocol request set `XDNA_QUBIC_NETWORK=testnet`, disabled live
+submission, and explicitly removed signing environment variables. The current
+runtime does not yet enforce that network label, so no identity-capable command
+was used. The mainnet identity was not read, replaced, funded, or used. No
+testnet seed or identity was created, no candidate/NPU/CPU score was produced,
+and no solution frame was built or sent.
+
+### Official alternative and exact continuation
+
+Official Core Lite at
+`df31a9b0dff195b7b4956fe0601ce83baafea9ef` documents a self-contained local
+testnet on raw port 31841 and carries the same pinned BPP9000 task. It was not
+launched. Its normal local-testnet requirement is 16 GiB RAM while this host
+has 14 GiB physical / 6.2 GiB currently available; the documented ~7-GiB
+`TESTNET_LITE_RAM` mode is explicitly wire/snapshot-incompatible with non-LITE
+nodes. Treat local provisioning as a separate bounded compatibility/resource
+task, not an automatic substitute for a public interoperability run.
+
+Files changed in this checkpoint are the testnet evidence record and the M6
+documentation listed by the final Git diff. No source, CMake, M5 backend,
+identity tool, Qatum, or M7 file changed. No physical NPU run was repeated;
+the inherited M1–M5 evidence remains authoritative because accelerator
+semantics did not change.
+
+Final verification:
+
+```text
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug                         PASS
+cmake --build build -j2                                              PASS
+ctest --test-dir build --output-on-failure                           PASS 6/6
+cmake -S . -B build-crypto -DCMAKE_BUILD_TYPE=Debug
+  -DXDNA_ENABLE_PRODUCTION_CRYPTO=ON                                 PASS
+cmake --build build-crypto -j2                                       PASS
+ctest --test-dir build-crypto --output-on-failure                    PASS 7/7
+./scripts/test-m6-local-identity.sh                                  PASS
+python3 -m json.tool docs/evidence/m6-direct-node.json               PASS
+python3 -m json.tool docs/evidence/m6-testnet-preflight.json         PASS
+git diff --check                                                     PASS
+```
+
+The exact next task is one of these official-only paths: obtain a current raw
+testnet endpoint from Qubic developers, or explicitly approve and provision
+the pinned Core Lite local testnet after its resource/wire compatibility is
+reviewed. Before creating any testnet identity, add an enforced network enum,
+testnet-specific Arbitrator/task policy, and isolated testnet secret/cache
+paths. Then prove SystemInfo -> signed Computors -> Entity in read-only mode.
+Do not create or use an identity, implement the candidate runner, or attempt a
+testnet submission until those three stages pass. Mainnet remains separately
+blocked by `MAINNET_IDENTITY_NOT_AUTHORIZED`; M6 remains **IN PROGRESS**.
 
 ## Current focused M6 read-only authorization checkpoint — 2026-08-10
 

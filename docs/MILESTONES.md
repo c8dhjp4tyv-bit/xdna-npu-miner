@@ -468,6 +468,18 @@ orchestration over the pinned task is not wired, and a live authorization
 probe was not completed due to external endpoint streaming/transport failure.
 This is an IN PROGRESS state, not an acceptance or submission result.
 
+The recovered safe-testnet preflight is also **IN PROGRESS**. Current official
+Qubic documentation publishes `https://testnet-rpc.qubic.org` as an HTTPS RPC
+service but no public raw direct-node host/port. The current official testnet
+core refs confirm BPP9000/protocol compatibility and a testnet threshold of
+5,400, but their checked-in peer list has only a localhost placeholder.
+Historical official dedicated/shared endpoints did not return a SystemInfo
+frame in bounded probes. The recorded result is
+`TESTNET_DIRECT_NODE_NOT_AVAILABLE`; Computors, Entity, identity creation,
+candidate scoring, and submission were not attempted. The source-pinned Core
+Lite local-testnet path is an official alternative, but it was not launched
+because it requires a separate resource and wire-compatibility gate.
+
 ### Objective
 
 Implement and validate the versioned, authorized direct-node work-acquisition
