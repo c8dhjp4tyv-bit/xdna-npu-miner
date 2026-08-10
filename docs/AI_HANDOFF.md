@@ -29,10 +29,11 @@ or Qatum work.
   than that before a requested reply, so this was transport incompleteness—not
   an authoritative authorization decision.
 - The reader now uses one absolute `steady_clock` deadline per request across
-  all reconnects (default 15,000 ms), caps each socket read to the remaining
-  deadline and configured 3,000-ms read timeout, and allows only known
+  all reconnects (default 15,000 ms), caps each socket read **and write** to
+  the remaining deadline and configured 3,000-ms timeout, and allows only known
   asynchronous Qubic message types. It also has finite 16-MiB ignored-byte
-  and 8,192-frame defensive ceilings. Valid broadcasts never extend the
+  and 8,192-frame defensive ceilings; hitting either ceiling is terminal and
+  cannot be bypassed by reconnecting. Valid broadcasts never extend the
   deadline. Type-2/32 responses require the current official core's echoed
   request `dejavu`; system-info follows the same request/response rule.
 - Offline `qubic_direct_node_tests` passes a response after **200** valid

@@ -97,6 +97,14 @@ void append_bytes(std::vector<Byte>& destination, std::span<const Byte> source)
         && left.number_of_windows == right.number_of_windows;
 }
 
+class ResourceLimitError final : public std::runtime_error {
+public:
+    explicit ResourceLimitError(std::string message)
+        : std::runtime_error(std::move(message))
+    {
+    }
+};
+
 [[nodiscard]] std::string last_transport_error(std::string_view operation,
                                                std::string_view detail)
 {
@@ -207,6 +215,17 @@ public:
         receive_timeout.tv_usec = static_cast<decltype(receive_timeout.tv_usec)>((read_ms % 1000) * 1000);
         if (::setsockopt(fd_, SOL_SOCKET, SO_RCVTIMEO, &receive_timeout, sizeof(receive_timeout)) != 0) {
             throw TransportError(std::string("TCP read-timeout setup failed: ") + std::strerror(errno));
+        }
+    }
+
+    void set_write_timeout(std::chrono::milliseconds timeout) override
+    {
+        timeval send_timeout{};
+        const auto write_ms = timeout_milliseconds(timeout);
+        send_timeout.tv_sec = static_cast<decltype(send_timeout.tv_sec)>(write_ms / 1000);
+        send_timeout.tv_usec = static_cast<decltype(send_timeout.tv_usec)>((write_ms % 1000) * 1000);
+        if (::setsockopt(fd_, SOL_SOCKET, SO_SNDTIMEO, &send_timeout, sizeof(send_timeout)) != 0) {
+            throw TransportError(std::string("TCP write-timeout setup failed: ") + std::strerror(errno));
         }
     }
 
@@ -444,8 +463,8 @@ private:
                 throw TransportError("connection factory returned no stream");
             }
             FramedConnection connection(*stream);
-            connection.write_frame(make_exchange_public_peers(next_dejavu()));
-            connection.write_frame(request);
+            connection.write_frame_until(make_exchange_public_peers(next_dejavu()), deadline, timeouts.write);
+            connection.write_frame_until(request, deadline, timeouts.write);
             while (true) {
                 if (std::chrono::steady_clock::now() >= deadline) {
                     throw TransportError(deadline_error(ignored_frames, ignored_bytes));
@@ -463,7 +482,7 @@ private:
                 }
                 const std::size_t frame_bytes = response.payload.size() + kRequestResponseHeaderBytes;
                 if (frame_bytes > limits.maximum_ignored_bytes - ignored_bytes) {
-                    throw TransportError(std::string(operation) + " ignored_byte_ceiling_exceeded"
+                    throw ResourceLimitError(std::string(operation) + " ignored_byte_ceiling_exceeded"
                                          + " ignored_frames=" + std::to_string(ignored_frames)
                                          + " ignored_bytes=" + std::to_string(ignored_bytes)
                                          + " elapsed_ms=" + std::to_string(elapsed()));
@@ -471,12 +490,14 @@ private:
                 ++ignored_frames;
                 ignored_bytes += frame_bytes;
                 if (ignored_frames > limits.maximum_ignored_frames) {
-                    throw TransportError(std::string(operation) + " ignored_frame_ceiling_exceeded"
+                    throw ResourceLimitError(std::string(operation) + " ignored_frame_ceiling_exceeded"
                                          + " ignored_frames=" + std::to_string(ignored_frames)
                                          + " ignored_bytes=" + std::to_string(ignored_bytes)
                                          + " elapsed_ms=" + std::to_string(elapsed()));
                 }
             }
+        } catch (const ResourceLimitError& error) {
+            throw TransportError(error.what());
         } catch (const ProtocolError&) {
             throw;
         } catch (const TransportError& error) {
@@ -1020,6 +1041,9 @@ Frame FramedConnection::read_frame_until(std::chrono::steady_clock::time_point d
             const auto timeout = std::min(maximum_read_timeout, remaining);
             stream_.set_read_timeout(timeout.count() > 0 ? timeout : std::chrono::milliseconds(1));
             const std::size_t count = stream_.read_some(destination.subspan(offset));
+            if (std::chrono::steady_clock::now() >= deadline) {
+                throw TransportError("request_deadline_exceeded during frame " + std::string(phase));
+            }
             if (count == 0U) {
                 throw TransportError("connection closed during frame " + std::string(phase));
             }
@@ -1042,6 +1066,31 @@ Frame FramedConnection::read_frame_until(std::chrono::steady_clock::time_point d
     std::copy(header.begin(), header.end(), encoded.begin());
     read_exact(std::span<Byte>(encoded).subspan(kRequestResponseHeaderBytes), "payload");
     return parse_frame(encoded);
+}
+
+void FramedConnection::write_frame_until(std::span<const Byte> frame,
+                                         std::chrono::steady_clock::time_point deadline,
+                                         std::chrono::milliseconds maximum_write_timeout)
+{
+    (void)parse_frame(frame);
+    std::size_t offset = 0U;
+    while (offset < frame.size()) {
+        const auto now = std::chrono::steady_clock::now();
+        if (now >= deadline) {
+            throw TransportError("request_deadline_exceeded during frame write");
+        }
+        const auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(deadline - now);
+        const auto timeout = std::min(maximum_write_timeout, remaining);
+        stream_.set_write_timeout(timeout.count() > 0 ? timeout : std::chrono::milliseconds(1));
+        const std::size_t count = stream_.write_some(frame.subspan(offset));
+        if (std::chrono::steady_clock::now() >= deadline) {
+            throw TransportError("request_deadline_exceeded during frame write");
+        }
+        if (count == 0U) {
+            throw TransportError("connection closed during frame write");
+        }
+        offset += count;
+    }
 }
 
 void FramedConnection::write_frame(std::span<const Byte> frame)

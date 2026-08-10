@@ -182,13 +182,15 @@ struct MemoryStream final : ByteStream {
                  std::size_t read_chunk_bytes = 1U,
                  std::size_t write_chunk_bytes = 2U,
                  std::chrono::milliseconds empty_read_delay = std::chrono::milliseconds(0),
-                 bool timeout_on_empty_read = false)
+                 bool timeout_on_empty_read = false,
+                 bool rewrite_response_dejavu_for_test = true)
         : incoming(std::move(incoming_bytes)),
           written(written_bytes),
           read_chunk(read_chunk_bytes),
           write_chunk(write_chunk_bytes),
           empty_delay(empty_read_delay),
-          timeout_on_empty(timeout_on_empty_read)
+          timeout_on_empty(timeout_on_empty_read),
+          rewrite_response_dejavu(rewrite_response_dejavu_for_test)
     {
     }
 
@@ -197,9 +199,14 @@ struct MemoryStream final : ByteStream {
         last_read_timeout = timeout;
     }
 
+    void set_write_timeout(std::chrono::milliseconds timeout) override
+    {
+        last_write_timeout = timeout;
+    }
+
     [[nodiscard]] std::size_t read_some(std::span<Byte> destination) override
     {
-        if (!response_dejavu_prepared) {
+        if (rewrite_response_dejavu && !response_dejavu_prepared) {
             FrameDecoder decoder;
             decoder.feed(written);
             (void)decoder.next();
@@ -260,8 +267,10 @@ struct MemoryStream final : ByteStream {
     std::size_t write_chunk = 2U;
     std::size_t read_offset = 0U;
     std::chrono::milliseconds last_read_timeout{0};
+    std::chrono::milliseconds last_write_timeout{0};
     std::chrono::milliseconds empty_delay{0};
     bool timeout_on_empty = false;
+    bool rewrite_response_dejavu = true;
     bool response_dejavu_prepared = false;
     bool closed = false;
 };
@@ -282,16 +291,20 @@ public:
             throw TransportError("injected connection failure");
         }
         writes.emplace_back();
-        return std::make_unique<MemoryStream>(response_, writes.back(), read_chunk, write_chunk,
-                                              empty_delay, timeout_on_empty);
+        const std::vector<Byte>& selected_response = responses.empty()
+            ? response_ : responses.at(std::min(connects - 1U, responses.size() - 1U));
+        return std::make_unique<MemoryStream>(selected_response, writes.back(), read_chunk, write_chunk,
+                                              empty_delay, timeout_on_empty, rewrite_response_dejavu);
     }
 
     std::vector<Byte> response_;
+    std::vector<std::vector<Byte>> responses;
     std::vector<std::vector<Byte>> writes;
     std::size_t read_chunk = 1U;
     std::size_t write_chunk = 2U;
     std::chrono::milliseconds empty_delay{0};
     bool timeout_on_empty = false;
+    bool rewrite_response_dejavu = true;
     std::size_t failures_before_success = 0U;
     std::size_t connects = 0U;
 };
@@ -566,6 +579,21 @@ void test_read_only_demultiplexing_resource_and_deadline_limits()
     expect_transport([&] { (void)byte_client.request_system_info(); },
                      "ignored-byte ceiling fails closed before accepting an absent response");
 
+    MemoryFactory terminal_ceiling_factory({});
+    terminal_ceiling_factory.responses = {
+        unsolicited,
+        xdna::qubic::serialize_frame(xdna::qubic::kRespondSystemInfo, 0U,
+                                     xdna::qubic::serialize_system_info_payload(make_system_info())),
+    };
+    DirectNodeClient terminal_ceiling_client(
+        terminal_ceiling_factory, NodeEndpoint{"mock", 1234U}, TransportTimeouts{},
+        ReconnectPolicy{2U, std::chrono::milliseconds(0)},
+        xdna::qubic::ReadOnlyRequestLimits{std::chrono::milliseconds(1000), 16U, 512U});
+    expect_transport([&] { (void)terminal_ceiling_client.request_system_info(); },
+                     "resource ceiling is terminal and cannot be bypassed by reconnect");
+    expect(terminal_ceiling_factory.connects == 1U,
+           "resource ceiling prevents a reconnect that could otherwise accept a later response");
+
     std::vector<Byte> many_frames;
     for (std::uint32_t index = 0U; index < 3U; ++index) {
         const std::vector<Byte> frame = xdna::qubic::serialize_frame(3U, index + 1U, {});
@@ -602,6 +630,19 @@ void test_mock_system_info_failure_modes()
     expect_protocol([&] { (void)wrong_client.request_system_info(); },
                     ProtocolErrorCode::WrongMessageType,
                     "live probe path rejects a wrong response frame type");
+
+    const std::vector<Byte> stale_dejavu = xdna::qubic::serialize_frame(
+        xdna::qubic::kRespondSystemInfo, 0xDEADBEEFU,
+        xdna::qubic::serialize_system_info_payload(make_system_info()));
+    MemoryFactory stale_dejavu_factory(stale_dejavu);
+    stale_dejavu_factory.rewrite_response_dejavu = false;
+    DirectNodeClient stale_dejavu_client(stale_dejavu_factory,
+                                         NodeEndpoint{"mock", 1234U},
+                                         TransportTimeouts{},
+                                         ReconnectPolicy{1U, std::chrono::milliseconds(0)});
+    expect_protocol([&] { (void)stale_dejavu_client.request_system_info(); },
+                    ProtocolErrorCode::WrongMessageType,
+                    "same-type response with wrong dejavu fails closed");
 
     const std::vector<Byte> truncated{
         136U, 0U, 0U, xdna::qubic::kRespondSystemInfo, 0U, 0U, 0U, 0U, 1U,

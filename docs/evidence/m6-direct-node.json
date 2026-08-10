@@ -80,7 +80,7 @@
     "partial_tcp_reads": "covered by FramedConnection and one-byte mock reads",
     "bounded_reconnect": "covered by three-attempt mock request with two injected failures",
     "read_only_demultiplexing": {
-      "policy": "absolute steady-clock deadline; per-read timeout capped by remaining deadline; valid known unsolicited frames only; no unsolicited frame resets the deadline",
+      "policy": "absolute steady-clock deadline; per-read and per-write timeout capped by remaining deadline; valid known unsolicited frames only; no unsolicited frame resets the deadline; resource ceilings are terminal across reconnects",
       "defaults": {
         "request_deadline_ms": 15000,
         "read_timeout_ms": 3000,

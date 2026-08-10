@@ -434,9 +434,10 @@ public:
 class ByteStream {
 public:
     virtual ~ByteStream() = default;
-    // Called before each blocking read so a request's absolute deadline can
+    // Called before each blocking read/write so a request's absolute deadline can
     // cap the socket timeout to its remaining lifetime.
     virtual void set_read_timeout(std::chrono::milliseconds timeout) = 0;
+    virtual void set_write_timeout(std::chrono::milliseconds timeout) = 0;
     [[nodiscard]] virtual std::size_t read_some(std::span<Byte> destination) = 0;
     [[nodiscard]] virtual std::size_t write_some(std::span<const Byte> source) = 0;
     virtual void close() noexcept = 0;
@@ -464,6 +465,9 @@ public:
 
     [[nodiscard]] Frame read_frame_until(std::chrono::steady_clock::time_point deadline,
                                          std::chrono::milliseconds maximum_read_timeout);
+    void write_frame_until(std::span<const Byte> frame,
+                           std::chrono::steady_clock::time_point deadline,
+                           std::chrono::milliseconds maximum_write_timeout);
     void write_frame(std::span<const Byte> frame);
 
 private:
