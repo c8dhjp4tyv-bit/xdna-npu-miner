@@ -20,9 +20,9 @@ or Qatum work.
 
 ## Latest M6 secure-identity checkpoint — 2026-08-10
 
-- Branch: `main`; the pre-existing commits were pushed before this checkpoint
-  and the current implementation changes are uncommitted until final
-  verification/commit below. M6 remains **IN PROGRESS**. No persistent local
+- Branch: `main`; implementation commit `fb40336`
+  (`m6: add secure local identity authorization workflow`) is recorded and
+  will be pushed with this handoff checkpoint. M6 remains **IN PROGRESS**. No persistent local
   identity was generated, no signing secret was printed or committed, and no
   funds or submission frame were used.
 - Added `m6_identity_tool` with Linux CSPRNG generation, strict current-user

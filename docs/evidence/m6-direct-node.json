@@ -308,6 +308,7 @@
     }
   },
   "authorization_workflow": {
+    "implementation_commit": "fb40336",
     "tool": "m6_authorization_check",
     "status": "NOT_COMPLETED_EXTERNAL_ENDPOINT_PROTOCOL_OR_TRANSPORT_FAILURE",
     "read_only": true,
