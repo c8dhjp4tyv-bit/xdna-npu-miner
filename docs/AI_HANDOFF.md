@@ -22,6 +22,12 @@ alternatives are documented. Do not start M7 or Qatum work.
 
 ## Current M6 safe-testnet preflight checkpoint — 2026-08-10
 
+Evidence/documentation commit:
+`4e1259738a02e76d4048a5c9d157bf43989b379b` (`m6: record safe testnet
+direct-node preflight`). `origin/main` remains at the recovered
+`ac3714c6b7069e5957b7d547341317f580fdc6b4`; the evidence commit and this
+follow-up handoff are local checkpoints and were not pushed.
+
 Recovery started from clean `main` at
 `ac3714c6b7069e5957b7d547341317f580fdc6b4`, exactly matching
 `origin/main`. There were no staged, unstaged, or untracked files and no

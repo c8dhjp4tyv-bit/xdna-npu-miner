@@ -6,6 +6,7 @@
   "objective": "SAFE_TESTNET_PREFLIGHT_OF_COMPLETE_M6_SUBMISSION_PATH",
   "recovery": {
     "branch": "main",
+    "checkpoint_commit": "4e1259738a02e76d4048a5c9d157bf43989b379b",
     "initial_head": "ac3714c6b7069e5957b7d547341317f580fdc6b4",
     "initial_origin_main": "ac3714c6b7069e5957b7d547341317f580fdc6b4",
     "head_matched_origin_main": true,
@@ -17,7 +18,8 @@
     "production_crypto_build_tree_present": true,
     "git_integrity": "no missing or corrupt objects; the only dangling commit was an older M0 documentation commit and contained no testnet work",
     "work_recovered": false,
-    "work_resumed_from_clean_checkpoint": true
+    "work_resumed_from_clean_checkpoint": true,
+    "push_performed": false
   },
   "previous_testnet_checkpoint": {
     "official_testnet_discovery_completed": false,
