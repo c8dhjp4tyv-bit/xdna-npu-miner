@@ -94,6 +94,42 @@ available. Do not start M7 or Qatum work.
   `scripts/test-qubic-live-probe-offline.sh`, and the M6 documentation/evidence
   files listed in the final commit.
 
+## Final recovery validation — 2026-08-10
+
+- Branch: `main`; implementation commit: `d4268e1` (`m6: add live
+  system-info interoperability probe`). The worktree was clean immediately
+  after that commit.
+- Default verification passed:
+  `cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug`,
+  `cmake --build build -j2`, and
+  `ctest --test-dir build --output-on-failure` = **6/6**.
+- Production crypto verification passed:
+  `cmake -S . -B build-crypto -DCMAKE_BUILD_TYPE=Debug
+  -DXDNA_ENABLE_PRODUCTION_CRYPTO=ON`, build, and
+  `ctest --test-dir build-crypto --output-on-failure` = **7/7**.
+  `./scripts/generate_corpus.sh build` reproduced 100 generated and 10
+  production-shaped cases with the recorded digests.
+- `./scripts/test-qubic-live-probe-offline.sh` passed success with injected
+  unsolicited peer/broadcast frames, wrong-frame, truncated-frame, and
+  timeout cases. The direct-node CTest covered one-byte fragmented reads,
+  bounded reconnect, all no-send gates, and deterministic mock serialization.
+- `./scripts/run-m6-live-system-info.sh` passed twice against the official
+  `corenet.qubic.li:21841` endpoint at 2026-08-10T05:48:42Z–05:48:43Z UTC:
+  epoch 225, ticks 73296942–73296943, threshold 3838, 8088 windows, version
+  301, nonzero seed, type-47/136-byte response, and reconnect/context advance.
+  `python3 -m json.tool` passed for the M6 and M5 evidence records and
+  `git diff --check` passed.
+- `scripts/run-m6-live-submit.sh` exited 2 without opt-in and with explicit
+  `XDNA_QUBIC_ALLOW_LIVE_SUBMISSION=1`; both paths sent no frame. The secret
+  scan found no private-key material or real signing secret. M1–M5 physical
+  evidence remains the previously recorded verified result; those expensive
+  hardware regressions were not rerun because this M6 change did not alter
+  accelerator semantics.
+- Known limitation: the live system-info response contains neither task bytes
+  nor a destination computor key. No authorized source identity, current
+  task-compatible candidate, or runtime signing secret exists, so live
+  submission remains **NOT_EXERCISED** and M6 remains **IN PROGRESS**.
+
 ## Crash recovery checkpoint
 
 - Recovery date: 2026-08-09.
@@ -140,6 +176,7 @@ available. Do not start M7 or Qatum work.
 - M6 implementation/evidence checkpoint: `c600094`.
 - M6 post-recovery validation/evidence checkpoint: `75e0a78`.
 - M6 production-crypto/KAT checkpoint: `8ef85c2`.
+- M6 live system-info interoperability probe: `d4268e1`.
 
 ## M0 authority that M1 used
 
