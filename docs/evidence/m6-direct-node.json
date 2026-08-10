@@ -2,7 +2,7 @@
   "schema_version": 1,
   "milestone": "M6",
   "status": "IN_PROGRESS",
-  "captured_utc": "2026-08-09T20:36:02Z",
+  "captured_utc": "2026-08-10T05:48:42Z",
   "recovery": {
     "crash_recovery": true,
     "head": "62a84d5d8674a1a74c1b7348e1fa41c85348e026",
@@ -53,10 +53,13 @@
     "size_encoding": "three-byte little-endian total frame size including header",
     "max_frame_bytes": 16777215,
     "message_types": {
+      "exchange_public_peers": 0,
       "broadcast_message": 1,
       "request_system_info": 46,
       "respond_system_info": 47
     },
+    "peer_exchange_payload_bytes": 16,
+    "peer_exchange_policy": "send a zero-public-peer handshake with a nonzero per-connection dejavu before direct requests/submissions",
     "system_info_payload_bytes": 128,
     "solution_payload_bytes": 228,
     "solution_encryption": "32-byte mining seed + 32-byte nonce + little-endian uint32 score",
@@ -68,11 +71,15 @@
     "files": [
       "src/qubic/direct_node.hpp",
       "src/qubic/direct_node.cpp",
+      "src/qubic/live_probe_main.cpp",
       "tests/qubic_direct_node_tests.cpp",
       "src/qubic/production_crypto.hpp",
       "src/qubic/production_crypto.cpp",
       "tests/qubic_crypto_tests.cpp",
-      "CMakeLists.txt"
+      "CMakeLists.txt",
+      "scripts/run-m6-live-system-info.sh",
+      "scripts/run-m6-live-submit.sh",
+      "scripts/test-qubic-live-probe-offline.sh"
     ],
     "cpu_owned": [
       "system-info parsing",
@@ -116,6 +123,7 @@
     "ctest": "6/6 passed",
     "coverage": [
       "strict frame size and type parsing",
+      "peer-exchange handshake and unsolicited-frame filtering",
       "fragmented frame reads",
       "all RespondSystemInfo fields",
       "context freshness and seed changes",
@@ -133,8 +141,8 @@
     ]
   },
   "mock_integration": {
-    "system_info_request": "PASS",
-    "solution_submission": "PASS with test-only deterministic provider and explicit opt-in",
+    "system_info_request": "PASS with peer-exchange handshake",
+    "solution_submission": "PASS with peer-exchange handshake, test-only deterministic provider and explicit opt-in",
     "network_messages_sent_by_invalid_cases": 0,
     "no_send_cases": [
       "stale context/seed",
@@ -149,9 +157,72 @@
     ]
   },
   "live_interoperability": {
-    "system_info": "NOT_EXERCISED",
-    "submission": "LIVE_SUBMISSION_NOT_EXERCISED",
-    "reason": "No explicitly authorized endpoint or runtime signing secret was configured; the pinned provider passed offline KATs but no fabricated or unauthorised packet was sent"
+    "probe_command": "./scripts/run-m6-live-system-info.sh",
+    "endpoint": "corenet.qubic.li:21841",
+    "endpoint_source": "https://qubic.org/blog-detail/how-to-query-qubic-oracle-machines-using-the-qubic.net-toolkit",
+    "dns_and_tcp_connect_observed": true,
+    "system_info": {
+      "status": "PASS",
+      "interoperability_status": "LIVE_SYSTEM_INFO_PASS",
+      "utc": "2026-08-10T05:48:42Z/2026-08-10T05:48:43Z",
+      "protocol_version": 301,
+      "protocol_core_revision": "v1.301.3@a83f935406cd006b5b1a94971139e74d410ecb6d",
+      "peer_exchange_frame_type": 0,
+      "peer_exchange_payload_bytes": 16,
+      "request_frame_type": 46,
+      "request_frame_bytes": 8,
+      "request_transmitted": true,
+      "first_request_pass": true,
+      "response_frame_type": 47,
+      "response_frame_bytes": 136,
+      "response_payload_bytes": 128,
+      "response_received": true,
+      "samples": [
+        {
+          "version": 301,
+          "epoch": 225,
+          "tick": 73296942,
+          "latest_created_tick": 73296942,
+          "threshold": 3838,
+          "mining_seed_nonzero": true,
+          "mining_seed_fingerprint_fnv1a64": "dcbf4ce1f2ecce8f",
+          "context_update": "INSTALLED"
+        },
+        {
+          "version": 301,
+          "epoch": 225,
+          "tick": 73296943,
+          "latest_created_tick": 73296943,
+          "threshold": 3838,
+          "mining_seed_nonzero": true,
+          "mining_seed_fingerprint_fnv1a64": "dcbf4ce1f2ecce8f",
+          "context_update": "ADVANCED"
+        }
+      ],
+      "reconnect_pass": true,
+      "second_request_pass": true,
+      "algorithm": "BPP9000(nonce[0]=1)",
+      "work_context_constructed": true,
+      "work_context_windows": 8088,
+      "task_identity_source": "recorded-core-v1.301.3",
+      "task_bytes_verified": false,
+      "live_task_identity_in_response": false,
+      "compatibility_status": "SYSTEM_INFO_AND_RECORDED_TASK_CONTEXT_ONLY"
+    },
+    "submission": {
+      "status": "LIVE_SUBMISSION_NOT_EXERCISED_PROTOCOL_REQUIRES_AUTHORIZED_IDENTITY",
+      "candidate_attempts": 0,
+      "eligible_candidate_found": false,
+      "cpu_verified": false,
+      "npu_verified": false,
+      "context_refreshed_before_send": false,
+      "frame_sent": false,
+      "acknowledgement": "NOT_APPLICABLE",
+      "authorized_endpoint_for_submission": false,
+      "ephemeral_identity_used": false,
+      "real_user_secret_used": false,
+      "reason": "Official core protocol requires a nonzero source identity satisfying the computor or dissemination-balance rule and a destination that is a current computor public key. The live system-info response provides no destination key or task bytes, and no authorized funded source, computor identity, valid candidate, or user secret was available. No submission frame was attempted."
+    }
   },
   "regressions": {
     "post_recovery_build_and_pure_ctest": "PASS (6/6)",

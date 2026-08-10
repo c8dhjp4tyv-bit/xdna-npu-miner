@@ -201,8 +201,10 @@ fees, pool terms, and assumptions; do not mix it into the benchmark gate.
 
 ## M6 protocol note
 
-M6 direct-node framing, freshness, serialization, mock transport, and optional
-K12/FourQ KATs are correctness evidence only. They use no live node or
-production signing secret and produce no network throughput, mining-rate,
-latency, power, energy, or profitability claim. The machine-readable state is
+M6 direct-node framing, freshness, serialization, mock transport, optional
+K12/FourQ KATs, and the bounded public system-info probe are correctness/
+interoperability evidence only. The probe uses the official node for read-only
+system info; it is not a throughput, mining-rate, latency, power, energy, or
+profitability benchmark and does not submit a solution. No production signing
+secret was used. The machine-readable state is
 `docs/evidence/m6-direct-node.json`.

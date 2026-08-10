@@ -25,12 +25,14 @@ using bpp9000::Nonce;
 using bpp9000::PublicKey;
 
 constexpr std::size_t kRequestResponseHeaderBytes = 8U;
+constexpr std::size_t kExchangePublicPeersPayloadBytes = 16U;
 constexpr std::size_t kSystemInfoPayloadBytes = 128U;
 constexpr std::size_t kBroadcastPayloadBytes = 228U;
 constexpr std::size_t kEncryptedSolutionBytes = 68U;
 constexpr std::size_t kSignatureBytes = 64U;
 constexpr std::uint32_t kMaximumFrameBytes = 0x00FFFFFFU;
 
+constexpr std::uint8_t kExchangePublicPeers = 0U;
 constexpr std::uint8_t kBroadcastMessage = 1U;
 constexpr std::uint8_t kRequestSystemInfo = 46U;
 constexpr std::uint8_t kRespondSystemInfo = 47U;
@@ -102,6 +104,7 @@ private:
 };
 
 [[nodiscard]] std::vector<Byte> make_system_info_request(std::uint32_t dejavu = 0U);
+[[nodiscard]] std::vector<Byte> make_exchange_public_peers(std::uint32_t dejavu = 0U);
 
 struct SystemInfo {
     std::int16_t version = 0;

@@ -1,6 +1,7 @@
 #include "qubic/direct_node.hpp"
 
 #include <array>
+#include <atomic>
 #include <charconv>
 #include <cerrno>
 #include <cstring>
@@ -106,6 +107,36 @@ void append_bytes(std::vector<Byte>& destination, std::span<const Byte> source)
         message += detail;
     }
     return message;
+}
+
+[[nodiscard]] std::uint32_t next_dejavu() noexcept
+{
+    static std::atomic<std::uint32_t> counter{1U};
+    const std::uint32_t value = counter.fetch_add(1U, std::memory_order_relaxed);
+    if (value != 0U) {
+        return value;
+    }
+    return counter.fetch_add(1U, std::memory_order_relaxed);
+}
+
+[[nodiscard]] bool is_unsolicited_network_frame(const Frame& frame) noexcept
+{
+    // A direct node sends its peer-exchange frame as soon as a connection is
+    // accepted. Once handshaked, it may also stream ordinary network traffic
+    // on the same TCP connection. These are not responses to our request.
+    switch (frame.type) {
+    case kExchangePublicPeers:
+    case kBroadcastMessage:
+    case 2U:  // BROADCAST_COMPUTORS
+    case 3U:  // BROADCAST_TICK
+    case 8U:  // BROADCAST_FUTURE_TICK_DATA
+    case 24U: // BROADCAST_TRANSACTION
+    case 68U: // BROADCAST_CUSTOM_MINING_TASK
+    case 69U: // BROADCAST_CUSTOM_MINING_SOLUTION
+        return true;
+    default:
+        return false;
+    }
 }
 
 [[nodiscard]] int timeout_milliseconds(std::chrono::milliseconds timeout)
@@ -404,6 +435,12 @@ std::optional<Frame> FrameDecoder::next()
 std::vector<Byte> make_system_info_request(std::uint32_t dejavu)
 {
     return serialize_frame(kRequestSystemInfo, dejavu, {});
+}
+
+std::vector<Byte> make_exchange_public_peers(std::uint32_t dejavu)
+{
+    const std::array<Byte, kExchangePublicPeersPayloadBytes> no_public_peers{};
+    return serialize_frame(kExchangePublicPeers, dejavu, no_public_peers);
 }
 
 SystemInfo parse_system_info(const Frame& frame)
@@ -795,9 +832,27 @@ SystemInfo DirectNodeClient::request_system_info()
                 throw TransportError("connection factory returned no stream");
             }
             FramedConnection connection(*stream);
-            const std::vector<Byte> request = make_system_info_request();
+            connection.write_frame(make_exchange_public_peers(next_dejavu()));
+            const std::uint32_t request_dejavu = next_dejavu();
+            const std::vector<Byte> request = make_system_info_request(request_dejavu);
             connection.write_frame(request);
-            const SystemInfo info = parse_system_info(connection.read_frame());
+            constexpr std::uint32_t kMaximumIgnoredFrames = 64U;
+            SystemInfo info;
+            bool received_response = false;
+            for (std::uint32_t ignored = 0U; ignored < kMaximumIgnoredFrames; ++ignored) {
+                const Frame response = connection.read_frame();
+                if (response.type == kRespondSystemInfo) {
+                    info = parse_system_info(response);
+                    received_response = true;
+                    break;
+                }
+                if (!is_unsolicited_network_frame(response)) {
+                    (void)parse_system_info(response);
+                }
+            }
+            if (!received_response) {
+                throw TransportError("system-info response was not received before the unsolicited-frame limit");
+            }
             stream->close();
             return info;
         } catch (const ProtocolError&) {
@@ -827,6 +882,7 @@ bool DirectNodeClient::submit_frame(std::span<const Byte> frame)
                 throw TransportError("connection factory returned no stream");
             }
             FramedConnection connection(*stream);
+            connection.write_frame(make_exchange_public_peers(next_dejavu()));
             connection.write_frame(frame);
             stream->close();
             return true;

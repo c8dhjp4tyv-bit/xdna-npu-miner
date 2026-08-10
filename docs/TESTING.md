@@ -318,7 +318,7 @@ only after exact recomputation.
 
 The direct-node test boundary is the required first M6 integration path:
 
-- 8-byte request/response frame parsing;
+- type-0 peer-exchange handshake plus 8-byte request/response frame parsing;
 - system-info response extraction of epoch/tick/seed/threshold;
 - task hash and algorithm selection;
 - signed/encrypted solution broadcast construction;
@@ -332,6 +332,25 @@ the direct-node path works and remain deferred until a stable authoritative,
 sufficiently complete protocol revision or implementation is pinned and
 independently reviewed; never invent pool frames. Never log private signing
 seeds or access tokens.
+
+The offline live-probe harness exercises a local mock success, wrong-frame,
+truncated-frame, and timeout server:
+
+```bash
+./scripts/test-qubic-live-probe-offline.sh
+```
+
+The bounded public read-only interoperability probe uses the official endpoint
+explicitly; it never loads signing material or submits a frame:
+
+```bash
+./scripts/run-m6-live-system-info.sh
+```
+
+The guarded submission surface is intentionally non-operative without an
+authorized identity and candidate. `scripts/run-m6-live-submit.sh` exits
+nonzero and records the external protocol requirement without sending a
+frame; it must not be converted into an M7 supervisor.
 
 ### 10. Endurance/recovery tests (M10)
 
@@ -423,10 +442,12 @@ ctest --test-dir build-crypto --output-on-failure
 This opt-in run includes `qubic_crypto_tests`, which checks RFC 9861 K12
 vectors, the synthetic Qubic SchnorrQ signature vector, and exact synthetic
 FourQ public-key, shared-key, gamming-key, and gamma-stream bytes. The
-observed gate is 7/7 tests passed. No live endpoint or signing secret is
-implied by either test suite. Live system-info and solution submission remain
-disabled until an explicitly authorized endpoint and safe runtime signing
-material are supplied.
+observed gate is 7/7 tests passed. No signing secret is implied by either test
+suite. Live system-info has a recorded read-only PASS against
+`corenet.qubic.li:21841`; solution submission remains disabled until an
+authorized source identity, current computor destination, current task
+compatibility, eligible CPU/NPU candidate, and safe runtime signing material
+are supplied.
 
 ## Security-oriented tests
 

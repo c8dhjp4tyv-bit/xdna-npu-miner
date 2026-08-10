@@ -129,6 +129,19 @@ runtime submission. Network submission also requires an explicit runtime
 opt-in, an authorized endpoint and signing secret, bounded connect/read/write
 timeouts, and bounded reconnect attempts.
 
+The live direct-node connection begins with a type-0 `EXCHANGE_PUBLIC_PEERS`
+frame containing 16 zero bytes and a nonzero per-connection dejavu, followed
+by the type-46 system-info request. A node can send the peer-exchange frame
+and ordinary broadcast traffic asynchronously, so the bounded reader ignores
+those network frames and accepts only the type-47 system-info response. The
+read-only executable is `qubic_live_probe`, driven by
+`scripts/run-m6-live-system-info.sh`; it keeps the safe localhost default in
+`RuntimeConfig` unchanged and sets the official public endpoint explicitly.
+The response contains runtime epoch/tick/seed/threshold but no task bytes or
+destination computor key. The probe therefore constructs a context from the
+recorded task identity, labels full live task compatibility as unproven, and
+does not submit.
+
 ### M6 production crypto gate
 
 The default CMake configuration does not fetch or link crypto dependencies.

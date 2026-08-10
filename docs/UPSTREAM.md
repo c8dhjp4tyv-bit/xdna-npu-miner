@@ -1,6 +1,6 @@
 # Upstream Sources and Licensing
 
-Audit date: **2026-08-09**.
+Audit date: **2026-08-10**.
 
 This registry is the source of truth for M0's current Qubic claims. Source code
 was inspected in separate checkouts under /home/umutcagand/qubic-m0.WHEa7H; none
@@ -292,8 +292,47 @@ this repository.
   material, not operator secrets.
 - **Reuse decision:** Approved as an optional external dependency after the
   file/function/license review above. No Qubic/Qiner crypto source was copied;
-  the provider remains a separately injected component and live system-info or
-  solution submission has not been exercised.
+  the provider remains a separately injected component. The read-only live
+  system-info probe is recorded in Source S-009; solution submission remains
+  unexercised.
+
+### Source S-009 — Official direct-network endpoint and live read-only revalidation
+
+- **Authority:** Official Qubic Team public direct-network guidance and the
+  current official core node implementation.
+- **Endpoint source:** The Qubic Team's direct-network article documents the
+  Direct Network endpoint `corenet.qubic.li:21841`:
+  https://qubic.org/blog-detail/how-to-query-qubic-oracle-machines-using-the-qubic.net-toolkit
+- **Peer source:** The current core README directs operators to
+  `https://app.qubic.li/network/live` for known public peers and describes the
+  listen-only peer configuration:
+  https://github.com/qubic/core/blob/a83f935406cd006b5b1a94971139e74d410ecb6d/README.md
+- **Accessed/revalidated:** 2026-08-10 (with the initial live pass on
+  2026-08-09). `corenet.qubic.li` resolved to public
+  IPv4 addresses and TCP `21841` accepted a bounded connection. The project
+  probe then sent the clean-room peer-exchange handshake plus
+  `REQUEST_SYSTEM_INFO` and received two valid `RESPOND_SYSTEM_INFO` frames;
+  sanitized values are recorded in `docs/evidence/m6-direct-node.json`.
+- **Current wire paths:**
+  `src/network_messages/header.h`,
+  `src/network_messages/network_message_type.h`,
+  `src/network_messages/system_info.h`,
+  `src/network_messages/broadcast_message.h`, and `src/qubic.cpp` at core
+  `a83f935406cd006b5b1a94971139e74d410ecb6d`. A new connection sends an
+  `EXCHANGE_PUBLIC_PEERS` frame (type 0, 16-byte payload); a direct request is
+  type 46 and its response is type 47 with a packed 128-byte payload. A node
+  may stream ordinary network frames on the same connection, so the adapter
+  filters those before accepting the system-info response.
+- **Submission constraint:** Core's protocol documentation and current source
+  require a nonzero source public key, source authorization through the
+  computor or dissemination-balance rule, and a destination matching a current
+  computor public key. System info does not provide the destination key. An
+  ephemeral or guessed identity is therefore not a valid live submission
+  substitute. No submission frame was sent.
+- **Reuse decision:** Endpoint and observable wire facts are independently
+  implemented and recorded; no Qubic core/Qiner source was copied. The public
+  probe is read-only and does not establish task-byte compatibility or
+  submission acceptance.
 
 ## Current Qubic algorithm facts
 
@@ -452,10 +491,11 @@ Direct-node authentication is cryptographic identity and node policy, not a
 username/password handshake: the signing public key must verify the packet and
 must satisfy source/destination/balance/computor rules. The reference path uses
 TCP/IPv4 and reconnects by opening a new configured connection for a submission.
-M6 adds bounded connect/send/read timeouts and finite reconnect attempts around
-this boundary. It does not select or copy a production crypto provider, so the
-live signing/submission gate remains explicitly unavailable until that review
-is complete.
+M6 adds the peer-exchange handshake, bounded connect/send/read timeouts, and
+finite reconnect attempts around this boundary. The optional production crypto
+provider review is complete, but live signing/submission remains explicitly
+unavailable without an authorized source identity, destination key, candidate,
+and safe runtime secret.
 
 The source revision and task hashes are compatibility inputs. A miner must
 reject an unknown algorithm id, invalid task header/hash, unsupported system

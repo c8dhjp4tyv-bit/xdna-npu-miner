@@ -178,6 +178,17 @@ target_compile_options(qubic_direct_node_tests PRIVATE
 )
 add_test(NAME qubic_direct_node_tests COMMAND qubic_direct_node_tests)
 
+add_executable(qubic_live_probe src/qubic/live_probe_main.cpp)
+target_link_libraries(qubic_live_probe PRIVATE qubic_direct_node)
+target_compile_options(qubic_live_probe PRIVATE
+    -Wall
+    -Wextra
+    -Wpedantic
+    -Wconversion
+    -Wshadow
+    -Werror
+)
+
 if(XDNA_ENABLE_PRODUCTION_CRYPTO)
     # These are intentionally opt-in so the normal CPU/NPU contract build has
     # no network or third-party crypto dependency. The exact revisions and

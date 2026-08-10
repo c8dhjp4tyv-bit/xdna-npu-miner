@@ -452,9 +452,12 @@ freshness, CPU/NPU submission gates, deterministic solution serialization,
 bounded transport/reconnect, mock integration, secret-redacted runtime
 configuration, and an optional pinned K12/FourQ-compatible provider are
 implemented. The provider passes RFC, synthetic Qubic SchnorrQ, public-key,
-shared-key, gamming-key, and gamma-stream KATs. No authorized live endpoint or
-submission secret was configured; live interoperability is therefore not
-exercised. M6 is not complete.
+shared-key, gamming-key, and gamma-stream KATs. The bounded public read-only
+probe passes twice against the official `corenet.qubic.li:21841` direct-node
+endpoint, including the peer-exchange handshake, 128-byte system-info decode,
+and reconnect/context refresh. Live submission remains unexercised because
+the current protocol requires an authorized source identity and current
+computor destination key that were not available. M6 is not complete.
 
 ### Objective
 

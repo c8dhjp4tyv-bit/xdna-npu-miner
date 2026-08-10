@@ -412,7 +412,8 @@ The original bootstrap decisions remain valid:
 
 ## D-031 — M6 direct-node protocol is a clean-room CPU boundary
 
-**Status:** Accepted and offline-tested; live interoperability pending
+**Status:** Accepted; offline-tested and public read-only system-info
+interoperability verified; authorized submission pending
 
 M6 implements the direct-node frame, 128-byte system-info schema, work-context
 freshness, exact CPU/NPU submission gate, deterministic broadcast layout, and
@@ -470,3 +471,22 @@ the Anti-Military upstream implementation, while the opt-in build and
 injected interface preserve the existing default no-send behavior. This does
 not authorize a live endpoint, real user secret, or automatic provider
 selection; those remain separate M6 gates.
+
+## D-034 — Complete the public read-only handshake, never invent submission identity
+
+**Status:** Accepted; live system-info PASS, submission remains blocked
+
+The official direct-node listener sends an unsolicited type-0
+`EXCHANGE_PUBLIC_PEERS` frame on connection. The adapter must send its own
+16-byte zero-peer handshake with a nonzero dejavu before sending request 46,
+then ignore ordinary network frames until response 47 arrives. This behavior
+was verified against `corenet.qubic.li:21841` on 2026-08-09 and reverified on
+2026-08-10; it is covered by the offline mock harness.
+
+The system-info response has no task bytes or destination computor public key.
+Current core submission policy also requires a nonzero authorized source
+identity satisfying the computor or dissemination-balance rule. Therefore the
+project will not generate an ephemeral signer, guess a destination, or send a
+candidate without an authorized identity, a current task-compatible candidate,
+and the required CPU/NPU evidence. The live gate stays IN PROGRESS until those
+external prerequisites exist; this does not authorize M7 or Qatum work.

@@ -10,9 +10,12 @@ engineering agent.
 ## Status
 
 **IN PROGRESS** — the direct-node boundary and the optional pinned production
-K12/FourQ provider are implemented and offline/KAT tested. No authorized live
-endpoint or runtime signing secret was available, so live system-info and
-submission remain unexercised. Do not start M7 or Qatum work.
+K12/FourQ provider are implemented and offline/KAT tested. The bounded public
+read-only system-info probe passes against the official direct-node endpoint,
+including the peer-exchange handshake and reconnect/context refresh. Live
+submission remains unexercised because no authorized source identity,
+destination computor key, eligible candidate, or runtime signing secret was
+available. Do not start M7 or Qatum work.
 
 ## Current continuation checkpoint — 2026-08-09
 
@@ -28,7 +31,68 @@ submission remain unexercised. Do not start M7 or Qatum work.
 - Default build remains dependency-free with crypto disabled. The opt-in
   build flag is `-DXDNA_ENABLE_PRODUCTION_CRYPTO=ON`.
 - Current status is **IN PROGRESS**: provider/KAT gate passed; live endpoint,
-  live system-info, and live submission remain **NOT_EXERCISED**.
+  and read-only live system-info gate passed; live submission remains
+  **NOT_EXERCISED**.
+
+## Power-off recovery checkpoint — 2026-08-10
+
+- The requested recovery was performed before editing. The interrupted work
+  was found uncommitted on `main` at `23e9a0f51488cae8eb69e7fdff97ab2839c6b6eb`;
+  `origin/main` is the same commit and the worktree is dirty with no staged
+  changes.
+- `git fetch origin` completed. `git fsck --full` reported six dangling
+  objects (three trees and three blobs) and no missing or corrupt objects.
+  No reset, clean, restore, checkout, rebase, or pull was performed.
+- Recovered uncommitted M6 files include the peer-exchange changes in
+  `src/qubic/direct_node.*`, `src/qubic/live_probe_main.cpp`,
+  `tests/qubic_direct_node_tests.cpp`, `CMakeLists.txt`, the three M6 scripts,
+  `docs/evidence/m6-direct-node.json`, and the related M6 documentation.
+  An unrelated regenerated M2 artifact UUID was inspected and restored to the
+  committed verified value in `docs/evidence/m2-xdna-smoke.json`; no M2
+  dispatch claim was changed or folded into this M6 checkpoint.
+- Recovery classification: official endpoint/core/Qiner source revalidation
+  is complete; the live probe, scripts, mock/reconnect path, public endpoint,
+  and live context construction are implemented but require this session's
+  targeted build/offline/live verification. Evidence is present but
+  uncommitted. Ephemeral identity and actual live submission are intentionally
+  not started because current protocol authorization material is absent.
+- Exact next task: build the recovered M6 surface, run the offline probe and
+  focused CTest/JSON checks, then rerun the bounded read-only official endpoint
+  probe. Preserve the guarded no-send submission status; do not start M7 or
+  Qatum work.
+
+## M6 live interoperability checkpoint — 2026-08-10
+
+- Branch: `main`; public endpoint source is the official Qubic Team article
+  documenting `corenet.qubic.li:21841`.
+- `./scripts/run-m6-live-system-info.sh` passed twice on 2026-08-10T05:48:42Z
+  to 2026-08-10T05:48:43Z UTC. The adapter sent the type-0 peer-exchange
+  handshake and type-46 request, received type-47/136-byte frames with
+  128-byte payloads, and refreshed the context from epoch 225, tick 73296942
+  to 73296943, with threshold 3838 and 8088 work windows. The mining seed was
+  nonzero; only a short diagnostic fingerprint is recorded.
+- `./scripts/test-qubic-live-probe-offline.sh` passed success, wrong-frame,
+  truncated-frame, and timeout behavior; `qubic_direct_node_tests` also passed
+  one-byte fragmented reads and bounded reconnect. The guarded submission
+  script was tested both without opt-in and with explicit opt-in; both paths
+  exited nonzero without sending a frame.
+- The live response contains no task bytes or destination computor public key.
+  The recorded task identity was used only to construct the local context;
+  full live task compatibility is explicitly **NOT_PROVEN**.
+- Submission status is
+  `LIVE_SUBMISSION_NOT_EXERCISED_PROTOCOL_REQUIRES_AUTHORIZED_IDENTITY`:
+  candidate attempts 0, CPU verification false, NPU verification false,
+  frame sent false, ephemeral identity false, real user secret false. The
+  exact external requirement is an authorized nonzero source satisfying the
+  current computor/dissemination-balance rule, a current computor destination,
+  current task-compatible work, an eligible CPU/NPU-verified candidate, and a
+  safe runtime secret. Do not invent any of these.
+- Files changed in this continuation: `CMakeLists.txt`,
+  `src/qubic/direct_node.hpp`, `src/qubic/direct_node.cpp`,
+  `src/qubic/live_probe_main.cpp`, `tests/qubic_direct_node_tests.cpp`,
+  `scripts/run-m6-live-system-info.sh`, `scripts/run-m6-live-submit.sh`,
+  `scripts/test-qubic-live-probe-offline.sh`, and the M6 documentation/evidence
+  files listed in the final commit.
 
 ## Crash recovery checkpoint
 
@@ -270,7 +334,8 @@ pin differs from the current host's `...443...` stack, which was not changed.
   mock submission, disabled live submission, and secret redaction.
 - Added `docs/evidence/m6-direct-node.json` with the recovery, protocol,
   offline/mock, no-send, live-gate, crypto-KAT, and regression state. M6
-  remains **IN PROGRESS** because live interoperability is not exercised.
+  remains **IN PROGRESS** because authorized live submission is not exercised;
+  the read-only system-info interoperability gate passes.
 
 ## Upstream cross-check result
 
@@ -280,9 +345,9 @@ topology role/index rules, three-neighbor LUT indexing, simultaneous
 previous-state reads, signal-paced window scoring, timeout propagation,
 canonical nonce fields, mutation selection/replacement, accept-if-`r <=
 current`, and the 100-step/101-call lifecycle. The new provider also passes
-independent K12 and synthetic Qubic/FourQ byte vectors; production task
-random2 orchestration and node interoperability remain separate unexercised
-gates.
+independent K12 and synthetic Qubic/FourQ byte vectors. The public node
+handshake and system-info response are live-verified; production task-byte
+compatibility and authorized submission remain separate unexercised gates.
 
 ## Files changed in M1
 
@@ -573,9 +638,10 @@ inputs and returned an exact CPU-verified result. The M4 baseline and M5
 contexts were created in separate lifetimes because concurrent context setup
 returns `DRM_IOCTL_AMDXDNA_CREATE_HWCTX` `err=-19` on this host.
 
-No live Qubic node, system-info exchange, or solution submission was exercised.
-M6 protocol behavior was exercised through the offline/mock boundary and the
-opt-in provider KATs recorded in `docs/evidence/m6-direct-node.json`.
+The public Qubic node system-info exchange was exercised read-only twice. No
+solution submission was attempted. M6 protocol behavior was exercised through
+the offline/mock boundary, the live system-info probe, and the opt-in provider
+KATs recorded in `docs/evidence/m6-direct-node.json`.
 
 ## Known limitations and unresolved behavior
 
@@ -663,10 +729,12 @@ opt-in provider KATs recorded in `docs/evidence/m6-direct-node.json`.
 ## Exact next task: finish the M6 gate or checkpoint it
 
 Do not start M7. The inherited physical M1–M5 validation suite and the
-production-crypto KAT gate have passed. If an explicitly authorized current
-node and safe signing material become available, exercise system-info
-interoperability and only a CPU-verified, threshold-eligible submission with
-live opt-in. Otherwise preserve `LIVE_SUBMISSION_NOT_EXERCISED`, keep M6
+production-crypto KAT gate have passed. If an explicitly authorized source
+identity, current computor destination, current task-compatible work, safe
+signing material, and a CPU/NPU-verified threshold-eligible candidate become
+available, exercise only the bounded live submission gate with explicit
+opt-in. Otherwise preserve
+`LIVE_SUBMISSION_NOT_EXERCISED_PROTOCOL_REQUIRES_AUTHORIZED_IDENTITY`, keep M6
 **IN PROGRESS**, and record the external blocker. Do not weaken CPU
 verification, infer task bytes, or claim profitability.
 

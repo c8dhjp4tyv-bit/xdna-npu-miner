@@ -61,6 +61,17 @@ void expect_protocol(Function&& function, ProtocolErrorCode code, const char* me
     throw std::runtime_error(message);
 }
 
+template <typename Function>
+void expect_transport(Function&& function, const char* message)
+{
+    try {
+        function();
+    } catch (const TransportError&) {
+        return;
+    }
+    throw std::runtime_error(message);
+}
+
 TaskIdentity make_task_identity(std::uint64_t sequence_length = 10U)
 {
     TaskIdentity identity;
@@ -419,10 +430,22 @@ void test_deterministic_solution_serialization()
 void test_mock_system_info_and_bounded_reconnect()
 {
     const SystemInfo expected = make_system_info();
-    const std::vector<Byte> response = xdna::qubic::serialize_frame(
+    const std::vector<Byte> system_info = xdna::qubic::serialize_frame(
         xdna::qubic::kRespondSystemInfo,
         0U,
         xdna::qubic::serialize_system_info_payload(expected));
+    const std::array<Byte, xdna::qubic::kExchangePublicPeersPayloadBytes> peer_payload{};
+    const std::array<Byte, 0U> broadcast_payload{};
+    std::vector<Byte> response = xdna::qubic::serialize_frame(
+        xdna::qubic::kExchangePublicPeers,
+        0U,
+        peer_payload);
+    const std::vector<Byte> broadcast = xdna::qubic::serialize_frame(
+        xdna::qubic::kBroadcastMessage,
+        0U,
+        broadcast_payload);
+    response.insert(response.end(), broadcast.begin(), broadcast.end());
+    response.insert(response.end(), system_info.begin(), system_info.end());
     MemoryFactory factory(response);
     factory.failures_before_success = 2U;
     DirectNodeClient client(factory,
@@ -432,9 +455,50 @@ void test_mock_system_info_and_bounded_reconnect()
     const SystemInfo actual = client.request_system_info();
     expect(actual == expected && factory.connects == 3U, "system-info request uses bounded reconnect");
     expect(factory.writes.size() == 1U, "only the successful connection writes a request");
-    const Frame request = xdna::qubic::parse_frame(factory.writes[0U]);
-    expect(request.type == xdna::qubic::kRequestSystemInfo && request.payload.empty(),
-           "mock integration sends the exact empty system-info request");
+    FrameDecoder decoder;
+    decoder.feed(factory.writes[0U]);
+    const auto handshake = decoder.next();
+    const auto request = decoder.next();
+    expect(handshake.has_value() && handshake->type == xdna::qubic::kExchangePublicPeers
+               && handshake->payload.size() == xdna::qubic::kExchangePublicPeersPayloadBytes,
+           "mock integration sends the direct-node peer-exchange handshake");
+    expect(request.has_value() && request->type == xdna::qubic::kRequestSystemInfo
+               && request->payload.empty() && request->dejavu != 0U,
+           "mock integration sends the exact empty system-info request with a nonzero dejavu");
+    expect(!decoder.next().has_value(), "mock system-info request contains only handshake and request frames");
+}
+
+void test_mock_system_info_failure_modes()
+{
+    const std::vector<Byte> wrong_type = xdna::qubic::serialize_frame(
+        99U, 0U, {});
+    MemoryFactory wrong_factory(wrong_type);
+    DirectNodeClient wrong_client(wrong_factory,
+                                  NodeEndpoint{"mock", 1234U},
+                                  TransportTimeouts{},
+                                  ReconnectPolicy{1U, std::chrono::milliseconds(0)});
+    expect_protocol([&] { (void)wrong_client.request_system_info(); },
+                    ProtocolErrorCode::WrongMessageType,
+                    "live probe path rejects a wrong response frame type");
+
+    const std::vector<Byte> truncated{
+        136U, 0U, 0U, xdna::qubic::kRespondSystemInfo, 0U, 0U, 0U, 0U, 1U,
+    };
+    MemoryFactory truncated_factory(truncated);
+    DirectNodeClient truncated_client(truncated_factory,
+                                      NodeEndpoint{"mock", 1234U},
+                                      TransportTimeouts{},
+                                      ReconnectPolicy{1U, std::chrono::milliseconds(0)});
+    expect_transport([&] { (void)truncated_client.request_system_info(); },
+                     "live probe path rejects a truncated response payload");
+
+    MemoryFactory timeout_factory({});
+    DirectNodeClient timeout_client(timeout_factory,
+                                    NodeEndpoint{"mock", 1234U},
+                                    TransportTimeouts{},
+                                    ReconnectPolicy{1U, std::chrono::milliseconds(0)});
+    expect_transport([&] { (void)timeout_client.request_system_info(); },
+                     "live probe path fails closed when the response stream ends");
 }
 
 void test_mock_solution_submission()
@@ -453,10 +517,16 @@ void test_mock_solution_submission()
     const auto result = adapter.submit(input, context);
     expect(result.sent && result.decision.authorized && factory.connects == 1U,
            "mock adapter submits only an authorized CPU-verified solution");
-    const Frame submitted = xdna::qubic::parse_frame(factory.writes[0U]);
-    expect(submitted.type == xdna::qubic::kBroadcastMessage
-               && submitted.payload.size() == xdna::qubic::kBroadcastPayloadBytes,
+    FrameDecoder decoder;
+    decoder.feed(factory.writes[0U]);
+    const auto handshake = decoder.next();
+    const auto submitted = decoder.next();
+    expect(handshake.has_value() && handshake->type == xdna::qubic::kExchangePublicPeers,
+           "mock adapter sends the direct-node peer-exchange handshake");
+    expect(submitted.has_value() && submitted->type == xdna::qubic::kBroadcastMessage
+               && submitted->payload.size() == xdna::qubic::kBroadcastPayloadBytes,
            "mock adapter writes the deterministic solution frame");
+    expect(!decoder.next().has_value(), "mock adapter writes no extra frames");
 }
 
 void test_secret_safe_configuration()
@@ -483,6 +553,7 @@ int main()
         test_submission_gates_and_no_send();
         test_deterministic_solution_serialization();
         test_mock_system_info_and_bounded_reconnect();
+        test_mock_system_info_failure_modes();
         test_mock_solution_submission();
         test_secret_safe_configuration();
         std::cout << "PASS qubic_direct_node\n";
