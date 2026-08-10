@@ -1,0 +1,150 @@
+# Pearl (PRL) Research Architecture
+
+## Boundary
+
+Pearl is a separate research track. The existing Qubic runtime and its
+verified M0–M5 XDNA infrastructure remain reference-only and are not retargeted
+in P0. Generic XDNA capability detection, XRT buffer ownership, persistent
+buffers, exact differential testing, and four-column artifact handling may be
+reused only after a Pearl-specific contract is written and tested.
+
+```mermaid
+flowchart LR
+    N["Pearl node or verified pool"] --> J["CPU job/template manager"]
+    J --> C["CPU canonical serialization, commitments, noise inputs"]
+    C --> X["XDNA1 candidate int8 GEMM and selected reduction"]
+    X --> V["CPU exact transcript and opening verification"]
+    V --> Z["CPU/Rust ZK certificate generation"]
+    Z --> S["CPU gateway block/share submission"]
+    V -. mismatch or stale job .-> R["Reject and discard"]
+```
+
+The arrows are a proposed responsibility boundary, not an implemented data
+path. Network traffic and signing remain CPU-side. The NPU is a deterministic
+compute backend with no authority to select an endpoint, create an identity,
+or submit a result.
+
+## Components
+
+### CPU job and protocol manager
+
+This component will eventually own:
+
+- direct-node JSON-RPC `getblocktemplate` polling and template freshness;
+- coinbase, transaction, Merkle root, incomplete header, target, and
+  `requiredcertversion` handling;
+- local gateway message framing (`getMiningInfo` and `submitPlainProof`);
+- matrix dimensions, rank/configuration validation, nonce/job control, and
+  stale-work cancellation;
+- CPU reference inputs, commitment hashes, noise seeds, Merkle openings,
+  certificate generation, and final verification.
+
+None of these responsibilities is implemented for Pearl in P0.
+
+### Candidate CPU reference
+
+P1 must define a standalone trusted reference with explicit fixed-width fields:
+
+```text
+header/config bytes -> job_key
+matrices A and B^T -> padded keyed BLAKE3 commitments
+commitments/header -> noise seeds and exact int8 noise
+selected noised tiles -> int32 products and full-r-chunk XOR
+16-word transcript -> rotate-left(13) -> keyed BLAKE3 jackpot
+jackpot/header/config -> target decision and PlainProof fields
+```
+
+The reference must preserve row-major matrix bytes, `B^T` orientation, little
+endian integer serialization, signedness, pattern offsets, rank chunking, and
+all exact seed labels. It is the oracle for every later XDNA result.
+
+### Candidate XDNA1 backend
+
+The first XDNA kernel should be the smallest independently testable primitive:
+
+- input: a validated batch of signed int8 A/B/noise operands, dimensions,
+  rank/chunk descriptors, and explicit strides;
+- compute: tiled signed int8 multiplication with int32 accumulation;
+- optional next stage: selected-value XOR/reduction and transcript words;
+- output: int32 selected values or transcript/status records, never an
+  unverified block or share;
+- host contract: persistent/reused XRT BOs where practical, explicit H2D/D2H
+  byte counts, synchronization, device identity, and a CPU comparison for
+  every item.
+
+The denoising correction and BLAKE3 transcript should not be fused into the
+first kernel until the integer layout and CPU vector contract pass. A kernel
+may later combine stages only if the combined result remains bit-exact and
+the transfer/dispatch benefit is measured.
+
+### Proof and submission
+
+After a candidate hit, the CPU must reconstruct the selected A rows and B
+columns, verify commitments/Merkle data and the exact jackpot, then invoke the
+version-selected `zk-pow` proof generator through a reviewed adapter. Only the
+gateway may serialize the certificate and call `submitblock`; P0 creates no
+adapter and makes no claim that a pool share format is available.
+
+## Data movement and tiling hypotheses
+
+XDNA1/AIE2 compute tiles access local memory and require explicit movement from
+external memory. The Pearl candidate therefore needs a layout experiment, not
+just a GEMM translation:
+
+1. Keep job metadata and small transcript/status records on the host.
+2. Pack A/B/noise factors into a fixed, row-major, int8 tile schema.
+3. Reuse B and noise tiles across rank chunks when their lifetime permits.
+4. Keep intermediate accumulators in tile-local memory/registers when possible;
+   materialize only the exact values needed by the next verified stage.
+5. Batch independent jobs only after batch 1 has exact CPU/NPU parity.
+6. Compare one, two, and four XDNA1 columns with the same corpus and warm-up
+   policy as the existing evidence, without transferring Qubic semantics into
+   Pearl.
+
+The official Pearl CUDA path uses a full `128 x 256 x 128` GEMM tile while the
+proof pattern selects a `2 x 64` inner tile. P2 must determine whether XDNA
+should compute the full tile, a proof-shaped tile, or a legal tiled hybrid;
+P0 does not assume that the GPU tile is the right NPU tile.
+
+## Fit assessment
+
+The current evidence supports `POSSIBLE_FIT` for the dense primitive because
+AMD/Xilinx AIE2 documentation exposes int8 vector arithmetic and GEMM-oriented
+kernels, and the existing host has a physical four-column XDNA1 device. It does
+not support `EXCELLENT_FIT`: the Pearl path includes noise/correction,
+selected reductions, keyed BLAKE3, Merkle openings, and ZK proof work. It does
+not support `NOT_FEASIBLE`: no experiment has ruled out the mapping.
+
+The overall P0 gate is therefore `UNKNOWN_NEEDS_EXPERIMENT`. A later
+`GO_XDNA_PORT` requires a correct CPU differential result and a measured
+benefit from moving a proof-dominant repeated primitive to XDNA1. A fast but
+incomplete GEMM, a CPU fallback mislabeled as NPU work, or an unmeasured
+four-column claim cannot open the gate.
+
+## Failure and fallback policy
+
+- Missing/wrong-generation device, unavailable toolchain, compile/load error,
+  timeout, sync error, or buffer mismatch is a typed failure.
+- Any CPU/NPU mismatch rejects the candidate and prevents submission.
+- Stale header/config, invalid dimensions, invalid rank, or invalid target is
+  rejected before dispatch.
+- A CPU-only reference run is allowed for development and is labeled CPU; it
+  is not evidence of NPU execution.
+- Pearl network and wallet secrets must not enter NPU buffers, logs, or evidence
+  files.
+
+## Reusable existing project pieces
+
+Potentially reusable after a Pearl contract exists:
+
+- `src/xdna/device.*` for XDNA1/Hawk Point capability and identity checks;
+- `src/xdna/runtime.*` for XRT dispatch counters, persistent BOs, and explicit
+  synchronization accounting;
+- existing buffer validation and CPU differential-test patterns;
+- four-column artifact and telemetry handling from the M5 evidence.
+
+Not reusable as Pearl behavior:
+
+- Qubic task parsing, candidate mutation, Qatum/direct-node logic, identities,
+  signing, or protocol messages;
+- Qubic-specific scores, thresholds, benchmark labels, or acceptance claims.

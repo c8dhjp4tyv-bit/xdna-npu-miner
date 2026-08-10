@@ -1,5 +1,20 @@
 # Project Specification
 
+## Active-track pivot: Pearl (PRL)
+
+Pearl is now the active research target on a separate, documentation-only P0
+track. The complete Qubic work described below remains frozen/reference-only;
+Qubic source, Qatum boundaries, identities, and M6/M7 work must not be
+continued or rewritten as part of this pivot. The Pearl specification,
+architecture, upstream/license record, milestones, and handoff are in
+[`docs/pearl/`](pearl/), with machine-readable P0 evidence at
+[`docs/evidence/pearl-p0.json`](evidence/pearl-p0.json).
+
+Pearl P0's single gate is `UNKNOWN_NEEDS_EXPERIMENT`: its dense int8 MAC
+primitive is a `POSSIBLE_FIT` for XDNA1/AIE2, but no Pearl kernel has been
+implemented or measured. No Pearl hashrate, profitability, or NPU execution
+claim is made.
+
 ## M0 status and scope
 
 This repository is a standalone research miner for AMD Ryzen AI Hawk Point:

@@ -1,0 +1,98 @@
+# Pearl (PRL) Research Milestones
+
+Pearl milestones are independent of the completed/frozen Qubic milestones.
+No later Pearl milestone may be started early, and no milestone may claim
+NPU execution without exact CPU differential evidence.
+
+## P0 — Upstream, protocol, license, and XDNA feasibility baseline
+
+**Status: COMPLETE — documentation/evidence only (2026-08-10).**
+
+Exit criteria:
+
+- pin the official Pearl repository, mining implementation, node/protocol
+  revision, application/RPC versions, and whitepaper hash;
+- trace template acquisition through matrix work, proof, and submission;
+- identify exact dimensions, dtypes, quantization, noise, accumulation,
+  transcript, proof, and network messages;
+- classify every relevant component license and prohibit unclear source reuse;
+- compare the dense primitive with XDNA1/AIE2 capabilities without claiming a
+  benchmark;
+- record an independently checkable first-order model and a single gate state;
+- validate the P0 JSON record, documentation, and whitespace.
+
+The P0 gate is `UNKNOWN_NEEDS_EXPERIMENT`: the dense int8 MAC primitive is
+`POSSIBLE_FIT`, but no Pearl implementation has been executed on XDNA1.
+
+## P1 — Trusted CPU golden path
+
+Implement a clean-room, CPU-only Pearl reference using the pinned wire/config
+formats. Define canonical test inputs and expected values for header/config
+serialization, commitments, noise, quantization, noised products, selected
+tiles, XOR/rotate transcript, jackpot target, Merkle openings, and derived
+proof fields. Resolve the `[-64,64]` whitepaper versus current `[-63,63]`
+implementation boundary explicitly.
+
+Exit: deterministic vectors pass on repeated runs and invalid dimensions,
+rank, target, layout, and overflow cases fail closed.
+
+## P2 — Minimal XDNA1 dense matmul
+
+Port only a bounded signed-int8 × signed-int8 → int32 tile to the existing
+XDNA1 runtime. Keep input/output schemas Pearl-specific and use a batch of one
+first. Do not call it Pearl mining until the CPU oracle comparison is present.
+
+Exit: physical device identity, dispatch evidence, exact output parity, and
+failure-path evidence on the target stack.
+
+## P3 — CPU↔NPU differential transcript
+
+Add exact noise/correction and selected reduction stages incrementally. Compare
+every intermediate field and final jackpot bytes against the CPU reference;
+measure transfer, dispatch, synchronization, and wait time.
+
+Exit: no mismatches across edge and randomized vectors; CPU remains the final
+authority.
+
+## P4 — Real job parser
+
+Parse the pinned `getMiningInfo`/gateway job schema and construct the P1 input
+contract without a live submission path. Test stale templates, certificate
+version changes, target/rank rejection, and all endianness boundaries.
+
+## P5 — Scoring/proof candidate
+
+Create and verify a `PlainProof` candidate and selected Merkle openings on CPU.
+Only after the CPU proof is trusted may the NPU result feed the candidate
+path. ZK generation remains CPU/Rust and must be version pinned.
+
+## P6 — Pool/direct-node adapter
+
+Implement only a protocol whose authoritative messages and license are
+available. Direct-node and pool support are separate adapters. Do not infer
+Stratum behavior from the existence of `nbits_override`.
+
+## P7 — Bounded live operation
+
+Only with explicit user authorization, verified endpoint/version, isolated
+identity, stale-work handling, and CPU verification. This milestone is not
+permitted by P0.
+
+## P8 — Batching and four-column mapping
+
+Measure independent Pearl jobs at batch 1, then larger bounded batches, and
+one/two/four XDNA1 columns under one fixed corpus. Select a configuration only
+from reproducible measurements; no artificial NPU-work percentage target.
+
+## P9 — Benchmark record
+
+Record exact source/hardware/software stack, dimensions, rank, batch,
+throughput, latency, warm-up, repetitions, correctness, RAM, NPU telemetry,
+and reliable power/energy when available. Compare only materially matched
+conditions and publish no unmeasured hashrate/profit number.
+
+## P10 — Endurance and recovery
+
+Run bounded endurance with job refresh, device errors, stale work, proof
+failure, backpressure, and shutdown recovery. Keep all secrets and network
+state out of evidence. Leave the system in a safe, auditable state.

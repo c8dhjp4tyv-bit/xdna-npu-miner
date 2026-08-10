@@ -6,6 +6,16 @@ M3 verifies one physical BPP9000 K1 recurrent tick; M4 verifies repeated ticks,
 window scoring, full score reduction, and candidate lifecycle behavior against
 the exact M1 oracle. Performance remains outside M4.
 
+## Pearl P0 testing boundary
+
+Pearl is a separate documentation-only track. Its P0 record is
+[`docs/evidence/pearl-p0.json`](evidence/pearl-p0.json), and its required
+checks are JSON parsing, source-pin/record consistency, independent arithmetic
+formula checks, license/protocol documentation review, and `git diff --check`.
+No Pearl kernel, CPU golden path, live node/pool connection, proof submission,
+or hardware result is claimed in P0. Pearl P1 must establish the CPU oracle
+before any XDNA1 differential test; the Qubic tests below remain unchanged.
+
 ## Authoritative behavior under test
 
 The current target is BPP9000 from Qubic core

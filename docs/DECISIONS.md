@@ -2,6 +2,21 @@
 
 Record material decisions here so later agents do not silently reverse them.
 
+## D-041 — Pearl is a separate active track; Qubic is frozen reference
+
+**Status:** Accepted for Pearl P0
+
+Pearl (PRL) research proceeds under `docs/pearl/` and branch
+`feat/pearl-m0`. The existing Qubic M0–M6 work, source boundaries, Qatum
+decision, identities, and evidence are preserved as a frozen reference and
+must not be continued or rewritten by Pearl work. Pearl P0 is documentation
+only, uses a clean-room rule for unclear upstream components, and keeps the
+CPU authoritative for network, proof, verification, and submission.
+
+Reason: the Pearl mining path, licenses, and protocol are materially different
+from Qubic. Separate records prevent accidental protocol or source reuse and
+make the XDNA1 feasibility gate auditable.
+
 ## D-001 — Standalone repository
 
 **Status:** Accepted

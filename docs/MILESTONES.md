@@ -13,6 +13,15 @@ evidence.
 **M5 status:** COMPLETE
 **M6 status:** IN PROGRESS
 
+## Active Pearl track
+
+Pearl (PRL) is the active research target on branch `feat/pearl-m0`. Its P0
+milestone is complete as documentation/evidence only and is specified in
+[`docs/pearl/MILESTONES.md`](pearl/MILESTONES.md). The overall Pearl gate is
+`UNKNOWN_NEEDS_EXPERIMENT`; no Pearl implementation or live operation may
+start before P1's CPU golden vectors. Qubic milestones, including M6/M7, are
+frozen/reference-only during the Pearl track.
+
 ## M0 — Repository bootstrap, research, and technical specification
 
 ### Objective

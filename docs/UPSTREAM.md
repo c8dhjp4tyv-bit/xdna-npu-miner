@@ -6,6 +6,14 @@ This registry is the source of truth for M0's current Qubic claims. Source code
 was inspected in separate checkouts under /home/umutcagand/qubic-m0.WHEa7H; none
 of that source was copied into this repository.
 
+## Pearl source registry
+
+Pearl is a separate active research target. Its official revision, mining and
+node path, whitepaper hash, license boundary, and clean-room reuse policy are
+recorded in [`docs/pearl/UPSTREAM.md`](pearl/UPSTREAM.md). Do not mix Pearl
+facts or source with the Qubic records below. Pearl P0 did not copy upstream
+source and did not make a live connection.
+
 ## Evidence hierarchy
 
 1. Current Qubic core/node source and its pinned production task define the

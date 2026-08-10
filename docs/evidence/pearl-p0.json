@@ -1,0 +1,97 @@
+{
+  "schema": "pearl-p0-evidence/v1",
+  "recorded_at": "2026-08-10",
+  "track": "pearl-prl",
+  "milestone": "P0",
+  "scope": "upstream, protocol, license, kernel, and XDNA1 feasibility research only",
+  "source_pins": {
+    "repository": "https://github.com/pearl-research-labs/pearl",
+    "branch": "master",
+    "commit": "fe22b6a2b831d95b2f56564808f39d2f498f34a5",
+    "mining_implementation_revision": "fe22b6a2b831d95b2f56564808f39d2f498f34a5",
+    "node_protocol_revision": "fe22b6a2b831d95b2f56564808f39d2f498f34a5",
+    "application_network_version": "1.3.1",
+    "node_json_rpc_api_version": "1.3.0",
+    "whitepaper_url": "https://pearlresearch.ai/Pearl_Whitepaper.pdf",
+    "whitepaper_sha256": "0b7dc4f064a926c4e8b6dfb8de12fe5cf041d713d8c0426f983f2833da5b8f3c",
+    "whitepaper_revision": "unversioned PDF; no explicit revision string found",
+    "cutlass_gitlink": "291300ffffa3533a78ee104f08a8490a29ce9ccb"
+  },
+  "license_review": {
+    "official_root_license": "ISC",
+    "hot_component_license_status": "no clear component-level grant or SPDX declaration found for pearl-gemm, pearl-gateway, miner-base, py-pearl-mining, zk-pow, or pearl-blake3 in the inspected tree",
+    "code_reuse_allowed": false,
+    "implementation_policy": "clean-room only until legal review resolves the exact component boundary",
+    "third_party_dependency_sbom": "deferred until implementation"
+  },
+  "kernel": {
+    "consensus_mma": "Int7xInt7ToInt32",
+    "logical_representation": "W7A7-like signed values in int8 containers; no packed-int7 instruction verified",
+    "main_gpu_multiply": "signed int8 x signed int8 -> int32 accumulation",
+    "current_noise_rank": 128,
+    "rank_domain": "power of two 32..1024; r divisible by 16; current rank-penalty floor is 128",
+    "gpu_tile_mnk": [128, 256, 128],
+    "hash_rows_pattern": [0, 8],
+    "hash_rows": 2,
+    "hash_columns_pattern": "[8*j, 8*j+1] for j=0..31",
+    "hash_columns": 64,
+    "hash_tile": [2, 64],
+    "noise_range": 128,
+    "idxs_per_col": 2,
+    "transcript_words": 16,
+    "transcript_rotation": "rotate-left 13 after XOR of each full-r chunk",
+    "quantization": "symmetric, max_val=63 for quant_7bit, round-to-nearest, clamp, fp32 scale, no zero point",
+    "activation_or_fusion": "none in the mining GEMM hot path"
+  },
+  "proof_dependencies": {
+    "commitments": "keyed BLAKE3 over padded A and B^T",
+    "noise_seeds": "derived from job key and commitment hashes",
+    "candidate_check": "little-endian U256 keyed BLAKE3 jackpot compared with derived target",
+    "opening": "selected A rows and B^T columns with Merkle data",
+    "certificate": "versioned PlainProof followed by CPU/Rust Plonky2/STARKy ZK generation",
+    "proof_generation_location": "CPU/Rust gateway after a GPU-side hit"
+  },
+  "network": {
+    "node_transport": "HTTP(S) JSON-RPC with BasicAuth",
+    "node_methods": ["getblocktemplate", "submitblock"],
+    "gateway_transport": "line-delimited JSON-RPC over /tmp/pearlgw.sock or loopback TCP 8337",
+    "gateway_methods": ["getMiningInfo", "submitPlainProof"],
+    "external_pool_protocol": "unknown; no official Stratum implementation found",
+    "live_connection_attempted": false
+  },
+  "xdna1": {
+    "target": "AMD Ryzen AI Hawk Point, XDNA1, AIE2, four columns",
+    "official_capability_basis": "AIE2/XDNA documentation exposes int8 vector arithmetic and GEMM-oriented kernels",
+    "dense_primitive_assessment": "POSSIBLE_FIT",
+    "overall_gate": "UNKNOWN_NEEDS_EXPERIMENT",
+    "reason": "No Pearl kernel has been implemented or differentially verified; data movement, transcript hashing, proof overhead, and four-column scaling are unmeasured",
+    "minimum_effective_batch": "not established; P2 must measure from batch 1"
+  },
+  "first_order_model": {
+    "representative_tile": "M=128, N=256, r=128, one rank chunk",
+    "mac_pairs": 4194304,
+    "scalar_mul_add_ops": 8388608,
+    "ab_input_bytes": 49152,
+    "bf16_output_bytes_if_materialized": 65536,
+    "simplified_visible_bytes": 114688,
+    "arithmetic_intensity_scalar_ops_per_byte": 73.142857,
+    "int32_output_alternative_bytes": 131072,
+    "int32_output_alternative_intensity_scalar_ops_per_byte": 46.545455,
+    "representative_k": 2048,
+    "representative_rank_chunks": 16,
+    "selected_pattern_fraction_of_full_gpu_tile": "128/(128*256)=1/256",
+    "measurement_status": "model only; no Pearl throughput or hashrate measured"
+  },
+  "p0_checks": {
+    "source_pins_reproducible": "PASS",
+    "license_review_recorded": "PASS_WITH_CODE_REUSE_BLOCKER",
+    "mining_path_verified": "PASS",
+    "formulas_independently_checked": "PASS",
+    "documentation_consistent": "PASS",
+    "json_valid": "PASS",
+    "git_diff_check": "PASS",
+    "pearl_hardware_test": "NOT_RUN_BY_P0_SCOPE"
+  },
+  "next_task": "P1 clean-room CPU golden path and canonical vectors",
+  "qubic_track": "FROZEN_REFERENCE_ONLY"
+}

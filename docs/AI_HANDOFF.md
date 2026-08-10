@@ -3,7 +3,19 @@
 This file is the authoritative short-form state for the next zero-context
 engineering agent.
 
-## Current milestone
+## Active track
+
+**Pearl (PRL) P0 — upstream/spec/license/kernel/XDNA1 feasibility baseline**
+
+The active Pearl handoff is [`docs/pearl/AI_HANDOFF.md`](pearl/AI_HANDOFF.md).
+P0 is documentation/evidence only. Its overall gate is
+`UNKNOWN_NEEDS_EXPERIMENT`; no Pearl source implementation, live node/pool
+connection, wallet, or submission path exists. The active branch is
+`feat/pearl-m0`; the exact P0 commit and push result are recorded in the Pearl
+handoff after the documentation checkpoint. The next exact task is P1's
+clean-room CPU golden path and canonical vectors.
+
+## Frozen Qubic reference milestone
 
 **M6 — Qubic direct-node integration**
 
