@@ -2,15 +2,15 @@
   "schema_version": 1,
   "milestone": "M6",
   "status": "IN_PROGRESS",
-  "captured_utc": "2026-08-10T05:48:42Z",
+  "captured_utc": "2026-08-10T06:19:39Z",
   "recovery": {
     "crash_recovery": true,
-    "head": "62a84d5d8674a1a74c1b7348e1fa41c85348e026",
+    "head": "61458661dc700c60109d83da257dc3055199fe84",
     "current_checkpoint_before_crypto": "9e5342f8611c65fa8b249500b15d9bd563e6da1e",
     "branch": "main",
-    "origin_main_matches_head": false,
-    "origin_main_matches_current_checkpoint": true,
-    "git_fsck": "five dangling objects only; no missing or corrupt object reported",
+    "origin_main_matches_head": true,
+    "origin_main_matches_current_checkpoint": false,
+    "git_fsck": "six dangling objects only; no missing or corrupt object reported",
     "surviving_m6_commits": ["c600094", "1c19bf3", "75e0a78", "9e5342f"],
     "surviving_m6_files_before_this_checkpoint": [
       "src/qubic/direct_node.hpp",
@@ -34,8 +34,12 @@
         "src/network_messages/header.h",
         "src/network_messages/network_message_type.h",
         "src/network_messages/system_info.h",
+        "src/network_messages/computors.h",
         "src/network_messages/broadcast_message.h",
-        "src/qubic.cpp"
+        "src/public_settings.h",
+        "src/mining/task_file.h",
+        "src/qubic.cpp",
+        "data/bpp9000.task"
       ],
       "revalidation_command": "git ls-remote https://github.com/qubic/core.git HEAD refs/heads/main refs/tags/v1.301.3"
     },
@@ -44,7 +48,7 @@
       "revision": "11fb18a6f4944bb55fe103d3f263cb5d31e00200",
       "ref": "v1.302.3",
       "current_main_at_revalidation": "11fb18a6f4944bb55fe103d3f263cb5d31e00200",
-      "relevant_paths": ["src/Qiner.cpp"],
+      "relevant_paths": ["src/Qiner.cpp", "README.md"],
       "revalidation_command": "git ls-remote https://github.com/qubic/Qiner.git HEAD refs/heads/main refs/tags/v1.302.3"
     }
   },
@@ -55,6 +59,8 @@
     "message_types": {
       "exchange_public_peers": 0,
       "broadcast_message": 1,
+      "broadcast_computors": 2,
+      "request_computors": 11,
       "request_system_info": 46,
       "respond_system_info": 47
     },
@@ -78,6 +84,7 @@
       "tests/qubic_crypto_tests.cpp",
       "CMakeLists.txt",
       "scripts/run-m6-live-system-info.sh",
+      "scripts/run-m6-live-computors.sh",
       "scripts/run-m6-live-submit.sh",
       "scripts/test-qubic-live-probe-offline.sh"
     ],
@@ -164,7 +171,7 @@
     "system_info": {
       "status": "PASS",
       "interoperability_status": "LIVE_SYSTEM_INFO_PASS",
-      "utc": "2026-08-10T05:48:42Z/2026-08-10T05:48:43Z",
+      "utc": "2026-08-10T06:08:24Z/2026-08-10T06:08:25Z",
       "protocol_version": 301,
       "protocol_core_revision": "v1.301.3@a83f935406cd006b5b1a94971139e74d410ecb6d",
       "peer_exchange_frame_type": 0,
@@ -181,8 +188,8 @@
         {
           "version": 301,
           "epoch": 225,
-          "tick": 73296942,
-          "latest_created_tick": 73296942,
+          "tick": 73300794,
+          "latest_created_tick": 73300794,
           "threshold": 3838,
           "mining_seed_nonzero": true,
           "mining_seed_fingerprint_fnv1a64": "dcbf4ce1f2ecce8f",
@@ -191,8 +198,8 @@
         {
           "version": 301,
           "epoch": 225,
-          "tick": 73296943,
-          "latest_created_tick": 73296943,
+          "tick": 73300797,
+          "latest_created_tick": 73300797,
           "threshold": 3838,
           "mining_seed_nonzero": true,
           "mining_seed_fingerprint_fnv1a64": "dcbf4ce1f2ecce8f",
@@ -209,9 +216,50 @@
       "live_task_identity_in_response": false,
       "compatibility_status": "SYSTEM_INFO_AND_RECORDED_TASK_CONTEXT_ONLY"
     },
+    "destination_computors": {
+      "status": "CURRENT_EPOCH_PUBLIC_LIST_OBSERVED",
+      "probe_command": "./scripts/run-m6-live-computors.sh",
+      "request_frame_type": 11,
+      "response_frame_type": 2,
+      "response_payload_bytes": 21698,
+      "utc": "2026-08-10T06:19:39Z",
+      "endpoint": "corenet.qubic.li:21841",
+      "epoch": 225,
+      "system_info_epoch_match": true,
+      "computor_count": 676,
+      "public_keys_nonzero": true,
+      "computor_keys_sha256": "58ef30a7fece845226c91502ff616747e1d50aab34ef530e68e15a36231aa9bf",
+      "signature_sha256": "be0db535e84b1ac1e78f689b86c882f17031558b6729cce727a8f937011e0ff6",
+      "signature_verified_by_probe": false,
+      "selected_destination_public_key": null,
+      "source": "Official REQUEST_COMPUTORS/BROADCAST_COMPUTORS path; no key hard-coded"
+    },
+    "production_task": {
+      "status": "AUTHORITATIVE_PINNED_CORE_FILE_SOURCE_VERIFIED_NOT_LIVE_ADVERTISED",
+      "source_repository": "https://github.com/qubic/core",
+      "source_revision": "a83f935406cd006b5b1a94971139e74d410ecb6d",
+      "source_path": "data/bpp9000.task",
+      "file_bytes": 44744,
+      "file_sha256": "0c5e9e42c6d86c320af62f4125ca85b2446f2b098893fd6521bcf66c22f7f00a",
+      "shape": "N18 M1 T8760 W672 P64 K3 S100",
+      "windows": 8088,
+      "topology_hash": "13e99d5b2fca56aa789cb959575f48392f1a44909a8eaf27f2de8f8d74b07a6b",
+      "data_hash": "979cdc2247d2ca4ed3d614bf27896384cb1c9c3d804af6ede6b59fc52c0e3dfa",
+      "core_verification_path": "src/public_settings.h + src/qubic.cpp::loadBpp9000Task",
+      "copied_into_repository": false,
+      "live_task_identity_in_system_info": false,
+      "project_parser_run_on_official_bytes": false,
+      "reason": "The official current core file and its core-pinned hashes are available as a clean-room external input, but SystemInfo does not carry task bytes."
+    },
     "submission": {
       "status": "LIVE_SUBMISSION_NOT_EXERCISED_PROTOCOL_REQUIRES_AUTHORIZED_IDENTITY",
+      "result_classification": "NOT_ATTEMPTED_EXTERNAL_AUTHORIZATION_BLOCKER",
       "candidate_attempts": 0,
+      "npu_score_evaluations": 0,
+      "cpu_verification_comparisons": 0,
+      "best_finite_score": null,
+      "live_threshold": 3838,
+      "stale_context_aborts": 0,
       "eligible_candidate_found": false,
       "cpu_verified": false,
       "npu_verified": false,
@@ -221,7 +269,12 @@
       "authorized_endpoint_for_submission": false,
       "ephemeral_identity_used": false,
       "real_user_secret_used": false,
-      "reason": "Official core protocol requires a nonzero source identity satisfying the computor or dissemination-balance rule and a destination that is a current computor public key. The live system-info response provides no destination key or task bytes, and no authorized funded source, computor identity, valid candidate, or user secret was available. No submission frame was attempted."
+      "authorization_rule": "nonzero signed source; current computor OR spectrum entity with energy >= 1000000000; destination must be a current computor public key",
+      "source_identity_status": "NOT_AVAILABLE_NO_USER_AUTHORIZED_FUNDED_IDENTITY_OR_COMPUTOR_SECRET",
+      "runtime_signing_material_configured": false,
+      "destination_status": "PUBLIC_CURRENT_EPOCH_LIST_AVAILABLE_BUT_NO_DESTINATION_SELECTED_FOR_UNSIGNED_ATTEMPT",
+      "candidate_status": "NOT_RUN_BECAUSE_AUTHORIZED_SOURCE_AND_SECRET_WERE_UNAVAILABLE; NO SCORE CLAIMED",
+      "reason": "The current computor list and pinned production task source are now identified. A legitimate submission still requires a user-owned source identity that is either a current computor or a spectrum entity with at least 1000000000 energy, plus its 32-byte runtime signing subseed. No such identity or secret was available; no candidate was evaluated and no submission frame was attempted."
     }
   },
   "regressions": {

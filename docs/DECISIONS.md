@@ -490,3 +490,30 @@ project will not generate an ephemeral signer, guess a destination, or send a
 candidate without an authorized identity, a current task-compatible candidate,
 and the required CPU/NPU evidence. The live gate stays IN PROGRESS until those
 external prerequisites exist; this does not authorize M7 or Qatum work.
+
+## D-035 — Use the current computor protocol and pinned core task as external inputs
+
+**Status:** Accepted; destination/task sources verified, authorized submission
+still blocked
+
+The current computor destination is obtained from the public node protocol,
+not from a hard-coded key: send `REQUEST_COMPUTORS` (type 11) after the normal
+peer-exchange handshake and accept a strict `BROADCAST_COMPUTORS` (type 2)
+response containing the current epoch, 676 nonzero public keys, and its
+signature. A 2026-08-10 read-only request to `corenet.qubic.li:21841` returned
+epoch 225 and a 676-key list whose sanitized key-list digest is recorded in
+`docs/evidence/m6-direct-node.json`. The helper
+`scripts/run-m6-live-computors.sh` is bounded and never sends a solution.
+
+The production BPP9000 task remains the official `data/bpp9000.task` file at
+the revalidated core revision, with the core-pinned topology/data hashes and
+44,744-byte layout. SystemInfo does not carry task bytes, so the task is an
+external hash-verified input; synthetic or production-shaped fixtures cannot
+be substituted. No task bytes are copied into this repository.
+
+Reason: destination and task acquisition are now reduced to authoritative
+public/current sources, but the core's source authorization still requires
+either a current computor secret or a user-owned spectrum identity with at
+least `1000000000` energy. Creating/funding such an identity would require
+external credentials or user funds, so M6 must remain IN PROGRESS and no
+submission may be attempted.

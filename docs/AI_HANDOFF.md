@@ -12,10 +12,72 @@ engineering agent.
 **IN PROGRESS** — the direct-node boundary and the optional pinned production
 K12/FourQ provider are implemented and offline/KAT tested. The bounded public
 read-only system-info probe passes against the official direct-node endpoint,
-including the peer-exchange handshake and reconnect/context refresh. Live
-submission remains unexercised because no authorized source identity,
-destination computor key, eligible candidate, or runtime signing secret was
-available. Do not start M7 or Qatum work.
+including the peer-exchange handshake and reconnect/context refresh. The
+current computor-list and pinned production-task sources are now verified, but
+live submission remains unexercised because no authorized source identity,
+eligible candidate, or runtime signing secret was available. Do not start M7
+or Qatum work.
+
+## Latest M6 authorization/data checkpoint — 2026-08-10
+
+- Current official remote tips were revalidated with `git ls-remote`: core
+  `main`/`v1.301.3` =
+  `a83f935406cd006b5b1a94971139e74d410ecb6d`; Qiner
+  `main`/`v1.302.3` =
+  `11fb18a6f4944bb55fe103d3f263cb5d31e00200`. The exact current source
+  conditions are recorded in Source S-010 of `docs/UPSTREAM.md`.
+- Core authorization is exact: the source public key must be nonzero and the
+  BroadcastMessage signature must verify. A source is dissemination-authorized
+  when it is a current computor or when it is a spectrum entity with
+  `energy(source) >= 1000000000`; for a non-computor direct destination the
+  same balance condition is required. The destination must be a current
+  computor public key. No source credential was inferred or fabricated.
+- `./scripts/run-m6-live-computors.sh` completed a bounded read-only
+  `REQUEST_COMPUTORS` probe at `2026-08-10T06:13:37Z` against
+  `corenet.qubic.li:21841`: response type 2, 21698-byte payload, epoch 225,
+  676 nonzero keys, key-list SHA-256
+  `58ef30a7fece845226c91502ff616747e1d50aab34ef530e68e15a36231aa9bf`.
+  The live system-info refresh at 06:08:24Z–06:08:25Z was also epoch 225,
+  threshold 3838, and 8088 windows. No key was hard-coded or selected for an
+  unsigned attempt; the probe does not claim Arbitrator-signature verification.
+- The authoritative production task is the official core
+  `data/bpp9000.task` at the same core revision: 44744 bytes, file SHA-256
+  `0c5e9e42c6d86c320af62f4125ca85b2446f2b098893fd6521bcf66c22f7f00a`, shape
+  `N18 M1 T8760 W672 P64 K3 S100`, and the core-pinned topology/data hashes.
+  Core loads and K12-verifies this file at node initialization. SystemInfo
+  does not carry task bytes; the task remains an external clean-room input and
+  is not copied into this repository. The project has not claimed a live task
+  payload or run its parser against an upstream checkout in this checkpoint.
+- Official Qubic CLI/wallet documentation provides identity creation,
+  `-showkeys`, `-getbalance`, and `-sendtoaddress`, but a fresh identity is
+  not enough to pass core's dissemination rule. Satisfying the minimum would
+  require user-owned funds and a local signing seed, or an actual current
+  computor identity and its secret. No such runtime configuration exists
+  (`XDNA_QUBIC_SIGNING_PUBLIC_KEY_HEX`/`...SECRET_HEX` absent); no funds were
+  spent and no secret was requested in chat.
+- Submission evidence is therefore still
+  `LIVE_SUBMISSION_NOT_EXERCISED_PROTOCOL_REQUIRES_AUTHORIZED_IDENTITY`:
+  attempts 0, NPU evaluations 0, CPU comparisons 0, best finite score unset,
+  threshold 3838, stale aborts 0, frame sent false, acknowledgement not
+  applicable. TCP write is not an acceptance and no result classification from
+  the four live-send outcomes is claimed.
+- Exact next authorized-only command template, with values supplied through a
+  local secret-safe environment (never chat), is:
+
+  ```bash
+  XDNA_QUBIC_ALLOW_LIVE_SUBMISSION=1 \
+  XDNA_QUBIC_SIGNING_PUBLIC_KEY_HEX="$LOCAL_PUBLIC_KEY_HEX" \
+  XDNA_QUBIC_SIGNING_SECRET_HEX="$LOCAL_SIGNING_SUBSEED_HEX" \
+  ./scripts/run-m6-live-submit.sh
+  ```
+
+  In the current checkout this command remains deliberately guarded and
+  reports no frame; it is not evidence of a send. A future continuation may
+  replace only the minimum one-shot glue needed to consume the current task,
+  select a live computor key, run actual M5 batch-16/four-column scoring plus
+  CPU recomputation, refresh SystemInfo, and send exactly once after the local
+  identity is genuinely authorized. Do not turn it into a supervisor or retry
+  loop.
 
 ## Current continuation checkpoint — 2026-08-09
 

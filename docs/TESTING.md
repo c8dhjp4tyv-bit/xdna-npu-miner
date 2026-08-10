@@ -320,6 +320,8 @@ The direct-node test boundary is the required first M6 integration path:
 
 - type-0 peer-exchange handshake plus 8-byte request/response frame parsing;
 - system-info response extraction of epoch/tick/seed/threshold;
+- current-computor request/response framing with exact epoch, key-count, and
+  nonzero-key checks;
 - task hash and algorithm selection;
 - signed/encrypted solution broadcast construction;
 - exact claimed-score recomputation;
@@ -346,6 +348,22 @@ explicitly; it never loads signing material or submits a frame:
 ```bash
 ./scripts/run-m6-live-system-info.sh
 ```
+
+The bounded current-destination probe uses the public `REQUEST_COMPUTORS`
+(`type=11`) path and accepts only an exact `BROADCAST_COMPUTORS` (`type=2`)
+payload. It is also read-only and does not claim Arbitrator-signature
+verification:
+
+```bash
+./scripts/run-m6-live-computors.sh
+```
+
+The 2026-08-10 run returned epoch 225, 676 nonzero public keys, and a
+21698-byte payload from `corenet.qubic.li:21841`; sanitized digests and the
+signature-verification limitation are recorded in
+`docs/evidence/m6-direct-node.json`. The production task is not returned by
+SystemInfo; its current hash-verified source is the pinned upstream
+`data/bpp9000.task` input documented in `docs/UPSTREAM.md`.
 
 The guarded submission surface is intentionally non-operative without an
 authorized identity and candidate. `scripts/run-m6-live-submit.sh` exits

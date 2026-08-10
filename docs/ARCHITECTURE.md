@@ -138,9 +138,14 @@ read-only executable is `qubic_live_probe`, driven by
 `scripts/run-m6-live-system-info.sh`; it keeps the safe localhost default in
 `RuntimeConfig` unchanged and sets the official public endpoint explicitly.
 The response contains runtime epoch/tick/seed/threshold but no task bytes or
-destination computor key. The probe therefore constructs a context from the
-recorded task identity, labels full live task compatibility as unproven, and
-does not submit.
+destination computor key. A separate bounded read-only
+`scripts/run-m6-live-computors.sh` request uses type 11
+`REQUEST_COMPUTORS` and validates the exact type 2 `BROADCAST_COMPUTORS`
+shape, current epoch, and nonzero public keys; it does not claim Arbitrator
+signature verification and never submits a solution. The probe therefore
+constructs a context from the recorded task identity, labels full live task
+compatibility as unproven, and does not submit. The production task remains
+the pinned, hash-verified upstream core input rather than a SystemInfo field.
 
 ### M6 production crypto gate
 

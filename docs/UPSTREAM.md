@@ -31,7 +31,7 @@ example threshold are not production consensus values. Future agents must
 re-check the current upstream revisions before implementing network-facing
 behavior because Qubic mining is actively changing.
 
-M6 revalidated both public Git remotes on 2026-08-09 with `git ls-remote`.
+M6 revalidated both public Git remotes on 2026-08-10 with `git ls-remote`.
 Qubic core `HEAD`, `main`, and `v1.301.3` all resolved to
 `a83f935406cd006b5b1a94971139e74d410ecb6d`; Qiner `HEAD`, `main`, and
 `v1.302.3` all resolved to `11fb18a6f4944bb55fe103d3f263cb5d31e00200`.
@@ -333,6 +333,83 @@ this repository.
   implemented and recorded; no Qubic core/Qiner source was copied. The public
   probe is read-only and does not establish task-byte compatibility or
   submission acceptance.
+
+### Source S-010 — Current submission authorization and public work-data acquisition
+
+- **Audit date:** 2026-08-10. The official core and Qiner `main` refs were
+  rechecked with `git ls-remote`; they remain core
+  `a83f935406cd006b5b1a94971139e74d410ecb6d` (`v1.301.3`) and Qiner
+  `11fb18a6f4944bb55fe103d3f263cb5d31e00200` (`v1.302.3`).
+- **Exact core authorization paths:**
+  `src/qubic.cpp::processBroadcastMessage` requires a nonzero source public
+  key and a valid signature over the BroadcastMessage body. It sets
+  `hasEnoughBalance` only when `spectrumIndex(source) >= 0` and
+  `energy(spectrumIndex(source)) >= MESSAGE_DISSEMINATION_THRESHOLD`, where
+  `MESSAGE_DISSEMINATION_THRESHOLD` is exactly `1000000000`. Relay is allowed
+  for a funded source, a current computor, or the dispatcher. A non-computor
+  source targeting a current computor is processed only when the same funded
+  balance condition holds; a computor source uses the encrypted shared-key
+  path. The destination must match one of the current `computorPublicKeys`.
+  The same function decrypts the 68-byte solution payload and accepts it only
+  when the claimed score equals the node's recomputed score, the score is
+  valid, and it is at or below the runtime threshold.
+- **Current computor acquisition paths:**
+  `src/network_messages/network_message_type.h` defines
+  `REQUEST_COMPUTORS=11` and `BROADCAST_COMPUTORS=2`; `src/network_messages/computors.h`
+  defines the packed response as epoch, 676 32-byte public keys, and a
+  64-byte signature. `src/qubic.cpp::processRequestComputors` returns the
+  node's current list. The bounded read-only helper
+  `scripts/run-m6-live-computors.sh` queried this path on
+  `corenet.qubic.li:21841` at `2026-08-10T06:13:37Z`: response type 2,
+  payload 21698 bytes, epoch 225, 676 nonzero keys, key-list SHA-256
+  `58ef30a7fece845226c91502ff616747e1d50aab34ef530e68e15a36231aa9bf`, and
+  signature SHA-256
+  `be0db535e84b1ac1e78f689b86c882f17031558b6729cce727a8f937011e0ff6`.
+  The list epoch matched the live system-info epoch 225. The helper does not
+  claim to verify the Arbitrator signature; it only validates framing, exact
+  size, epoch extraction, and nonzero keys.
+- **Current production task source:**
+  core `src/public_settings.h` pins the BPP9000 task filename
+  `bpp9000.task`, its topology/data K12 hashes, production dimensions, and
+  threshold. `src/qubic.cpp::loadBpp9000Task` loads `data/bpp9000.task`, checks
+  its exact size/header, recomputes both block hashes with K12, and refuses to
+  score if the hashes or topology are wrong. At the audited core revision the
+  official file is 44744 bytes with SHA-256
+  `0c5e9e42c6d86c320af62f4125ca85b2446f2b098893fd6521bcf66c22f7f00a`; its
+  header carries topology hash
+  `13e99d5b2fca56aa789cb959575f48392f1a44909a8eaf27f2de8f8d74b07a6b` and
+  data hash
+  `979cdc2247d2ca4ed3d614bf27896384cb1c9c3d804af6ede6b59fc52c0e3dfa`.
+  The task is an authoritative pinned core input, not a task payload returned
+  by SystemInfo; this project does not copy it into the repository or claim
+  that the live node advertised task bytes.
+- **Qiner submission reference:** current `src/Qiner.cpp` accepts a mining
+  identity/destination, a separate signing seed, the mining seed, and an
+  optional task-file path. It constructs a type-1 BroadcastMessage, derives
+  the solution message gamma, encrypts mining seed/nonce/score, signs the body,
+  and sends it. Qiner does not provision a source identity or fund its
+  dissemination balance; those are operator-owned prerequisites.
+- **Legitimate identity path:** official Qubic CLI documentation exposes
+  `-showkeys`, `-getbalance`, and `-sendtoaddress`; official wallet guidance
+  describes creating a 55-character seed and deriving its Qubic ID. A newly
+  generated identity is not authorized by core until it exists as a spectrum
+  entity with at least 1000000000 energy, and a computor identity requires its
+  corresponding current computor secret. No user-owned seed, computor secret,
+  or funded source was present in the runtime environment, and no funds were
+  transferred.
+- **Source links:**
+  https://github.com/qubic/core/blob/a83f935406cd006b5b1a94971139e74d410ecb6d/src/qubic.cpp,
+  https://github.com/qubic/core/blob/a83f935406cd006b5b1a94971139e74d410ecb6d/src/network_messages/computors.h,
+  https://github.com/qubic/core/blob/a83f935406cd006b5b1a94971139e74d410ecb6d/src/network_messages/network_message_type.h,
+  https://github.com/qubic/core/blob/a83f935406cd006b5b1a94971139e74d410ecb6d/src/public_settings.h,
+  https://github.com/qubic/core/blob/a83f935406cd006b5b1a94971139e74d410ecb6d/data/bpp9000.task,
+  https://github.com/qubic/Qiner/blob/11fb18a6f4944bb55fe103d3f263cb5d31e00200/src/Qiner.cpp,
+  https://docs.qubic.org/developers/qubic-cli/, and
+  https://docs.qubic.org/learn/invest/.
+- **Reuse decision:** These paths are source and protocol references only.
+  The task bytes, core/Qiner source, and any identity material remain outside
+  this repository. The M6 live gate remains blocked by the external authorized
+  source identity and secret, not by a guessed destination or synthetic task.
 
 ## Current Qubic algorithm facts
 

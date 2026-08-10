@@ -10,8 +10,10 @@ cat >&2 <<'EOF'
 LIVE_SUBMISSION_NOT_EXERCISED_PROTOCOL_REQUIRES_AUTHORIZED_IDENTITY
 No frame was sent. Current Qubic protocol requires the source to be a
 computor or to satisfy the source-balance dissemination rule, and the
-destination must be a current computor public key. M6 has no authorized
-funded source, computor identity, destination key, valid candidate, or user
-secret. This command intentionally does not start the M7 supervisor.
+destination must be a current computor public key. The public destination
+list is available through ./scripts/run-m6-live-computors.sh and the pinned
+production task is recorded in docs/UPSTREAM.md, but M6 has no authorized
+funded source, computor secret, eligible CPU/NPU candidate, or runtime secret.
+This command intentionally does not start the M7 supervisor.
 EOF
 exit 2
