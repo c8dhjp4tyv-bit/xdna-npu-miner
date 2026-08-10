@@ -28,6 +28,7 @@ using xdna::qubic::DirectNodeClient;
 using xdna::qubic::Frame;
 using xdna::qubic::FrameDecoder;
 using xdna::qubic::NodeEndpoint;
+using xdna::qubic::PublicKey;
 using xdna::qubic::ProtocolError;
 using xdna::qubic::ProtocolErrorCode;
 using xdna::qubic::ReconnectPolicy;
@@ -241,6 +242,9 @@ struct MemoryStream final : ByteStream {
             }
             return 0U;
         }
+        if (read_delay.count() > 0) {
+            std::this_thread::sleep_for(read_delay);
+        }
         const std::size_t count = std::min({destination.size(), read_chunk, incoming.size() - read_offset});
         std::copy_n(incoming.begin() + static_cast<std::ptrdiff_t>(read_offset),
                     count,
@@ -271,6 +275,7 @@ struct MemoryStream final : ByteStream {
     std::chrono::milliseconds empty_delay{0};
     bool timeout_on_empty = false;
     bool rewrite_response_dejavu = true;
+    std::chrono::milliseconds read_delay{0};
     bool response_dejavu_prepared = false;
     bool closed = false;
 };
@@ -293,8 +298,10 @@ public:
         writes.emplace_back();
         const std::vector<Byte>& selected_response = responses.empty()
             ? response_ : responses.at(std::min(connects - 1U, responses.size() - 1U));
-        return std::make_unique<MemoryStream>(selected_response, writes.back(), read_chunk, write_chunk,
-                                              empty_delay, timeout_on_empty, rewrite_response_dejavu);
+        auto stream = std::make_unique<MemoryStream>(selected_response, writes.back(), read_chunk, write_chunk,
+                                                     empty_delay, timeout_on_empty, rewrite_response_dejavu);
+        stream->read_delay = read_delay;
+        return stream;
     }
 
     std::vector<Byte> response_;
@@ -305,6 +312,7 @@ public:
     std::chrono::milliseconds empty_delay{0};
     bool timeout_on_empty = false;
     bool rewrite_response_dejavu = true;
+    std::chrono::milliseconds read_delay{0};
     std::size_t failures_before_success = 0U;
     std::size_t connects = 0U;
 };
@@ -566,6 +574,185 @@ void test_read_only_demultiplexing_allows_many_unsolicited_frames()
            "requested response succeeds after more than 64 valid unsolicited frames");
 }
 
+void test_read_only_diagnostics_and_thousands_of_unsolicited_frames()
+{
+    const SystemInfo expected = make_system_info();
+    std::vector<Byte> response;
+    constexpr std::uint32_t unsolicited_count = 5000U;
+    for (std::uint32_t index = 0U; index < unsolicited_count; ++index) {
+        const std::vector<Byte> tick = xdna::qubic::serialize_frame(
+            3U, index + 1U, std::array<Byte, 4U>{static_cast<Byte>(index & 0xFFU), 0U, 0U, 0U});
+        response.insert(response.end(), tick.begin(), tick.end());
+    }
+    const std::vector<Byte> desired = xdna::qubic::serialize_frame(
+        xdna::qubic::kRespondSystemInfo,
+        0U,
+        xdna::qubic::serialize_system_info_payload(expected));
+    response.insert(response.end(), desired.begin(), desired.end());
+
+    MemoryFactory factory(response);
+    const xdna::qubic::ReadOnlyRequestLimits limits{
+        std::chrono::milliseconds(1000), 128U * 1024U, 6000U};
+    DirectNodeClient client(factory,
+                            NodeEndpoint{"mock", 1234U},
+                            TransportTimeouts{},
+                            ReconnectPolicy{1U, std::chrono::milliseconds(0)},
+                            limits);
+    xdna::qubic::ReadOnlyRequestDiagnostics diagnostics;
+    expect(client.request_system_info(&diagnostics) == expected,
+           "system-info succeeds after thousands of valid unsolicited frames");
+    expect(diagnostics.request_type == xdna::qubic::kRequestSystemInfo
+               && diagnostics.desired_response_type == xdna::qubic::kRespondSystemInfo
+               && diagnostics.response_accepted
+               && diagnostics.accepted_response_dejavu == diagnostics.request_dejavu,
+           "diagnostics record exact request and accepted response correlation");
+    expect(diagnostics.ignored_frames == unsolicited_count
+               && diagnostics.ignored_type_counts[3U] == unsolicited_count
+               && diagnostics.ignored_bytes == static_cast<std::size_t>(unsolicited_count) * 12U,
+           "diagnostics aggregate ignored type, frame and byte totals without payload logging");
+}
+
+void test_read_only_correlation_boundaries_and_deadline_regressions()
+{
+    const SystemInfo expected = make_system_info();
+    const std::vector<Byte> desired = xdna::qubic::serialize_frame(
+        xdna::qubic::kRespondSystemInfo,
+        0U,
+        xdna::qubic::serialize_system_info_payload(expected));
+
+    MemoryFactory near_deadline_factory(desired);
+    near_deadline_factory.read_chunk = 1U;
+    near_deadline_factory.read_delay = std::chrono::milliseconds(1);
+    DirectNodeClient near_deadline_client(
+        near_deadline_factory,
+        NodeEndpoint{"mock", 1234U},
+        TransportTimeouts{},
+        ReconnectPolicy{1U, std::chrono::milliseconds(0)},
+        xdna::qubic::ReadOnlyRequestLimits{std::chrono::milliseconds(300), 4096U, 64U});
+    xdna::qubic::ReadOnlyRequestDiagnostics near_deadline_diagnostics;
+    expect(near_deadline_client.request_system_info(&near_deadline_diagnostics) == expected,
+           "correct response completing near but before the deadline is accepted");
+    expect(near_deadline_diagnostics.elapsed_ms > 0
+               && near_deadline_diagnostics.elapsed_ms < 300,
+           "accepted near-deadline response completed within the absolute deadline");
+
+    MemoryFactory after_deadline_factory(desired);
+    after_deadline_factory.read_chunk = 1U;
+    after_deadline_factory.read_delay = std::chrono::milliseconds(1);
+    DirectNodeClient after_deadline_client(
+        after_deadline_factory,
+        NodeEndpoint{"mock", 1234U},
+        TransportTimeouts{},
+        ReconnectPolicy{1U, std::chrono::milliseconds(0)},
+        xdna::qubic::ReadOnlyRequestLimits{std::chrono::milliseconds(10), 4096U, 64U});
+    xdna::qubic::ReadOnlyRequestDiagnostics after_deadline_diagnostics;
+    expect_transport([&] { (void)after_deadline_client.request_system_info(&after_deadline_diagnostics); },
+                     "response completing after the deadline is rejected");
+    expect(after_deadline_diagnostics.deadline_exceeded,
+           "late response is classified as an absolute-deadline failure");
+
+    MemoryFactory reconnect_factory({});
+    const std::vector<Byte> tick = xdna::qubic::serialize_frame(3U, 1U, {});
+    reconnect_factory.responses = {tick, desired};
+    DirectNodeClient reconnect_client(
+        reconnect_factory,
+        NodeEndpoint{"mock", 1234U},
+        TransportTimeouts{},
+        ReconnectPolicy{2U, std::chrono::milliseconds(0)},
+        xdna::qubic::ReadOnlyRequestLimits{std::chrono::milliseconds(300), 4096U, 64U});
+    xdna::qubic::ReadOnlyRequestDiagnostics reconnect_diagnostics;
+    expect(reconnect_client.request_system_info(&reconnect_diagnostics) == expected,
+           "reconnect accepts a correct response within the same absolute deadline");
+    expect(reconnect_diagnostics.connection_attempts == 2U
+               && reconnect_diagnostics.connections_opened == 2U
+               && reconnect_diagnostics.ignored_type_counts[3U] == 1U,
+           "reconnect diagnostics preserve the shared deadline and ignored-frame accounting");
+
+    const std::vector<Byte> wrong_system_info = xdna::qubic::serialize_frame(
+        xdna::qubic::kRespondSystemInfo,
+        0xDEADBEEFU,
+        xdna::qubic::serialize_system_info_payload(expected));
+    MemoryFactory wrong_system_factory(wrong_system_info);
+    wrong_system_factory.rewrite_response_dejavu = false;
+    DirectNodeClient wrong_system_client(
+        wrong_system_factory, NodeEndpoint{"mock", 1234U}, {}, ReconnectPolicy{1U, std::chrono::milliseconds(0)});
+    xdna::qubic::ReadOnlyRequestDiagnostics wrong_system_diagnostics;
+    expect_protocol([&] { (void)wrong_system_client.request_system_info(&wrong_system_diagnostics); },
+                    ProtocolErrorCode::WrongMessageType,
+                    "same-type SystemInfo response with wrong dejavu fails closed");
+    expect(wrong_system_diagnostics.same_type_wrong_dejavu_frames == 1U,
+           "wrong SystemInfo dejavu is diagnosed before asynchronous classification");
+
+    xdna::qubic::ComputorList computors;
+    computors.epoch = expected.epoch;
+    computors.public_keys[0U].bytes.fill(1U);
+    const std::vector<Byte> wrong_computors = xdna::qubic::serialize_frame(
+        xdna::qubic::kBroadcastComputors,
+        0xDEADBEEFU,
+        xdna::qubic::serialize_computors_payload(computors));
+    MemoryFactory wrong_computors_factory(wrong_computors);
+    wrong_computors_factory.rewrite_response_dejavu = false;
+    DirectNodeClient wrong_computors_client(
+        wrong_computors_factory,
+        NodeEndpoint{"mock", 1234U},
+        {},
+        ReconnectPolicy{1U, std::chrono::milliseconds(0)});
+    xdna::qubic::ReadOnlyRequestDiagnostics wrong_computors_diagnostics;
+    expect_protocol([&] { (void)wrong_computors_client.request_computors(&wrong_computors_diagnostics); },
+                    ProtocolErrorCode::WrongMessageType,
+                    "same-type Computors response with wrong dejavu is not treated as a broadcast");
+    expect(wrong_computors_diagnostics.same_type_wrong_dejavu_frames == 1U,
+           "wrong Computors dejavu is diagnosed before asynchronous classification");
+
+    PublicKey entity_key;
+    entity_key.bytes.fill(0x11U);
+    const std::vector<Byte> wrong_entity = xdna::qubic::serialize_frame(
+        xdna::qubic::kRespondEntity,
+        0xDEADBEEFU,
+        std::vector<Byte>(xdna::qubic::kEntityPayloadBytes, 0U));
+    MemoryFactory wrong_entity_factory(wrong_entity);
+    wrong_entity_factory.rewrite_response_dejavu = false;
+    DirectNodeClient wrong_entity_client(
+        wrong_entity_factory,
+        NodeEndpoint{"mock", 1234U},
+        {},
+        ReconnectPolicy{1U, std::chrono::milliseconds(0)});
+    xdna::qubic::ReadOnlyRequestDiagnostics wrong_entity_diagnostics;
+    expect_protocol([&] {
+        (void)wrong_entity_client.request_entity(entity_key, &wrong_entity_diagnostics);
+    },
+                    ProtocolErrorCode::WrongMessageType,
+                    "same-type Entity response with wrong dejavu fails closed");
+    expect(wrong_entity_diagnostics.same_type_wrong_dejavu_frames == 1U,
+           "wrong Entity dejavu is diagnosed before asynchronous classification");
+}
+
+void test_dejavu_generation_is_nonzero_and_unique()
+{
+    const SystemInfo expected = make_system_info();
+    const std::vector<Byte> response = xdna::qubic::serialize_frame(
+        xdna::qubic::kRespondSystemInfo,
+        0U,
+        xdna::qubic::serialize_system_info_payload(expected));
+    std::array<std::uint32_t, 64U> seen{};
+    for (std::size_t index = 0U; index < seen.size(); ++index) {
+        MemoryFactory factory(response);
+        DirectNodeClient client(factory,
+                                NodeEndpoint{"mock", 1234U},
+                                {},
+                                ReconnectPolicy{1U, std::chrono::milliseconds(0)});
+        xdna::qubic::ReadOnlyRequestDiagnostics diagnostics;
+        expect(client.request_system_info(&diagnostics) == expected,
+               "generated dejavu request correlates with its response");
+        expect(diagnostics.request_dejavu != 0U,
+               "generated request dejavu is nonzero");
+        expect(std::find(seen.begin(), seen.begin() + static_cast<std::ptrdiff_t>(index),
+                         diagnostics.request_dejavu) == seen.begin() + static_cast<std::ptrdiff_t>(index),
+               "generated request dejavus do not collide or reuse in the deterministic sample");
+        seen[index] = diagnostics.request_dejavu;
+    }
+}
+
 void test_read_only_demultiplexing_resource_and_deadline_limits()
 {
     const std::array<Byte, 16U> payload{};
@@ -824,6 +1011,9 @@ int main()
         test_deterministic_solution_serialization();
         test_mock_system_info_and_bounded_reconnect();
         test_read_only_demultiplexing_allows_many_unsolicited_frames();
+        test_read_only_diagnostics_and_thousands_of_unsolicited_frames();
+        test_read_only_correlation_boundaries_and_deadline_regressions();
+        test_dejavu_generation_is_nonzero_and_unique();
         test_read_only_demultiplexing_resource_and_deadline_limits();
         test_mock_system_info_failure_modes();
         test_current_computor_and_entity_wire_parsers();

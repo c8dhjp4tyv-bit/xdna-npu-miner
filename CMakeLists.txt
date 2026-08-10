@@ -317,6 +317,17 @@ if(XDNA_ENABLE_PRODUCTION_CRYPTO)
         -Wshadow
         -Werror
     )
+
+    add_executable(m6_read_only_diagnostics src/qubic/m6_read_only_diagnostics.cpp)
+    target_link_libraries(m6_read_only_diagnostics PRIVATE qubic_production_crypto)
+    target_compile_options(m6_read_only_diagnostics PRIVATE
+        -Wall
+        -Wextra
+        -Wpedantic
+        -Wconversion
+        -Wshadow
+        -Werror
+    )
 endif()
 
 set(XRT_ROOT "$ENV{XILINX_XRT}" CACHE PATH "XRT installation root")

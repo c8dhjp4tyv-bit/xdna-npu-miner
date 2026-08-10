@@ -131,7 +131,7 @@ void print_help(const char* program)
               << "  --host HOST          override XDNA_QUBIC_NODE_HOST\n"
               << "  --port PORT          override XDNA_QUBIC_NODE_PORT\n"
               << "  --timeout-ms MS      bounded connect/read/write timeout (1..60000)\n"
-              << "  --attempts COUNT     bounded reconnect attempts (1..4)\n"
+              << "  --attempts COUNT     bounded reconnect attempts (1..8)\n"
               << "  --repeat COUNT       system-info connections (1..4; default 2)\n"
               << "  --help               show this help\n";
 }
@@ -167,7 +167,7 @@ void print_help(const char* program)
             options.config.timeouts = TransportTimeouts{timeout, timeout, timeout};
         } else if (argument == "--attempts") {
             options.config.reconnect.max_attempts = static_cast<std::uint32_t>(
-                parse_unsigned(require_value(argument), "--attempts", 1U, 4U));
+                parse_unsigned(require_value(argument), "--attempts", 1U, 8U));
         } else if (argument == "--repeat") {
             options.repeat = static_cast<std::uint32_t>(
                 parse_unsigned(require_value(argument), "--repeat", 1U, 4U));

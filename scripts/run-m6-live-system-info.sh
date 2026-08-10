@@ -19,4 +19,4 @@ export XDNA_QUBIC_ALLOW_LIVE_SUBMISSION='0'
 unset XDNA_QUBIC_SIGNING_PUBLIC_KEY_HEX
 unset XDNA_QUBIC_SIGNING_SECRET_HEX
 
-exec "${probe}" --repeat 2 --attempts 2 --timeout-ms 3000
+exec "${probe}" --repeat 2 --attempts 8 --timeout-ms 3000

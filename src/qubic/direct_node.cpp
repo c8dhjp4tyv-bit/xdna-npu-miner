@@ -279,7 +279,8 @@ public:
     }
 
     [[nodiscard]] static std::unique_ptr<TcpByteStream> open(const NodeEndpoint& endpoint,
-                                                             const TransportTimeouts& timeouts)
+                                                             const TransportTimeouts& timeouts,
+                                                             std::size_t address_start)
     {
         if (endpoint.host.empty() || endpoint.port == 0U) {
             throw TransportError("TCP endpoint is empty or has port zero");
@@ -296,10 +297,27 @@ public:
             throw TransportError(std::string("TCP address lookup failed: ") + ::gai_strerror(lookup));
         }
 
-        std::string error = "no TCP address connected";
-        const int poll_timeout = timeout_milliseconds(timeouts.connect);
-        int connected_fd = -1;
+        std::vector<addrinfo*> candidates;
         for (addrinfo* address = addresses; address != nullptr; address = address->ai_next) {
+            candidates.push_back(address);
+        }
+        if (candidates.empty()) {
+            ::freeaddrinfo(addresses);
+            throw TransportError("TCP address lookup returned no IPv4 stream address");
+        }
+
+        std::string error = "no TCP address connected";
+        const auto connect_budget = timeouts.connect.count() > 0
+            ? timeouts.connect
+            : std::chrono::milliseconds(1);
+        const auto connect_deadline = std::chrono::steady_clock::now() + connect_budget;
+        int connected_fd = -1;
+        for (std::size_t offset = 0U; offset < candidates.size(); ++offset) {
+            if (std::chrono::steady_clock::now() >= connect_deadline) {
+                error = "TCP connect timed out while trying resolved addresses";
+                break;
+            }
+            addrinfo* address = candidates[(address_start + offset) % candidates.size()];
             const int fd = ::socket(address->ai_family, address->ai_socktype, address->ai_protocol);
             if (fd < 0) {
                 error = std::string("TCP socket creation failed: ") + std::strerror(errno);
@@ -319,6 +337,10 @@ public:
                 continue;
             }
             if (result < 0) {
+                const auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    connect_deadline - std::chrono::steady_clock::now());
+                const int poll_timeout = timeout_milliseconds(
+                    remaining.count() > 0 ? remaining : std::chrono::milliseconds(1));
                 pollfd descriptor{fd, POLLOUT, 0};
                 const int ready = ::poll(&descriptor, 1U, poll_timeout);
                 if (ready <= 0 || (descriptor.revents & POLLOUT) == 0) {
@@ -419,7 +441,8 @@ private:
                                       const ReadOnlyRequestLimits& limits,
                                       std::span<const Byte> request,
                                       std::uint8_t response_type,
-                                      std::string_view operation)
+                                      std::string_view operation,
+                                      ReadOnlyRequestDiagnostics* diagnostics)
 {
     if (endpoint.host.empty() || endpoint.port == 0U) {
         throw ProtocolError(ProtocolErrorCode::InvalidEndpoint,
@@ -430,14 +453,34 @@ private:
         throw ProtocolError(ProtocolErrorCode::InvalidEndpoint,
                             std::string(operation) + " read-only limits must be nonzero");
     }
-    const std::uint32_t request_dejavu = parse_frame(request).dejavu;
+    if (diagnostics != nullptr) {
+        *diagnostics = ReadOnlyRequestDiagnostics{};
+    }
+    const Frame request_frame = parse_frame(request);
+    const std::uint32_t request_dejavu = request_frame.dejavu;
+    if (diagnostics != nullptr) {
+        diagnostics->request_type = request_frame.type;
+        diagnostics->request_dejavu = request_dejavu;
+        diagnostics->desired_response_type = response_type;
+    }
     const auto started = std::chrono::steady_clock::now();
     const auto deadline = started + limits.deadline;
     const auto elapsed = [&started]() {
         return std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::steady_clock::now() - started).count();
     };
+    const auto update_diagnostics = [&]() {
+        if (diagnostics != nullptr) {
+            diagnostics->elapsed_ms = elapsed();
+        }
+    };
     const auto deadline_error = [&](std::uint32_t ignored_frames, std::size_t ignored_bytes) {
+        if (diagnostics != nullptr) {
+            diagnostics->deadline_exceeded = true;
+            diagnostics->ignored_frames = ignored_frames;
+            diagnostics->ignored_bytes = ignored_bytes;
+        }
+        update_diagnostics();
         return std::string(operation) + " request_deadline_exceeded"
             + " ignored_frames=" + std::to_string(ignored_frames)
             + " ignored_bytes=" + std::to_string(ignored_bytes)
@@ -448,6 +491,9 @@ private:
     std::uint32_t ignored_frames = 0U;
     std::size_t ignored_bytes = 0U;
     for (std::uint32_t attempt = 0U; attempt < attempts; ++attempt) {
+        if (diagnostics != nullptr) {
+            diagnostics->connection_attempts = attempt + 1U;
+        }
         if (std::chrono::steady_clock::now() >= deadline) {
             throw TransportError(deadline_error(ignored_frames, ignored_bytes));
         }
@@ -462,6 +508,9 @@ private:
             if (!stream) {
                 throw TransportError("connection factory returned no stream");
             }
+            if (diagnostics != nullptr) {
+                ++diagnostics->connections_opened;
+            }
             FramedConnection connection(*stream);
             connection.write_frame_until(make_exchange_public_peers(next_dejavu()), deadline, timeouts.write);
             connection.write_frame_until(request, deadline, timeouts.write);
@@ -470,11 +519,28 @@ private:
                     throw TransportError(deadline_error(ignored_frames, ignored_bytes));
                 }
                 const Frame response = connection.read_frame_until(deadline, timeouts.read);
-                if (response.type == response_type && response.dejavu == request_dejavu) {
-                    stream->close();
-                    return response;
+                if (response.type == response_type) {
+                    if (response.dejavu == request_dejavu) {
+                        if (diagnostics != nullptr) {
+                            diagnostics->response_accepted = true;
+                            diagnostics->accepted_response_dejavu = response.dejavu;
+                            diagnostics->ignored_frames = ignored_frames;
+                            diagnostics->ignored_bytes = ignored_bytes;
+                        }
+                        update_diagnostics();
+                        stream->close();
+                        return response;
+                    }
+                    if (diagnostics != nullptr) {
+                        ++diagnostics->same_type_wrong_dejavu_frames;
+                    }
+                    update_diagnostics();
+                    throw ProtocolError(ProtocolErrorCode::WrongMessageType,
+                                        std::string(operation)
+                                            + " received desired response type with wrong dejavu");
                 }
                 if (!is_unsolicited_network_frame(response)) {
+                    update_diagnostics();
                     throw ProtocolError(ProtocolErrorCode::WrongMessageType,
                                         std::string(operation)
                                             + " received unexpected response frame type "
@@ -482,6 +548,7 @@ private:
                 }
                 const std::size_t frame_bytes = response.payload.size() + kRequestResponseHeaderBytes;
                 if (frame_bytes > limits.maximum_ignored_bytes - ignored_bytes) {
+                    update_diagnostics();
                     throw ResourceLimitError(std::string(operation) + " ignored_byte_ceiling_exceeded"
                                          + " ignored_frames=" + std::to_string(ignored_frames)
                                          + " ignored_bytes=" + std::to_string(ignored_bytes)
@@ -489,6 +556,12 @@ private:
                 }
                 ++ignored_frames;
                 ignored_bytes += frame_bytes;
+                if (diagnostics != nullptr) {
+                    ++diagnostics->ignored_type_counts[response.type];
+                    diagnostics->ignored_frames = ignored_frames;
+                    diagnostics->ignored_bytes = ignored_bytes;
+                }
+                update_diagnostics();
                 if (ignored_frames > limits.maximum_ignored_frames) {
                     throw ResourceLimitError(std::string(operation) + " ignored_frame_ceiling_exceeded"
                                          + " ignored_frames=" + std::to_string(ignored_frames)
@@ -497,10 +570,13 @@ private:
                 }
             }
         } catch (const ResourceLimitError& error) {
+            update_diagnostics();
             throw TransportError(error.what());
         } catch (const ProtocolError&) {
+            update_diagnostics();
             throw;
         } catch (const TransportError& error) {
+            update_diagnostics();
             last_error = error.what();
             if (std::chrono::steady_clock::now() >= deadline) {
                 throw TransportError(deadline_error(ignored_frames, ignored_bytes));
@@ -514,6 +590,7 @@ private:
             }
         }
     }
+    update_diagnostics();
     throw TransportError(last_transport_error(operation, last_error)
                          + " ignored_frames=" + std::to_string(ignored_frames)
                          + " ignored_bytes=" + std::to_string(ignored_bytes)
@@ -1024,7 +1101,8 @@ DirectNodeSolution build_solution(const SubmissionInput& input,
 std::unique_ptr<ByteStream> TcpConnectionFactory::connect(const NodeEndpoint& endpoint,
                                                           const TransportTimeouts& timeouts)
 {
-    return TcpByteStream::open(endpoint, timeouts);
+    const std::size_t address_start = next_address_start_++;
+    return TcpByteStream::open(endpoint, timeouts, address_start);
 }
 
 Frame FramedConnection::read_frame_until(std::chrono::steady_clock::time_point deadline,
@@ -1106,7 +1184,7 @@ void FramedConnection::write_frame(std::span<const Byte> frame)
     }
 }
 
-SystemInfo DirectNodeClient::request_system_info()
+SystemInfo DirectNodeClient::request_system_info(ReadOnlyRequestDiagnostics* diagnostics)
 {
     const std::vector<Byte> request = make_system_info_request(next_dejavu());
     const Frame response = request_read_only(factory_,
@@ -1116,11 +1194,12 @@ SystemInfo DirectNodeClient::request_system_info()
                                               read_only_limits_,
                                               request,
                                               kRespondSystemInfo,
-                                              "system-info request");
+                                              "system-info request",
+                                              diagnostics);
     return parse_system_info(response);
 }
 
-ComputorList DirectNodeClient::request_computors()
+ComputorList DirectNodeClient::request_computors(ReadOnlyRequestDiagnostics* diagnostics)
 {
     const std::vector<Byte> request = make_computors_request(next_dejavu());
     const Frame response = request_read_only(factory_,
@@ -1130,11 +1209,13 @@ ComputorList DirectNodeClient::request_computors()
                                               read_only_limits_,
                                               request,
                                               kBroadcastComputors,
-                                              "computors request");
+                                              "computors request",
+                                              diagnostics);
     return parse_computors(response);
 }
 
-EntityInfo DirectNodeClient::request_entity(const PublicKey& public_key)
+EntityInfo DirectNodeClient::request_entity(const PublicKey& public_key,
+                                            ReadOnlyRequestDiagnostics* diagnostics)
 {
     if (public_key.is_zero()) {
         throw ProtocolError(ProtocolErrorCode::InvalidEndpoint,
@@ -1148,7 +1229,8 @@ EntityInfo DirectNodeClient::request_entity(const PublicKey& public_key)
                                               read_only_limits_,
                                               request,
                                               kRespondEntity,
-                                              "entity request");
+                                              "entity request",
+                                              diagnostics);
     return parse_entity(response);
 }
 
@@ -1274,9 +1356,9 @@ RuntimeConfig load_runtime_config_from_environment(std::string_view prefix)
     const auto attempts_name = std::string(prefix) + "ATTEMPTS";
     if (const char* attempts = environment_value(attempts_name); attempts != nullptr) {
         const std::uint64_t value = parse_unsigned_env(attempts, attempts_name);
-        if (value == 0U || value > 4U) {
+        if (value == 0U || value > 8U) {
             throw ProtocolError(ProtocolErrorCode::InvalidEndpoint,
-                                attempts_name + " is outside 1..4");
+                                attempts_name + " is outside 1..8");
         }
         config.reconnect.max_attempts = static_cast<std::uint32_t>(value);
     }

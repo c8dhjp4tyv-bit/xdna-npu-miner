@@ -418,8 +418,33 @@ struct ReadOnlyRequestLimits {
     std::uint32_t maximum_ignored_frames{8192U};
 };
 
+constexpr std::size_t kDiagnosticMessageTypeCount = 256U;
+
+// Optional, aggregate-only diagnostics for one read-only request. This is
+// deliberately numeric and bounded: it records frame metadata and message
+// type totals, never payload or signing material.
+struct ReadOnlyRequestDiagnostics {
+    std::uint8_t request_type = 0U;
+    std::uint32_t request_dejavu = 0U;
+    std::uint8_t desired_response_type = 0U;
+    std::optional<std::uint32_t> accepted_response_dejavu;
+    std::uint32_t connection_attempts = 0U;
+    std::uint32_t connections_opened = 0U;
+    std::uint32_t ignored_frames = 0U;
+    std::size_t ignored_bytes = 0U;
+    std::int64_t elapsed_ms = 0;
+    std::uint64_t same_type_wrong_dejavu_frames = 0U;
+    bool response_accepted = false;
+    bool deadline_exceeded = false;
+    std::array<std::uint64_t, kDiagnosticMessageTypeCount> ignored_type_counts{};
+};
+
 struct ReconnectPolicy {
-    std::uint32_t max_attempts = 3U;
+    // The official corenet hostname resolves to multiple public direct-node
+    // addresses. Eight bounded attempts let read-only queries rotate across
+    // a small finite subset without changing the absolute request deadline;
+    // the shared deadline usually permits fewer full socket attempts.
+    std::uint32_t max_attempts = 8U;
     std::chrono::milliseconds delay{25};
 };
 
@@ -454,6 +479,9 @@ class TcpConnectionFactory final : public ConnectionFactory {
 public:
     [[nodiscard]] std::unique_ptr<ByteStream> connect(const NodeEndpoint& endpoint,
                                                        const TransportTimeouts& timeouts) override;
+
+private:
+    std::size_t next_address_start_ = 0U;
 };
 
 class FramedConnection {
@@ -489,9 +517,10 @@ public:
     {
     }
 
-    [[nodiscard]] SystemInfo request_system_info();
-    [[nodiscard]] ComputorList request_computors();
-    [[nodiscard]] EntityInfo request_entity(const PublicKey& public_key);
+    [[nodiscard]] SystemInfo request_system_info(ReadOnlyRequestDiagnostics* diagnostics = nullptr);
+    [[nodiscard]] ComputorList request_computors(ReadOnlyRequestDiagnostics* diagnostics = nullptr);
+    [[nodiscard]] EntityInfo request_entity(const PublicKey& public_key,
+                                            ReadOnlyRequestDiagnostics* diagnostics = nullptr);
     [[nodiscard]] bool submit_frame(std::span<const Byte> frame);
     [[nodiscard]] const NodeEndpoint& endpoint() const noexcept
     {
