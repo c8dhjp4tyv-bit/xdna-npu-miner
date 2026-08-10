@@ -15,8 +15,10 @@ Qubic M6/M7 or Qatum work while this track is active.
 ## Branch and commit
 
 - Branch: `feat/pearl-m0`
-- P0 commit: pending at the documentation checkpoint; record the exact SHA
-  after commit before handoff.
+- P0 documentation commit: `68cf293a1aa4b821eece5cfe0e916215b6953344`
+  (`pearl: establish P0 protocol and XDNA feasibility baseline`).
+- This handoff-only follow-up records the exact checkpoint; its final branch
+  SHA is reported after the follow-up commit and push.
 - Remote must be verified to contain the final P0 commit before this task is
   reported complete.
 
