@@ -79,6 +79,43 @@ or Qatum work.
   identity is genuinely authorized. Do not turn it into a supervisor or retry
   loop.
 
+## Final M6 checkpoint for this session — 2026-08-10
+
+- Branch: `main`. The gate/evidence commit is
+  `028e5a2020653861dd72ad2fb16043c9a9abaf4b` (`m6: record current
+  authorization data gate`). The follow-up handoff edit is the only later
+  change and must remain on this branch.
+- Files changed in the gate commit: `docs/AI_HANDOFF.md`,
+  `docs/ARCHITECTURE.md`, `docs/DECISIONS.md`, `docs/TESTING.md`,
+  `docs/UPSTREAM.md`, `docs/evidence/m6-direct-node.json`,
+  `scripts/run-m6-live-computors.sh`, and
+  `scripts/run-m6-live-submit.sh`.
+- Verification completed: default CMake build and CTest `6/6` passed;
+  production-crypto CMake build and CTest `7/7` passed; corpus generation
+  reproduced `2979889feed3352b3c12831a301a357b6c9099f3de80b955f152c53bca2f8c03`
+  and `7c1da1028b9ecdbae54616654606185e62076ff7b69e209ecbf3d23f6a2fede1`;
+  offline live-probe tests passed; both guarded submission invocations
+  exited 2 without sending; JSON, shell syntax, diff-check, and secret scan
+  passed.
+- Live read-only checks completed: SystemInfo passed with epoch 225,
+  threshold 3838, nonzero seed, and 8088 windows; the current-computor probe
+  passed at `2026-08-10T06:19:39Z` with a 21698-byte type-2 response, 676
+  nonzero keys, and key-list digest
+  `58ef30a7fece845226c91502ff616747e1d50aab34ef530e68e15a36231aa9bf`.
+  No physical NPU run was repeated in this documentation-only checkpoint;
+  inherited M1–M5 hardware evidence remains the verified record.
+- Known blocker: no user-authorized funded spectrum identity, current
+  computor secret, or local signing subseed exists. Therefore no candidate
+  was scored, no CPU/NPU candidate comparison occurred, no frame was built or
+  sent, and no acknowledgement/acceptance claim exists. No secret or funds
+  were used.
+- Do not redo the completed M1–M5 physical gates, crypto KATs, or public
+  read-only probes without a source/toolchain change. Do not start M7 or
+  Qatum. The next exact task is either to preserve the blocked M6 state or,
+  after legitimate local authorization is available, add only the minimum
+  bounded one-shot task/candidate/submission glue and classify the actual
+  live result; never paste signing material into chat.
+
 ## Current continuation checkpoint — 2026-08-09
 
 - Branch: `main`; the pre-change recovery checkpoint
