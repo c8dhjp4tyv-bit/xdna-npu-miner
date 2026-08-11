@@ -828,3 +828,20 @@ must create a new source record and re-run the discrepancy/license review.
 - Pool wire compatibility remains an optional future adapter gate because the
   official sources do not provide a sufficiently complete, consistent wire
   specification. It is not an M0 or M1–M5 dependency.
+# Pearl active upstream note
+
+The active Pearl source remains `pearl-research-labs/pearl` master at
+`fe22b6a2b831d95b2f56564808f39d2f498f34a5`; the official local gateway is
+newline-delimited JSON-RPC over `/tmp/pearlgw.sock` or loopback TCP 8337 with
+`getMiningInfo` and `submitPlainProof`. The repository's clean-room client
+implements those exact boundaries and the node's `getblocktemplate`/
+`submitblock` path through a credential-safe HTTP adapter. No Stratum protocol
+was found or implemented (`POOL_PROTOCOL_UNAVAILABLE`).
+
+The MLIR-AIE dependency used for the project-owned P2 kernel was observed at
+commit `57d7494e99c214f5f53b328a0ed43a99e759e835`; the host runtime observed
+amdxdna rc7 while the historical pinned stack remains recorded unchanged.
+The Pearl hot miner/gateway/proof components still have no clear local reuse
+grant, so their source is not copied. P7 live interoperability is blocked by
+the absence of an installed official gateway/prover/node, not by an invented
+protocol workaround.

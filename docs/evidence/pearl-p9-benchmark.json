@@ -1,0 +1,16 @@
+{
+  "schema": "pearl-p9-final-benchmark-evidence/v1",
+  "milestone": "P9",
+  "status": "PASS",
+  "project_commit": "e49e69ee85907ee7c32d40600c7c042d4172104d",
+  "hardware": {"cpu_model": " AMD Ryzen 7 250 w/ Radeon 780M Graphics", "kernel": "7.2.0-0.rc7.452.vanilla.fc45.x86_64", "ram_hwm_kb": 190412, "device": "RyzenAI-npu1", "architecture": "aie2", "bdf": "0000:06:00.1", "firmware": "1.5.5.391", "xrt": "2.26.0", "amdxdna": "7.2.0-0.rc7.452.vanilla.fc45.x86_64"},
+  "software": {"mlir_aie_commit": "57d7494e99c214f5f53b328a0ed43a99e759e835", "pearl_revision": "fe22b6a2b831d95b2f56564808f39d2f498f34a5"},
+  "workload": {"tile": "4x64x8", "rank": 128, "K": 2048, "batch": 1, "columns": 4, "warmup": 8, "raw_iterations": 100, "candidate_iterations": 2},
+  "raw_gemm": {"throughput_dispatches_per_s": 7691.41, "latency_ns_per_dispatch": 130015, "h2d_syncs": 324, "d2h_syncs": 108, "dispatch_wait_ns": 10973508},
+  "candidate": {"throughput_candidates_per_s": 3.01042, "latency_ns": 3.32179e+08, "proof_bytes": 139736, "mismatches": 0},
+  "cpu_vs_xdna": {"raw_cpu_reference_ns_per_dispatch": 265498, "raw_xdna_end_to_end_ns_per_dispatch": 130015},
+  "power_watts": null,
+  "npu_telemetry": null,
+  "cpu_fallbacks": 0,
+  "gateway_overhead": "not measured; no official local gateway was running"
+}

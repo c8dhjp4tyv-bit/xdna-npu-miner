@@ -1,0 +1,18 @@
+{
+  "schema": "pearl-p10-endurance-evidence/v1",
+  "milestone": "P10",
+  "status": "PASS",
+  "duration_ms": 2000,
+  "target": {"device": "RyzenAI-npu1", "architecture": "aie2", "bdf": "0000:06:00.1"},
+  "dispatches": 14427,
+  "jobs": 226,
+  "gateway_reconnects_simulated": 56,
+  "stale_drops": 0,
+  "mismatches": 0,
+  "runtime_failures": 0,
+  "cpu_fallbacks": 0,
+  "unclean_shutdowns": 0,
+  "peak_host_ram_kb": 188424,
+  "unbounded_memory_growth": false,
+  "failure_injection": {"malformed_work": "covered_by_pearl_gateway_tests", "stale_job": "supervisor boundary covered; no live gateway", "sigint_sigterm": "handlers installed"}
+}

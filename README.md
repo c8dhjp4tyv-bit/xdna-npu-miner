@@ -1,8 +1,8 @@
 # XDNA NPU Miner
 
-Experimental AMD XDNA1 NPU-accelerated cryptocurrency mining research project.
-
-The first target is **Qubic (QUBIC)**, subject to Milestone M0 validating the current upstream mining algorithm, protocol, licensing constraints, and the exact compute kernels suitable for AMD XDNA1 acceleration.
+Standalone AMD XDNA1 NPU-accelerated **Pearl (PRL)** mining research
+project. Pearl is the active target; the completed Qubic implementation is
+frozen reference-only and is not used as Pearl protocol evidence.
 
 ## Target platform
 
@@ -25,9 +25,35 @@ The first target is **Qubic (QUBIC)**, subject to Milestone M0 validating the cu
 
 ## Current status
 
-**Milestone M0 — Repository bootstrap and technical specification**
+P2 physical XDNA GEMM, P3 exact compute pipeline, P5 candidate/PlainProof,
+P8 placement measurements, P9 benchmark, and the P11 operator CLI are
+implemented and physically verified on Hawk Point. P4/P6 are locally tested;
+the official useful-work provider, gateway/prover, and local/simnet node are
+external blockers for live end-to-end acceptance. The current overall state is
+`SOFTWARE_COMPLETE_E2E_BLOCKED`, not a profitability claim.
 
-Mining functionality is not implemented yet. M0 exists to establish authoritative protocol knowledge, licensing boundaries, architecture, tests, and measurable milestone acceptance criteria before implementation begins.
+Quick start:
+
+```bash
+cargo build --manifest-path src/pearl/blake3_ffi/Cargo.toml --release --locked
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j2
+./scripts/build-pearl-xdna-gemm.sh build 4
+./build/pearl-xdna-miner --self-test --artifact-dir build/pearl-xdna-gemm-p2-c4
+./build/pearl-xdna-miner --benchmark --artifact-dir build/pearl-xdna-gemm-p2-c4
+./build/pearl-xdna-miner --dry-run --fixture-work --artifact-dir build/pearl-xdna-gemm-p2-c4
+```
+
+Live operation requires an independently installed official gateway/prover,
+current work tensors, and an explicit public mining address:
+
+```bash
+./build/pearl-xdna-miner --mine --mining-address PUBLIC_TAPROOT_ADDRESS \
+  --artifact-dir build/pearl-xdna-gemm-p2-c4
+```
+
+See [`docs/pearl/OPERATIONS.md`](docs/pearl/OPERATIONS.md) for shutdown,
+configuration, external boundaries, and troubleshooting.
 
 ## Repository memory
 

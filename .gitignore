@@ -12,6 +12,7 @@ env/
 
 # Build outputs
 build/
+build-release/
 build-crypto/
 dist/
 out/

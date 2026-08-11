@@ -106,6 +106,64 @@ target_compile_options(pearl_cpu_tests PRIVATE
 
 add_test(NAME pearl_cpu_golden_tests COMMAND pearl_cpu_tests)
 
+add_library(pearl_gateway
+    src/pearl/json.cpp
+    src/pearl/gateway.cpp
+    src/pearl/work.cpp
+)
+
+target_include_directories(pearl_gateway PUBLIC src)
+target_link_libraries(pearl_gateway PUBLIC pearl_cpu_reference)
+target_compile_options(pearl_gateway PRIVATE
+    -Wall
+    -Wextra
+    -Wpedantic
+    -Wconversion
+    -Wshadow
+    -Werror
+)
+
+add_executable(pearl_gateway_tests tests/pearl_gateway_tests.cpp)
+target_link_libraries(pearl_gateway_tests PRIVATE pearl_gateway)
+target_compile_options(pearl_gateway_tests PRIVATE
+    -Wall
+    -Wextra
+    -Wpedantic
+    -Wconversion
+    -Wshadow
+    -Werror
+)
+add_test(NAME pearl_gateway_protocol_tests COMMAND pearl_gateway_tests)
+
+add_executable(pearl_work_tests tests/pearl_work_tests.cpp)
+target_link_libraries(pearl_work_tests PRIVATE pearl_gateway)
+target_compile_options(pearl_work_tests PRIVATE
+    -Wall
+    -Wextra
+    -Wpedantic
+    -Wconversion
+    -Wshadow
+    -Werror
+)
+add_test(NAME pearl_work_contract_tests COMMAND pearl_work_tests)
+
+find_package(CURL QUIET)
+if(CURL_FOUND)
+    add_library(pearl_node
+        src/pearl/node.cpp
+    )
+    target_include_directories(pearl_node PUBLIC src)
+    target_link_libraries(pearl_node PUBLIC pearl_gateway CURL::libcurl)
+    target_compile_options(pearl_node PRIVATE
+        -Wall
+        -Wextra
+        -Wpedantic
+        -Wconversion
+        -Wshadow
+        -Werror
+    )
+endif()
+
 add_executable(pearl_xdna_matmul_contract_tests tests/pearl_xdna_matmul_contract_tests.cpp)
 target_link_libraries(pearl_xdna_matmul_contract_tests PRIVATE pearl_cpu_reference)
 target_compile_options(pearl_xdna_matmul_contract_tests PRIVATE
@@ -572,6 +630,107 @@ if(XRT_INCLUDE_DIR AND XRT_COREUTIL_LIBRARY)
     )
     target_link_libraries(pearl_compute_pipeline_differential PRIVATE pearl_xdna_matmul)
     target_compile_options(pearl_compute_pipeline_differential PRIVATE
+        -Wall
+        -Wextra
+        -Wpedantic
+        -Wconversion
+        -Wshadow
+        -Werror
+        -Wno-conversion
+        -Wno-ignored-qualifiers
+        -Wno-shadow
+    )
+
+    add_library(pearl_candidate
+        src/pearl/candidate.cpp
+    )
+    target_include_directories(pearl_candidate PUBLIC src)
+    target_link_libraries(pearl_candidate PUBLIC pearl_xdna_matmul)
+    target_compile_options(pearl_candidate PRIVATE
+        -Wall
+        -Wextra
+        -Wpedantic
+        -Wconversion
+        -Wshadow
+        -Werror
+        -Wno-conversion
+        -Wno-ignored-qualifiers
+        -Wno-shadow
+    )
+
+    add_executable(pearl_candidate_differential
+        tests/pearl_candidate_differential.cpp
+    )
+    target_link_libraries(pearl_candidate_differential PRIVATE pearl_candidate)
+    target_compile_options(pearl_candidate_differential PRIVATE
+        -Wall
+        -Wextra
+        -Wpedantic
+        -Wconversion
+        -Wshadow
+        -Werror
+        -Wno-conversion
+        -Wno-ignored-qualifiers
+        -Wno-shadow
+    )
+
+    add_executable(pearl_batch_benchmark
+        tests/pearl_batch_benchmark.cpp
+    )
+    target_link_libraries(pearl_batch_benchmark PRIVATE pearl_xdna_matmul)
+    target_compile_options(pearl_batch_benchmark PRIVATE
+        -Wall
+        -Wextra
+        -Wpedantic
+        -Wconversion
+        -Wshadow
+        -Werror
+        -Wno-conversion
+        -Wno-ignored-qualifiers
+        -Wno-shadow
+    )
+
+    add_executable(pearl_final_benchmark
+        tests/pearl_final_benchmark.cpp
+    )
+    target_link_libraries(pearl_final_benchmark PRIVATE pearl_candidate)
+    target_compile_options(pearl_final_benchmark PRIVATE
+        -Wall
+        -Wextra
+        -Wpedantic
+        -Wconversion
+        -Wshadow
+        -Werror
+        -Wno-conversion
+        -Wno-ignored-qualifiers
+        -Wno-shadow
+    )
+
+    add_executable(pearl-xdna-miner
+        src/pearl/miner_main.cpp
+    )
+    target_link_libraries(pearl-xdna-miner PRIVATE pearl_candidate pearl_gateway)
+    target_compile_options(pearl-xdna-miner PRIVATE
+        -Wall
+        -Wextra
+        -Wpedantic
+        -Wconversion
+        -Wshadow
+        -Werror
+        -Wno-conversion
+        -Wno-ignored-qualifiers
+        -Wno-shadow
+    )
+    install(TARGETS pearl-xdna-miner RUNTIME DESTINATION bin)
+    add_test(NAME pearl_cli_help COMMAND pearl-xdna-miner --help)
+    add_test(NAME pearl_cli_version COMMAND pearl-xdna-miner --version)
+    add_test(NAME pearl_cli_hardware_info COMMAND pearl-xdna-miner --hardware-info)
+
+    add_executable(pearl_endurance
+        tests/pearl_endurance.cpp
+    )
+    target_link_libraries(pearl_endurance PRIVATE pearl_xdna_matmul)
+    target_compile_options(pearl_endurance PRIVATE
         -Wall
         -Wextra
         -Wpedantic

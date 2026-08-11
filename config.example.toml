@@ -1,0 +1,14 @@
+# Pearl XDNA miner operator configuration. Placeholders only; this file has
+# no credentials and does not start mining by itself.
+network = "mainnet"
+gateway_unix = "/tmp/pearlgw.sock"
+# gateway_host = "127.0.0.1"
+# gateway_port = 8337
+# node_url = "http://127.0.0.1:44107"
+# mining_address = "PUBLIC_TAPROOT_ADDRESS_ONLY"
+device = "0"
+batch = 8
+columns = 4
+log_level = "info"
+max_runtime = 0
+artifact_dir = "build/pearl-xdna-gemm-p2-c4"

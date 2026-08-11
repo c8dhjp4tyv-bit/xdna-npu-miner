@@ -2,6 +2,21 @@
 
 Record material decisions here so later agents do not silently reverse them.
 
+## D-044 — Pearl P2-P11 use one continuous execution shot with strict gates
+
+**Status:** Accepted for the Pearl full-project branch
+
+Pearl is implemented on `feat/pearl-full-miner-one-shot` from the exact P1
+checkpoint `ba286d5770c93290a38784f89ae75cea87867b25`. P2 through P11 proceed
+without turn-by-turn handback, but remain sequential acceptance gates. A
+blocked physical device, upstream service, operator-owned public payout
+address, license boundary, or manual system intervention is recorded exactly;
+it is never converted into PASS. Independent work continues around an external
+blocker. Qubic and Qatum remain frozen.
+
+Reason: the execution mode changes scheduling, not correctness, evidence,
+license, security, or milestone semantics.
+
 ## D-041 — Pearl is a separate active track; Qubic is frozen reference
 
 **Status:** Accepted for Pearl P0/P1
@@ -668,3 +683,25 @@ bincode or create a certificate.
 Reason: P0 did not establish overflow behavior, and the requested P1 boundary
 needs a stable independently testable object before any proof adapter or NPU
 work.
+# Pearl one-shot decisions (2026-08-11)
+
+- The P2 XDNA artifact uses the project-owned AIE2 kernel plus canonical IRON
+  A/B/C DMA lane transforms. The first direct row-major stream passed simple
+  vectors but failed sparse/random cases; it was rejected and replaced after
+  exact differential reduction. This is a correctness decision, not a
+  performance shortcut.
+- P3/P5 keep noise generation, correction, transcript, keyed BLAKE3, target
+  comparison, openings, and PlainProof validation on the CPU. The NPU is used
+  only for repeated signed-int8 GEMM and every result is compared before a
+  candidate is built.
+- The pinned historical runtime pin remains unchanged. The host observed
+  `amdxdna 7.2.0-0.rc7.452.vanilla.fc45.x86_64` while the older recorded M2
+  pin is rc5; evidence records the mismatch as observed rather than silently
+  changing the pin.
+- The official Pearl useful-work/inference provider and unclear-license
+  gateway/prover hot components are external boundaries. This repository
+  implements clean-room transport and PlainProof, but never fabricates live
+  tensors or copies restricted source.
+- P8 selected four columns and batch eight from the fixed physical sweep by
+  measured end-to-end dispatch throughput; the choice is not inferred from
+  the column count.

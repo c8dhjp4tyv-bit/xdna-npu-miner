@@ -1,0 +1,22 @@
+{
+  "schema": "pearl-p4-job-integration-evidence/v1",
+  "milestone": "P4",
+  "status": "PASS",
+  "job_schema": {
+    "source": "pearl-research-labs/pearl@fe22b6a2b831d95b2f56564808f39d2f498f34a5",
+    "method": "getMiningInfo",
+    "framing": "newline-delimited JSON-RPC 2.0",
+    "header_bytes": 76,
+    "target": "strict 256-bit little-endian conversion from official decimal integer",
+    "certificate_version": "required and bounded u32",
+    "unknown_fields": "tolerated where the required fields remain valid"
+  },
+  "tests": {
+    "pearl_work_contract_tests": "PASS",
+    "malformed_header": "rejected",
+    "target_overflow": "rejected",
+    "unavailable_useful_work_provider": "explicit_provider_unavailable"
+  },
+  "matrix_source": "official useful-work/inference provider is external; no live matrices were fabricated",
+  "cpu_fallbacks": 0
+}

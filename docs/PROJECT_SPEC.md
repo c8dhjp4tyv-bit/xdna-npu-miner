@@ -1,19 +1,37 @@
 # Project Specification
 
-## Active-track pivot: Pearl (PRL)
+## Pearl one-shot delivery state
 
-Pearl is now the active research target on a separate, documentation-only P0
-track. The complete Qubic work described below remains frozen/reference-only;
+Pearl is the active target and P2–P11 are being advanced in one continuous
+shot with sequential gates. The physical P2/P3/P5 paths and the P8/P9
+measurements are now implemented; the safe P11 CLI is explicit about live
+mining. The current overall status is `SOFTWARE_COMPLETE_E2E_BLOCKED` until
+an independently installed official Pearl useful-work provider, gateway/ZK
+prover, and local/simnet node prove submission interoperability. No live
+matrices, credentials, payout address, or profitability result is fabricated.
+
+The Pearl implementation boundary is documented in
+[`docs/pearl/OPERATIONS.md`](pearl/OPERATIONS.md) and the machine-readable
+records are under `docs/evidence/pearl-*.json`. The Qubic specification below
+remains frozen/reference-only.
+
+## Active target: Pearl (PRL)
+
+Pearl is the active implementation target. P0 and P1 are complete, and P2
+through P11 are being executed in one continuous engineering shot while each
+milestone retains its independent acceptance gate. The complete Qubic work
+described below remains frozen/reference-only;
 Qubic source, Qatum boundaries, identities, and M6/M7 work must not be
 continued or rewritten as part of this pivot. The Pearl specification,
 architecture, upstream/license record, milestones, and handoff are in
 [`docs/pearl/`](pearl/), with machine-readable P0 evidence at
 [`docs/evidence/pearl-p0.json`](evidence/pearl-p0.json).
 
-Pearl P0's single gate is `UNKNOWN_NEEDS_EXPERIMENT`: its dense int8 MAC
-primitive is a `POSSIBLE_FIT` for XDNA1/AIE2, but no Pearl kernel has been
-implemented or measured. No Pearl hashrate, profitability, or NPU execution
-claim is made.
+Pearl P0's feasibility gate was `UNKNOWN_NEEDS_EXPERIMENT`; P1 established the
+trusted CPU oracle. P2 is now the active gate and must establish a real
+physical signed-int8 XDNA1 GEMM before later accelerated stages can pass. No
+Pearl hashrate, profitability, or NPU execution claim is made until the
+corresponding evidence exists.
 
 ## M0 status and scope
 
@@ -38,9 +56,9 @@ versioned, authoritative, sufficiently complete wire specification or
 implementation can be pinned and independently reviewed. Pool-specific
 protocols belong in adapters; they are not part of the mining/scoring core.
 
-## Current milestone
+## Frozen Qubic milestone
 
-**M6 — Qubic direct-node integration — IN PROGRESS**
+**M6 — Qubic direct-node integration — FROZEN / REFERENCE ONLY**
 
 M1 is implemented as a standalone scalar C++20/CMake reference and remains the
 correctness oracle. M2 provides the physical XDNA1 runtime boundary, M3

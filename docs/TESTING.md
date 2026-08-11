@@ -620,3 +620,30 @@ Ensure later code does not:
 - submit a result without CPU canonical verification;
 - report CPU fallback as NPU execution;
 - submit stale-seed or invalid-score work.
+# Pearl one-shot validation
+
+The Pearl gate sequence is CPU oracle → physical XDNA → exact pipeline →
+candidate → transport → interoperability → measurement → endurance → CLI.
+Current physical results are P2 100/100, P3 8/8 cases over 64 dispatches, P5
+256 dispatches with exact PlainProof round-trip, and P8/P9 zero mismatches.
+The gateway/work tests use bounded Unix-socket mocks and malformed-input
+failure cases; official live gateway/prover/node interoperability is recorded
+as blocked, never as a pass.
+
+Run the real suite with:
+
+```bash
+cargo build --release --locked --manifest-path src/pearl/blake3_ffi/Cargo.toml
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build -j2
+ctest --test-dir build --output-on-failure
+./build/pearl-xdna-miner --self-test --artifact-dir build/pearl-xdna-gemm-p2-c4
+python3 -m json.tool docs/evidence/pearl-p2-xdna-matmul.json >/dev/null
+git diff --check
+```
+
+Negative coverage includes wrong matrix shapes, out-of-range signals, missing
+artifacts, malformed JSON, invalid base64, decimal target overflow, unsafe
+non-loopback gateway endpoints, unavailable useful-work provider, stale/live
+boundary rejection, and SIGINT/SIGTERM handlers. No test may label a CPU
+result as NPU execution or weaken a historical vector.

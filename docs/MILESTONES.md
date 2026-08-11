@@ -5,7 +5,7 @@ when every acceptance criterion passes and `docs/AI_HANDOFF.md` is updated.
 Static hypotheses, configured offload, and plausible source code are not
 evidence.
 
-**Current milestone:** M6 — Qubic direct-node integration
+**Current milestone:** Pearl P2 — physical XDNA1 signed-int8 GEMM
 **Current status:** IN PROGRESS
 **M0 status:** COMPLETE
 **M3 status:** COMPLETE
@@ -15,12 +15,12 @@ evidence.
 
 ## Active Pearl track
 
-Pearl (PRL) is the active research target on branch `feat/pearl-p1-cpu-golden`.
-P0 is complete as documentation/evidence, and P1's clean-room CPU oracle and
-canonical vectors are complete under [`docs/pearl/MILESTONES.md`](pearl/MILESTONES.md).
-No Pearl NPU or live operation may start before the P1 evidence/verification
-gate is committed. Qubic milestones, including M6/M7, are
-frozen/reference-only during the Pearl track.
+Pearl (PRL) is the active implementation target on branch
+`feat/pearl-full-miner-one-shot`. P0 and P1 are complete. P2 through P11 are
+being implemented in one continuous engineering shot, but remain sequential,
+independent acceptance gates under
+[`docs/pearl/MILESTONES.md`](pearl/MILESTONES.md). Qubic milestones, including
+M6/M7, are frozen/reference-only during the Pearl track.
 
 ## M0 — Repository bootstrap, research, and technical specification
 
@@ -749,3 +749,12 @@ Profitability guarantees, unsupported hardware, and undocumented pool claims.
 
 Update all docs for the tagged state, record the release verification commands,
 and leave the next maintenance task explicit.
+# Active Pearl one-shot milestone snapshot
+
+P0/P1 are complete. P2 physical XDNA, P3 exact compute, P4 work boundaries,
+P5 candidate/PlainProof, P6 local gateway adapter, P8 batching/columns, P9
+benchmark, and P11 CLI/package are implemented; P10 is in progress on the
+physical Hawk Point device; P7 is `BLOCKED` by absent official gateway,
+prover, useful-work provider, and node runtime. The aggregate state is
+`SOFTWARE_COMPLETE_E2E_BLOCKED`. See `docs/pearl/MILESTONES.md` and
+`docs/evidence/pearl-full-one-shot.json`; Qubic milestones below are frozen.

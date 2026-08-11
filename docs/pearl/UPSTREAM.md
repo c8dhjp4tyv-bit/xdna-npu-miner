@@ -1,5 +1,20 @@
 # Pearl (PRL) P0 Upstream, Protocol, and License Record
 
+## One-shot implementation audit update (2026-08-11)
+
+The pinned official repository still resolves to master
+`fe22b6a2b831d95b2f56564808f39d2f498f34a5`; no Pearl source was copied into
+this repository. The project-owned IRON/AIE2 build used MLIR-AIE commit
+`57d7494e99c214f5f53b328a0ed43a99e759e835`. The physical host observed
+`RyzenAI-npu1`, AIE2, XRT 2.26.0, firmware 1.5.5.391, and amdxdna rc7. The
+historical runtime pin remains unchanged and the difference is recorded in
+P2/P9 evidence.
+
+P4/P6 clean-room transport matches the pinned local methods and framing. The
+official hot useful-work/prover/node runtime was not installed, so P7 is
+blocked. No official Stratum/pool protocol was found; record
+`POOL_PROTOCOL_UNAVAILABLE` rather than adding inferred compatibility.
+
 ## Source pins
 
 Audit date: **2026-08-10**. Only the official Pearl repository and official

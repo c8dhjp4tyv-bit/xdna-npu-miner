@@ -1,13 +1,43 @@
 # AI Handoff
 
+## Active Pearl one-shot checkpoint (2026-08-11)
+
+The active target is Pearl (PRL) on `feat/pearl-full-miner-one-shot`; all
+Qubic material below is frozen reference-only. P2 physical XDNA GEMM, P3
+noise/GEMM/denoise/transcript, P4 work/provider boundaries, P5
+candidate/PlainProof, P6 local gateway transport, P8 placement sweep, P9
+benchmark, and P11 CLI implementation are complete in software. P10 is the
+current physical gate: a 30-minute Hawk Point endurance run is in progress.
+P7 official gateway/prover/node interoperability is externally blocked because
+those processes are not installed in this workspace.
+
+Checkpoint commit: `e49e69ee85907ee7c32d40600c7c042d4172104d` contains P2/P3;
+later source and evidence changes are uncommitted while the shot continues.
+The P2 artifact passed 100/100 exact physical cases; P3 passed 8 full cases
+and 64 dispatches; P5 passed a 256-dispatch selected proof with exact
+PlainProof round-trip; P8 selected 4 columns/batch 8 from a fixed physical
+sweep; P9 recorded raw GEMM and full-candidate throughput. CPU fallback is
+zero in all Pearl evidence.
+
+Relevant commands are `cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug`,
+`cmake --build build -j2`, `ctest --test-dir build --output-on-failure`,
+`./build/pearl-xdna-miner --self-test --artifact-dir
+build/pearl-xdna-gemm-p2-c4`, and the artifact builder
+`./scripts/build-pearl-xdna-gemm.sh build 4`. Do not redo P2/P3 bring-up or
+resume Qubic work. After P10 completes, finish aggregate evidence, update
+this handoff and the Pearl handoff, run the full verification suite, create a
+checkpoint commit, and push only the feature branch.
+
 This file is the authoritative short-form state for the next zero-context
 engineering agent.
 
-## Active track
+## Historical Pearl P1 checkpoint (superseded by the active one-shot section)
 
 **Pearl (PRL) P1 — trusted clean-room CPU golden path and canonical vectors**
 
-The active Pearl handoff is [`docs/pearl/AI_HANDOFF.md`](pearl/AI_HANDOFF.md).
+The active Pearl handoff is the one-shot section at the top of this file and
+[`docs/pearl/AI_HANDOFF.md`](pearl/AI_HANDOFF.md). The following paragraph is
+historical context only.
 P1 is CPU-only: the independent oracle and canonical corpus are implemented,
 but no Pearl NPU, node/pool, wallet, live mining, submission, or ZK proof has
 been run. The active branch is `feat/pearl-p1-cpu-golden`, starting at

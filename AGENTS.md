@@ -28,7 +28,15 @@ Do not rely on previous chat history.
 
 ## Current target
 
-Build a standalone AMD XDNA1 NPU-accelerated miner. The first target is Qubic, but M0 must verify the current upstream mining algorithm and protocol before implementation.
+Build a standalone AMD XDNA1 NPU-accelerated Pearl (PRL) miner. Pearl is the
+active target; the completed and partially integrated Qubic work is
+frozen/reference-only and must not be resumed, rewritten, or used as Pearl
+protocol evidence.
+
+Pearl P0 and P1 are complete. The active execution mode is one continuous
+engineering shot through P2-P11. Milestone gates remain sequential and
+mandatory: a later success never hides an earlier failure, and every
+unavailable external dependency is recorded as BLOCKED rather than PASS.
 
 Primary hardware target:
 
@@ -46,6 +54,9 @@ Primary hardware target:
 - Preserve verified behavior.
 - Do not redesign completed architecture silently.
 - Record justified architecture changes in `docs/DECISIONS.md`.
+- During the Pearl full-project shot, continue automatically from one passing
+  gate to the next without waiting for a new prompt. Continue all independent
+  work when one area is externally blocked.
 
 ## Correctness discipline
 

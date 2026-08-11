@@ -1,12 +1,20 @@
-# Pearl (PRL) Mining Research — P1 Project Specification
+# Pearl (PRL) XDNA Miner — Full Project Specification
 
 ## State and scope
 
-This is the active Pearl research track on branch `feat/pearl-p1-cpu-golden`.
-P0 established the pinned protocol/license baseline; P1 adds only the trusted,
-clean-room CPU golden reference and canonical vectors. It does not add a Pearl
-miner, wallet, pool client, live node connection, share submission path, NPU
-kernel, or ZK prover.
+P2–P6, P8, P9, and the P11 delivery implementation are now present in the
+one-shot branch. P10 is the current physical endurance gate. P7 remains
+`BLOCKED` until an official gateway/prover/useful-work provider and a
+local/simnet node are available. The aggregate must therefore remain
+`SOFTWARE_COMPLETE_E2E_BLOCKED` unless that external interoperability is
+actually proven.
+
+This is the active Pearl implementation track on branch
+`feat/pearl-full-miner-one-shot`, created from P1 checkpoint
+`ba286d5770c93290a38784f89ae75cea87867b25`. P0 established the pinned
+protocol/license baseline and P1 established the trusted clean-room CPU golden
+reference. P2 through P11 are now executed in one continuous engineering shot
+with separate, sequential evidence gates.
 
 The completed Qubic work remains the frozen reference track. Its source,
 Qatum boundary, identities, and M6/M7 state are not being changed by Pearl
@@ -30,12 +38,16 @@ The primitive is a plausible AIE2 workload, but no Pearl kernel has yet been
 implemented or differentially verified on this host. P0 makes no hashrate,
 latency, energy, profitability, or speedup claim.
 
-## P1 status and gate
+## Execution status and gate
 
-P1 is **COMPLETE** only when the focused CPU test target, the full existing
+P1 is **COMPLETE** because the focused CPU test target, the full existing
 CTest suite, JSON evidence, corpus digest, and `git diff --check` all pass on
 the same clean-room implementation. The P1 implementation is intentionally
 separate from `src/bpp9000/`, `src/qubic/`, and all Qubic wire types.
+
+P2 is **IN PROGRESS** and owns only the physical signed-int8 GEMM gate. Later
+milestones may be prepared only after their predecessor passes or is truthfully
+recorded as an external blocker; a later pass cannot erase an earlier failure.
 
 The current CPU reference is in [`../../src/pearl/reference.hpp`](../../src/pearl/reference.hpp)
 and [`../../src/pearl/reference.cpp`](../../src/pearl/reference.cpp). The

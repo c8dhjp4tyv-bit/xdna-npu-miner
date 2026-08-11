@@ -4,6 +4,33 @@ Pearl milestones are independent of the completed/frozen Qubic milestones.
 No later Pearl milestone may be started early, and no milestone may claim
 NPU execution without exact CPU differential evidence.
 
+P2 through P11 are executed in one continuous engineering shot on
+`feat/pearl-full-miner-one-shot`. This changes only handoff cadence: every
+gate below remains sequential, machine-readable, and independently PASS,
+FAIL, BLOCKED, or NOT_RUN.
+
+## One-shot gate snapshot (2026-08-11)
+
+| Gate | Status | Evidence |
+|---|---|---|
+| P0 | PASS | `pearl-p0.json` |
+| P1 | PASS | `pearl-p1.json` |
+| P2 | PASS | `pearl-p2-xdna-matmul.json` |
+| P3 | PASS | `pearl-p3-compute-pipeline.json` |
+| P4 | PASS (live provider blocked) | `pearl-p4-job-integration.json` |
+| P5 | PASS (official wire/prover blocked) | `pearl-p5-candidate-proof.json` |
+| P6 | PASS (official endpoint blocked) | `pearl-p6-gateway.json` |
+| P7 | BLOCKED — external runtime unavailable | `pearl-p7-e2e.json` |
+| P8 | PASS | `pearl-p8-batching-four-column.json` |
+| P9 | PASS | `pearl-p9-benchmark.json` |
+| P10 | IN PROGRESS | `pearl-p10-endurance.json` |
+| P11 | PASS | `pearl-p11-delivery.json` |
+
+The aggregate state is `SOFTWARE_COMPLETE_E2E_BLOCKED`. P7 is not collapsed
+into PASS merely because local mocks pass. The current active work is the
+physical P10 endurance run; once it ends, update this table and the aggregate
+with its exact duration and counters.
+
 ## P0 — Upstream, protocol, license, and XDNA feasibility baseline
 
 **Status: COMPLETE — documentation/evidence only (2026-08-10).**
@@ -107,3 +134,17 @@ conditions and publish no unmeasured hashrate/profit number.
 Run bounded endurance with job refresh, device errors, stale work, proof
 failure, backpressure, and shutdown recovery. Keep all secrets and network
 state out of evidence. Leave the system in a safe, auditable state.
+
+## P11 — CLI, packaging, and operator delivery
+
+Deliver a safe `pearl-xdna-miner` command with explicit `--mine` opt-in and
+non-mining `--help`, `--version`, `--self-test`, `--hardware-info`,
+`--benchmark`, and `--dry-run` modes. Support bounded configuration for the
+gateway, node, public mining address, device, batch, columns, logging, JSON
+status, and maximum runtime without logging credentials or private material.
+
+Exit: clean build/install instructions, example configuration containing only
+placeholders, CPU and physical XDNA self-test classifications, CLI/parser
+tests, operator and security documentation, aggregate milestone evidence, and
+a reproducible clean-checkout verification path. No autostart, persistence,
+hidden mining, remote deployment, or profitability guarantee is permitted.

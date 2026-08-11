@@ -1,5 +1,17 @@
 # Pearl (PRL) Research Architecture
 
+## Implemented one-shot boundary
+
+The physical implementation now follows the proposed boundary below. The
+project-owned AIE2 kernel computes only the fixed `4x64x8` signed-int8 GEMM;
+IRON DMA transforms provide the AIE2 lane layout, while the CPU pipeline
+handles deterministic noise, correction, transcript, keyed BLAKE3, target,
+openings, and PlainProof. `ComputePipeline` tiles the 2x64 selected proof
+work over rank/common-dimension chunks and exact-compares every gathered
+result. Gateway/node transport and supervisor/CLI code remain CPU-side. The
+official useful-work tensor source and ZK/certificate runtime are explicit
+external components, not silent synthetic substitutes.
+
 ## Boundary
 
 Pearl is a separate research track. The existing Qubic runtime and its
@@ -23,6 +35,13 @@ The arrows are a proposed responsibility boundary, not an implemented data
 path. Network traffic and signing remain CPU-side. The NPU is a deterministic
 compute backend with no authority to select an endpoint, create an identity,
 or submit a result.
+
+The full-project execution adds an operator CLI and supervisor around this
+boundary, but does not move authority: CPU code owns work freshness, target
+checks, proof reconstruction, submission policy, retries, logging, and clean
+shutdown. The external official gateway/prover may own ZK proof generation and
+certificate assembly where the component license remains unclear. No CPU
+fallback is reported as XDNA execution.
 
 ## Components
 

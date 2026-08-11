@@ -3,7 +3,12 @@ set -euo pipefail
 
 readonly pearl_root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly pearl_build_dir="${1:-${pearl_root_dir}/build}"
-readonly pearl_artifact_dir="${pearl_build_dir}/pearl-xdna-gemm-p2"
+readonly pearl_columns="${2:-${PEARL_XDNA_COLUMNS:-1}}"
+if [[ "${pearl_columns}" == "1" ]]; then
+    readonly pearl_artifact_dir="${pearl_build_dir}/pearl-xdna-gemm-p2"
+else
+    readonly pearl_artifact_dir="${pearl_build_dir}/pearl-xdna-gemm-p2-c${pearl_columns}"
+fi
 readonly pearl_mlir_aie_dir="${MLIR_AIE_DIR:-${HOME}/mlir-aie}"
 readonly pearl_xrt_root="${XILINX_XRT:-/opt/xilinx/xrt}"
 
@@ -27,11 +32,12 @@ source "${pearl_mlir_aie_dir}/utils/env_setup.sh" "${pearl_mlir_aie_dir}" >/dev/
 
 python "${pearl_root_dir}/src/pearl/xdna_matmul_program.py" \
     --dev npu \
+    --columns "${pearl_columns}" \
     --xclbin-path "${pearl_artifact_dir}/pearl_p2_gemm.xclbin" \
     --insts-path "${pearl_artifact_dir}/pearl_p2_gemm.insts"
 
 printf '%s\n' 'artifact_kind=pearl-xdna-gemm-p2-v1' > "${pearl_artifact_dir}/pearl_p2_gemm.manifest"
-printf '%s\n' '{"schema_version":1,"artifact_kind":"pearl-xdna-gemm-p2-v1","rows":4,"common":64,"columns":8,"dtype":"int8->int32","layout":"row-major","kernel":"pearl_gemm_i8_i32","columns_used":1}' \
+printf '%s\n' "{\"schema_version\":1,\"artifact_kind\":\"pearl-xdna-gemm-p2-v1\",\"rows\":4,\"common\":64,\"columns\":8,\"dtype\":\"int8->int32\",\"layout\":\"row-major\",\"kernel\":\"pearl_gemm_i8_i32\",\"columns_used\":${pearl_columns}}" \
     > "${pearl_artifact_dir}/pearl_p2_gemm.layout.json"
 sha256sum \
     "${pearl_artifact_dir}/pearl_p2_gemm.xclbin" \

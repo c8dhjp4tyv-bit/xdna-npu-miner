@@ -2,14 +2,15 @@
 
 ## Pearl track boundary
 
-Pearl (PRL) is a separate active research track documented in
+Pearl (PRL) is the active implementation track documented in
 [`docs/pearl/ARCHITECTURE.md`](pearl/ARCHITECTURE.md). It does not retarget or
 rewrite the Qubic architecture below. P1 now contains the clean-room CPU
 oracle under `src/pearl/`; it uses no Qubic types or Pearl hot-component source.
 Pearl protocol, matrix, proof, network, and license decisions remain
-independent. The Pearl boundary keeps networking, canonical verification, ZK
-proof generation, and submission on the CPU, with future XDNA1 limited to
-explicitly verified compute buffers.
+independent. P2-P11 are being delivered in one continuous shot with separate
+gates. The Pearl boundary keeps networking, canonical verification, ZK proof
+generation, and submission on the CPU, with XDNA1 limited to explicitly
+verified compute buffers.
 
 ## M0 architecture status
 
@@ -728,3 +729,13 @@ independent expected-output oracle.
 
 An NPU mismatch or failed canonical verification may not submit the result.
 A CPU fallback, if later added, must be explicit in logs and benchmark labels.
+# Active Pearl implementation note
+
+The active architecture is the Pearl boundary in `docs/pearl/ARCHITECTURE.md`:
+CPU owns job freshness, protocol parsing, proof/opening verification, target
+checks, submission policy, and shutdown; the project-owned AIE2 kernel owns
+only deterministic signed-int8 GEMM; XRT artifacts are built for one, two, or
+four columns and are compared against the P1 CPU oracle. The current physical
+implementation is P2 `4x64x8`, generalized by the P3/P5 host pipeline over
+rank chunks. The official useful-work tensor provider and ZK/certificate
+runtime remain external boundaries. The Qubic architecture below is frozen.

@@ -1,0 +1,24 @@
+{
+  "schema": "pearl-p8-batching-four-column-evidence/v1",
+  "milestone": "P8",
+  "status": "PASS",
+  "fixed_corpus": {"cases": 16, "warmup_dispatches": 2, "repetitions": 4},
+  "cpu_ns_per_dispatch": 345262,
+  "measurements": [
+    {"columns": 1, "batch": 1, "dispatches": 4, "wall_ns": 584450, "throughput_dispatches_per_s": 6844.04, "h2d_syncs": 18, "d2h_syncs": 6, "dispatch_wait_ns": 2459565, "mismatches": 0},
+    {"columns": 1, "batch": 2, "dispatches": 8, "wall_ns": 1313911, "throughput_dispatches_per_s": 6088.69, "h2d_syncs": 42, "d2h_syncs": 14, "dispatch_wait_ns": 3256773, "mismatches": 0},
+    {"columns": 1, "batch": 4, "dispatches": 16, "wall_ns": 2302651, "throughput_dispatches_per_s": 6948.51, "h2d_syncs": 90, "d2h_syncs": 30, "dispatch_wait_ns": 4684797, "mismatches": 0},
+    {"columns": 1, "batch": 8, "dispatches": 32, "wall_ns": 4319394, "throughput_dispatches_per_s": 7408.45, "h2d_syncs": 186, "d2h_syncs": 62, "dispatch_wait_ns": 7403608, "mismatches": 0},
+    {"columns": 2, "batch": 1, "dispatches": 4, "wall_ns": 546579, "throughput_dispatches_per_s": 7318.25, "h2d_syncs": 18, "d2h_syncs": 6, "dispatch_wait_ns": 2783725, "mismatches": 0},
+    {"columns": 2, "batch": 2, "dispatches": 8, "wall_ns": 1077758, "throughput_dispatches_per_s": 7422.82, "h2d_syncs": 42, "d2h_syncs": 14, "dispatch_wait_ns": 3468061, "mismatches": 0},
+    {"columns": 2, "batch": 4, "dispatches": 16, "wall_ns": 2201802, "throughput_dispatches_per_s": 7266.78, "h2d_syncs": 90, "d2h_syncs": 30, "dispatch_wait_ns": 4846334, "mismatches": 0},
+    {"columns": 2, "batch": 8, "dispatches": 32, "wall_ns": 4520923, "throughput_dispatches_per_s": 7078.2, "h2d_syncs": 186, "d2h_syncs": 62, "dispatch_wait_ns": 7507005, "mismatches": 0},
+    {"columns": 4, "batch": 1, "dispatches": 4, "wall_ns": 523034, "throughput_dispatches_per_s": 7647.69, "h2d_syncs": 18, "d2h_syncs": 6, "dispatch_wait_ns": 2202552, "mismatches": 0},
+    {"columns": 4, "batch": 2, "dispatches": 8, "wall_ns": 1051057, "throughput_dispatches_per_s": 7611.39, "h2d_syncs": 42, "d2h_syncs": 14, "dispatch_wait_ns": 2815555, "mismatches": 0},
+    {"columns": 4, "batch": 4, "dispatches": 16, "wall_ns": 2069914, "throughput_dispatches_per_s": 7729.79, "h2d_syncs": 90, "d2h_syncs": 30, "dispatch_wait_ns": 4050858, "mismatches": 0},
+    {"columns": 4, "batch": 8, "dispatches": 32, "wall_ns": 4102838, "throughput_dispatches_per_s": 7799.48, "h2d_syncs": 186, "d2h_syncs": 62, "dispatch_wait_ns": 6514117, "mismatches": 0}
+  ],
+  "cpu_fallbacks": 0,
+  "power_watts": null,
+  "selection_policy": "best measured end-to-end dispatch throughput with exact parity"
+}

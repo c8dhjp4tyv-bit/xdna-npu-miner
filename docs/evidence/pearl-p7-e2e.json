@@ -1,0 +1,20 @@
+{
+  "schema": "pearl-p7-e2e-evidence/v1",
+  "milestone": "P7",
+  "status": "BLOCKED",
+  "overall_reason": "official Pearl node/gateway/prover/useful-work runtime is not installed in the current workspace",
+  "checks": {
+    "official_source_pin": "fe22b6a2b831d95b2f56564808f39d2f498f34a5",
+    "local_gateway_process": "NOT_FOUND",
+    "pearld_process": "NOT_FOUND",
+    "official_prover": "NOT_FOUND",
+    "simnet_local_node": "NOT_STARTED",
+    "real_plainproof_submission": "NOT_ATTEMPTED",
+    "accepted_block_or_share": "NOT_PROVEN",
+    "mainnet_payout_address": "MAINNET_PAYOUT_ADDRESS_NOT_CONFIGURED",
+    "pool_protocol": "POOL_PROTOCOL_UNAVAILABLE"
+  },
+  "safe_next_action": "Install the pinned official Pearl node and gateway/prover outside this repository, then rerun the documented --dry-run and local/simnet submission check without adding credentials to this repository.",
+  "no_fabricated_work": true,
+  "cpu_fallbacks": 0
+}

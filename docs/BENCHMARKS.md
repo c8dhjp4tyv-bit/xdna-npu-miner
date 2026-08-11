@@ -220,3 +220,16 @@ system info; it is not a throughput, mining-rate, latency, power, energy, or
 profitability benchmark and does not submit a solution. No production signing
 secret was used. The machine-readable state is
 `docs/evidence/m6-direct-node.json`.
+# Pearl benchmark snapshot (2026-08-11)
+
+The Pearl P8/P9 records are the only active benchmark claims. On the physical
+`RyzenAI-npu1` / AIE2 device (BDF `0000:06:00.1`, firmware `1.5.5.391`, XRT
+`2.26.0`, observed amdxdna rc7), a fixed `4x64x8` int8→int32 corpus selected
+four columns and batch eight at the best measured raw dispatch throughput.
+P9 measured approximately 7.69k exact raw dispatches/s and 3.01 full
+candidate/s for `K=2048`, rank 128, with zero mismatches and zero CPU
+fallbacks. The CPU baseline, timing methodology, high-water RAM, null power,
+and null NPU telemetry are in `docs/evidence/pearl-p8-batching-four-column.json`
+and `docs/evidence/pearl-p9-benchmark.json`. These are not profitability or
+income claims; gateway/prover overhead was not measured because the official
+runtime was unavailable.

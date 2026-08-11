@@ -1,0 +1,24 @@
+{
+  "schema": "pearl-p6-gateway-evidence/v1",
+  "milestone": "P6",
+  "status": "PASS",
+  "transport": {
+    "unix_socket": "/tmp/pearlgw.sock",
+    "loopback_tcp": "127.0.0.1:8337",
+    "framing": "one JSON-RPC 2.0 object per newline",
+    "methods": ["getMiningInfo", "submitPlainProof"],
+    "stratum": "POOL_PROTOCOL_UNAVAILABLE"
+  },
+  "local_mock": {
+    "getMiningInfo": "PASS",
+    "submitPlainProof": "PASS",
+    "malformed_json": "categorized",
+    "invalid_base64": "categorized",
+    "unsafe_non_loopback": "rejected",
+    "message_cap_bytes": 1048576,
+    "timeout_ms": 2000
+  },
+  "node_adapter": "compiled with libcurl; BasicAuth is supplied to the HTTP client and never logged",
+  "official_gateway_live": "BLOCKED_OFFICIAL_RUNTIME_NOT_INSTALLED",
+  "cpu_fallbacks": 0
+}

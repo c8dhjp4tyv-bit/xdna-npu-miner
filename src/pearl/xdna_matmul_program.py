@@ -103,17 +103,18 @@ def main() -> None:
     parser.add_argument("--xclbin-path", type=Path, required=True)
     parser.add_argument("--insts-path", type=Path, required=True)
     parser.add_argument("--dev", choices=("npu",), default="npu")
+    parser.add_argument("--columns", type=int, choices=(1, 2, 4), default=1)
     args = parser.parse_args()
     args.xclbin_path.parent.mkdir(parents=True, exist_ok=True)
     args.insts_path.parent.mkdir(parents=True, exist_ok=True)
-    set_current_device(from_name(args.dev, n_cols=1))
+    set_current_device(from_name(args.dev, n_cols=args.columns))
     pearl_p2_gemm.specialize().compile(
         xclbin_path=args.xclbin_path,
         inst_path=args.insts_path,
     )
     print(f"xclbin={args.xclbin_path}")
     print(f"insts={args.insts_path}")
-    print("target=RyzenAI-npu1/aie2 columns=1")
+    print(f"target=RyzenAI-npu1/aie2 columns={args.columns}")
     print("kernel=pearl_gemm_i8_i32")
     print("workload=A[4,64]xB[64,8]->C[4,8] int8*int8=int32")
 

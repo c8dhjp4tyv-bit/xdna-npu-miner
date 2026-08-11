@@ -1,20 +1,79 @@
 # Pearl (PRL) AI Handoff
 
+## Current Pearl one-shot state (2026-08-11)
+
+Current milestone: **P10 — endurance/recovery**. Status: **IN PROGRESS**;
+the 30-minute physical run is active on `RyzenAI-npu1`/AIE2 BDF
+`0000:06:00.1`. Branch: `feat/pearl-full-miner-one-shot`. Starting SHA:
+`ba286d5770c93290a38784f89ae75cea87867b25`. Last checkpoint:
+`e49e69ee85907ee7c32d40600c7c042d4172104d` (`pearl: complete physical XDNA
+and compute pipeline`).
+
+Completed in this shot:
+
+- P2 project-owned `4x64x8` signed-int8 AIE2 kernel, canonical IRON lane
+  transforms, 100/100 exact physical cases, zero runtime failures/fallbacks.
+- P3 exact noise → 256/64-bit checked GEMM → denoise → selected transcript →
+  keyed BLAKE3 target path; 8 cases/64 dispatches passed.
+- P4 strict JSON-RPC/job/header/target parser, deterministic fixture provider,
+  and explicit unavailable official useful-work provider boundary.
+- P5 256 physical dispatches feeding a CPU-verified 139,736-byte PlainProof
+  with exact opening and serialization round-trip.
+- P6 Unix/loopback TCP gateway transport with size/time/base64/target checks,
+  typed errors, mock protocol tests, and optional BasicAuth-safe node adapter.
+- P8 one/two/four-column artifacts and batch 1/2/4/8 physical sweep; c4/batch
+  8 selected by measured dispatch throughput with zero mismatches.
+- P9 actual runtime/firmware/driver/toolchain benchmark evidence; raw GEMM
+  ~7.69k dispatches/s and full fixture candidate ~3.01/s, with null power and
+  telemetry when unavailable.
+- P11 safe `pearl-xdna-miner` CLI, config example, installation/operations
+  documentation, explicit `--mine`, fixture dry-run, JSON status, and signal
+  handling.
+
+Files added include `src/pearl/{compute_pipeline,candidate,json,gateway,work,node,
+miner_main}.*`, the AIE program/kernel, `scripts/build-pearl-xdna-gemm.sh`,
+P2–P11 test/benchmark harnesses, `config.example.toml`, and milestone
+evidence. Existing Qubic files and evidence remain frozen.
+
+Tests already executed: CMake Debug configure/build PASS; P2/P3/P5 physical
+tests PASS; gateway/work contract tests PASS; P8/P9 physical measurements
+PASS; CLI help/version/hardware/self-test/benchmark/fixture dry-run PASS; the
+short endurance run passed 14,427 dispatches. The final full CTest, release
+build, JSON validation, 30-minute endurance result, aggregate evidence, and
+final checkpoint commit remain to be recorded.
+
+Known external blockers: no official Pearl `pearld`, `pearl-gateway`,
+useful-work/inference runtime, or local/simnet node is installed; therefore
+P7 live gateway/prover/node acceptance is `BLOCKED`, not PASS. No public
+mainnet payout address is configured. No pool/Stratum protocol is claimed.
+
+Exact next task: finish the endurance process, run the complete validation
+matrix, write `docs/evidence/pearl-full-one-shot.json` and P4/P6/P7/P11
+records, update all handoff/docs statuses, commit/push the feature branch,
+and report `SOFTWARE_COMPLETE_E2E_BLOCKED` unless a real local/simnet stack
+becomes available.
+
 This is the authoritative handoff for the Pearl research track. Qubic remains
 frozen/reference-only; do not resume Qubic M6/M7 or Qatum work while Pearl is
 active.
 
-## Current milestone and status
+## Historical P1 handoff (superseded by the one-shot state above)
 
-**P1 — trusted clean-room CPU golden path and canonical vectors**
+The material below is retained as the original P1 checkpoint for auditability.
+The authoritative active milestone, status, branch, and next task are in
+`Current Pearl one-shot state` above.
 
-**COMPLETE — implementation commit `4d9132344f4f2a50c824164433a084f31ef135b7`.** P1 is CPU-only. No NPU,
-node, pool, wallet, live mining, share/block submission, or ZK proof was run.
+**P1 — trusted CPU golden path**
+
+**COMPLETE (historical checkpoint).** P1 completed at
+`ba286d5770c93290a38784f89ae75cea87867b25`; the full-project branch now owns
+the sequential P2-P11 implementation described above. Do not use this old
+P1-only status to infer the current Pearl milestone.
 
 ## Branch and commit
 
-- Branch: `feat/pearl-p1-cpu-golden`
-- Starting `HEAD`: `a15ed125295cc4361425a4b11159aa5744f3f160`
+- Branch: `feat/pearl-full-miner-one-shot`
+- Starting `HEAD`: `ba286d5770c93290a38784f89ae75cea87867b25`
 - Pinned Pearl source: `fe22b6a2b831d95b2f56564808f39d2f498f34a5`
 - Implementation commit: `4d9132344f4f2a50c824164433a084f31ef135b7`
 - Final evidence/handoff commit: `dde69536f7e2f1dfd906692f2e7750887b19a630`.

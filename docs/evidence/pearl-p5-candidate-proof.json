@@ -1,0 +1,10 @@
+{
+  "schema": "pearl-p5-candidate-proof-evidence/v1",
+  "milestone": "P5",
+  "status": "PASS",
+  "candidate": {"proof_envelope": "P1-fixed-width", "serialized_bytes": 139736, "target_test": true, "cpu_reconstruction": true, "openings_verified": true},
+  "target": {"device": "RyzenAI-npu1", "architecture": "aie2", "bdf": "0000:06:00.1"},
+  "dispatches": {"completed": 256, "h2d_syncs": 768, "d2h_syncs": 256, "cpu_fallbacks": 0},
+  "jackpot_hex_bytes": "exact-32-byte-value-recorded-in-memory-only",
+  "timings_ns": {"total": 222653807, "npu_execution": 44954167, "cpu_verification": 101475907}
+}
