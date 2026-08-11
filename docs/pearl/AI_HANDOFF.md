@@ -7,7 +7,9 @@ status is `SOFTWARE_COMPLETE_E2E_BLOCKED` because P7's official runtime is
 unavailable. Branch: `feat/pearl-full-miner-one-shot`. Starting SHA:
 `ba286d5770c93290a38784f89ae75cea87867b25`. Implementation checkpoint:
 `9a83cfdb44762140afc0a147fe0ec6100391a767` (`pearl: complete protocol
-boundaries and operator delivery`).
+boundaries and operator delivery`). Final evidence/handoff checkpoint:
+`7a3d61ebbf5b7de0b21ae2ea23ec54638f78804a` (`pearl: finalize one-shot
+evidence and handoff`).
 
 Completed in this shot:
 
@@ -50,9 +52,9 @@ The historical XDNA verification pin also reports `RUNTIME_VERSION_MISMATCH`
 (expected amdxdna rc5, observed rc7); the observed rc7 stack is recorded in
 the physical evidence and must not be silently relabeled.
 
-Exact next task: push the final handoff checkpoint, then install the pinned
-official Pearl node/gateway/prover/useful-work runtime outside this repository
-and rerun the blocked P7 local/simnet interoperability gate.
+Exact next task: install the pinned official Pearl node/gateway/prover/useful-
+work runtime outside this repository and rerun the blocked P7 local/simnet
+interoperability gate.
 
 This is the authoritative handoff for the Pearl research track. Qubic remains
 frozen/reference-only; do not resume Qubic M6/M7 or Qatum work while Pearl is

@@ -13,7 +13,8 @@ those processes are not installed in this workspace.
 
 Implementation checkpoint: `9a83cfdb44762140afc0a147fe0ec6100391a767` contains
 the complete local implementation and protocol boundaries. Final aggregate
-evidence and handoff updates are staged for the delivery checkpoint.
+evidence and handoff updates were recorded in delivery commit
+`7a3d61ebbf5b7de0b21ae2ea23ec54638f78804a`.
 The P2 artifact passed 100/100 exact physical cases; P3 passed 8 full cases
 and 64 dispatches; P5 passed a 256-dispatch selected proof with exact
 PlainProof round-trip; P8 selected 4 columns/batch 8 from a fixed physical
