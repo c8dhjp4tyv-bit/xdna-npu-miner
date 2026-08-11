@@ -44,7 +44,9 @@ official CUDA/vLLM useful-work provider. Do not redo P0-P6/P8-P11 or the
 official control proof. The next exact task after handoff is maintenance of
 the P7 evidence/branch; any mainnet or pool work needs separate authorization.
 
-Evidence: `docs/evidence/pearl-p7-e2e.json` and
+Implementation commit:
+`a9b14cc3a0722ceec4d935c936cb3c274b822fdb`. Evidence:
+`docs/evidence/pearl-p7-e2e.json` and
 `docs/evidence/pearl-full-one-shot.json`. Mainnet payout and pool/Stratum
 support remain out of scope and unavailable. Do not redo completed milestones;
 finish the final regression, documentation, commit, push, and clean-worktree

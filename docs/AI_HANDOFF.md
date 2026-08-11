@@ -47,9 +47,10 @@ CUDA/vLLM useful-work provider. Do not redo P0-P6/P8-P11 or the control proof.
 The P7 evidence is in `docs/evidence/pearl-p7-e2e.json`; the aggregate is in
 `docs/evidence/pearl-full-one-shot.json`. Mainnet payout configuration and a
 pool/Stratum protocol remain intentionally unavailable and are not implied by
-this SIMNET pass. Do not redo P0-P6/P8-P11 or resume Qubic work. Run the final
-regression/docs/commit/push sequence on this branch, then leave the worktree
-clean and record the resulting commit and remote SHA here.
+this SIMNET pass. Implementation commit:
+`a9b14cc3a0722ceec4d935c936cb3c274b822fdb`. Do not redo P0-P6/P8-P11 or
+resume Qubic work. Push this implementation plus the final documentation
+checkpoint, then leave the worktree clean and verify the remote SHA.
 
 ## Historical Pearl one-shot checkpoint (superseded by the active P7 section)
 

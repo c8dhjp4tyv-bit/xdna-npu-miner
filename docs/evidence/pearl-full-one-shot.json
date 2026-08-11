@@ -3,7 +3,7 @@
   "project": "Pearl XDNA1 NPU miner",
   "branch": "fix/pearl-p7-official-simnet",
   "starting_sha": "0a300097290694e335a7ad34607ade48c3775180",
-  "implementation_commit": "PENDING_FINAL_COMMIT",
+  "implementation_commit": "a9b14cc3a0722ceec4d935c936cb3c274b822fdb",
   "overall_status": "SOFTWARE_COMPLETE_E2E_PASS",
   "milestones": {
     "P0": "PASS",
