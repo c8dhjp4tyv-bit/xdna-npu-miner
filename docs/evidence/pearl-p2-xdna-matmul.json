@@ -1,0 +1,13 @@
+{
+  "schema": "pearl-p2-xdna-gemm-evidence/v1",
+  "milestone": "P2",
+  "status": "PASS",
+  "workload": {"rows": 4, "common": 64, "columns": 8, "left_dtype": "int8", "right_dtype": "int8", "output_dtype": "int32", "layout": "row-major"},
+  "target": {"device": "RyzenAI-npu1", "architecture": "aie2", "bdf": "0000:06:00.1", "device_node": "/dev/accel/accel0", "firmware": "1.5.5.391", "xrt": "2.26.0", "xrt_hash": "8bf2fc4c090540dcf7872243ab67779ae74ef5e3", "amdxdna": "7.2.0-0.rc7.452.vanilla.fc45.x86_64"},
+  "artifact": {"xclbin": "build/pearl-xdna-gemm-p2/pearl_p2_gemm.xclbin", "instructions": "build/pearl-xdna-gemm-p2/pearl_p2_gemm.insts", "uuid": "2293474c-6fa7-afef-8320-e2ddfb786285", "kernel": "MLIR_AIE"},
+  "cases": {"requested": 100, "dispatches": 100, "completed_dispatches": 100, "mismatches": 0, "runtime_failures": 0, "cpu_fallbacks": 0},
+  "transfers": {"h2d_syncs": 300, "h2d_bytes": 89600, "d2h_syncs": 100, "d2h_bytes": 12800, "dispatch_wait_ns": 12496087},
+  "hardware_context_created": true,
+  "silent_cpu_fallback": false,
+  "runtime_pin_note": "Observed amdxdna is recorded exactly; compare with runtime-pins.json historical M2 pin."
+}

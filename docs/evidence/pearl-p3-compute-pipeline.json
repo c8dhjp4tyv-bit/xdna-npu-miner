@@ -1,0 +1,13 @@
+{
+  "schema": "pearl-p3-compute-pipeline-evidence/v1",
+  "milestone": "P3",
+  "status": "PASS",
+  "workload": {"base_rows": 2, "base_common": 64, "base_columns": 64, "rank": 64, "selected_rows": 2, "selected_columns": 64},
+  "target": {"device": "RyzenAI-npu1", "architecture": "aie2", "bdf": "0000:06:00.1", "firmware": "1.5.5.391", "xrt": "2.26.0", "amdxdna": "7.2.0-0.rc7.452.vanilla.fc45.x86_64"},
+  "artifact": {"uuid": "2293474c-6fa7-afef-8320-e2ddfb786285", "kernel": "MLIR_AIE"},
+  "cases": {"requested": 8, "completed": 8, "mismatches": 0, "runtime_failures": 0, "cpu_fallbacks": 0},
+  "dispatches": {"requested": 64, "completed": 64, "h2d_syncs": 192, "d2h_syncs": 64, "dispatch_wait_ns": 8718520},
+  "timings_last_case_ns": {"cpu_preprocessing": 1398942, "packing": 9198, "npu_execution": 1716872, "cpu_verification": 3326463, "transcript": 1202121, "blake3_and_target": 4398, "total": 7658475},
+  "hardware_context_created": true,
+  "silent_cpu_fallback": false
+}

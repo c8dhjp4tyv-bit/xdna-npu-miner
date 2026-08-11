@@ -106,6 +106,18 @@ target_compile_options(pearl_cpu_tests PRIVATE
 
 add_test(NAME pearl_cpu_golden_tests COMMAND pearl_cpu_tests)
 
+add_executable(pearl_xdna_matmul_contract_tests tests/pearl_xdna_matmul_contract_tests.cpp)
+target_link_libraries(pearl_xdna_matmul_contract_tests PRIVATE pearl_cpu_reference)
+target_compile_options(pearl_xdna_matmul_contract_tests PRIVATE
+    -Wall
+    -Wextra
+    -Wpedantic
+    -Wconversion
+    -Wshadow
+    -Werror
+)
+add_test(NAME pearl_xdna_matmul_contract_tests COMMAND pearl_xdna_matmul_contract_tests)
+
 add_library(xdna_contract
     src/xdna/buffers.cpp
     src/xdna/k1.cpp
@@ -506,6 +518,60 @@ if(XRT_INCLUDE_DIR AND XRT_COREUTIL_LIBRARY)
         xdna_runtime
     )
     target_compile_options(xdna_m5_differential PRIVATE
+        -Wall
+        -Wextra
+        -Wpedantic
+        -Wconversion
+        -Wshadow
+        -Werror
+        -Wno-conversion
+        -Wno-ignored-qualifiers
+        -Wno-shadow
+    )
+
+    add_library(pearl_xdna_matmul
+        src/pearl/xdna_matmul.cpp
+        src/pearl/compute_pipeline.cpp
+    )
+    target_include_directories(pearl_xdna_matmul PUBLIC
+        src
+        "${XRT_INCLUDE_DIR}"
+    )
+    target_link_libraries(pearl_xdna_matmul PUBLIC
+        pearl_cpu_reference
+        xdna_runtime
+    )
+    target_compile_options(pearl_xdna_matmul PRIVATE
+        -Wall
+        -Wextra
+        -Wpedantic
+        -Wconversion
+        -Wshadow
+        -Werror
+        -Wno-conversion
+        -Wno-ignored-qualifiers
+        -Wno-shadow
+    )
+
+    add_executable(pearl_xdna_matmul_differential tests/pearl_xdna_matmul_differential.cpp)
+    target_link_libraries(pearl_xdna_matmul_differential PRIVATE pearl_xdna_matmul)
+    target_compile_options(pearl_xdna_matmul_differential PRIVATE
+        -Wall
+        -Wextra
+        -Wpedantic
+        -Wconversion
+        -Wshadow
+        -Werror
+        -Wno-conversion
+        -Wno-ignored-qualifiers
+        -Wno-shadow
+    )
+
+    add_executable(pearl_compute_pipeline_differential
+        tests/pearl_compute_pipeline_differential.cpp
+    )
+    target_link_libraries(pearl_compute_pipeline_differential PRIVATE pearl_xdna_matmul)
+    target_compile_options(pearl_compute_pipeline_differential PRIVATE
         -Wall
         -Wextra
         -Wpedantic
