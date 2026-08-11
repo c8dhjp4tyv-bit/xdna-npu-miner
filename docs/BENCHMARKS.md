@@ -231,6 +231,8 @@ candidate/s for `K=2048`, rank 128, with zero mismatches and zero CPU
 fallbacks. The CPU baseline, timing methodology, high-water RAM, null power,
 and null NPU telemetry are in `docs/evidence/pearl-p8-batching-four-column.json`
 and `docs/evidence/pearl-p9-benchmark.json`. These are not profitability or
-income claims; gateway/prover overhead was not measured because the official
-runtime was unavailable. P10 is an endurance/correctness result, not a
-throughput benchmark.
+income claims; gateway/prover overhead was not measured as a performance
+benchmark. P7 interoperability is a correctness result: one bounded
+physical-XDNA search found an official-accepted proof on attempt 21, with no
+hashrate, power, energy, or profitability number claimed. P10 is an
+endurance/correctness result, not a throughput benchmark.

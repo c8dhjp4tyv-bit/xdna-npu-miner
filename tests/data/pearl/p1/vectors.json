@@ -12,7 +12,7 @@
     "plain_proof_version": 1
   },
   "quantization": {
-    "logical_input_boundary": "raw mining matrices [-64,63]; whitepaper +64 is rejected by the current raw path",
+    "logical_input_boundary": "raw mining matrices [-64,64]; both endpoints are accepted by the pinned verifier",
     "quantized_boundary": "[-63,63]",
     "max_val": 63,
     "rounding": "fp32 scale and ties-to-even",

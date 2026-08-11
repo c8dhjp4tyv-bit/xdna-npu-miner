@@ -43,6 +43,24 @@ shutdown. The external official gateway/prover may own ZK proof generation and
 certificate assembly where the component license remains unclear. No CPU
 fallback is reported as XDNA execution.
 
+### P7 official SIMNET interoperability path
+
+P7 adds an explicit opt-in `--mine --official-simnet-e2e` path for the pinned
+official local SIMNET only. It obtains the job through the official gateway's
+`getMiningInfo`, creates a bounded dense A/B matrix pair, commits to the full
+matrices, runs the selected noisy GEMM through the physical XDNA1 executor,
+and performs the project CPU verification before submission. The adapter then
+serializes the official bincode `PlainProof` object separately from the
+project-owned P1 envelope and submits it through `submitPlainProof`.
+
+The dense matrices are a deterministic SIMNET interoperability fixture, not a
+claim that the official CUDA/vLLM useful-work provider was reproduced. The
+official gateway/prover and node accepted the resulting physical-XDNA proof;
+the acceptance evidence is in `docs/evidence/pearl-p7-e2e.json`. Raw source
+signals are validated in `[-64,64]`; deterministic noising may produce any
+signed-int8 value representable by the XDNA input contract, so the noised
+operands are not incorrectly revalidated against the raw-source bound.
+
 ## Components
 
 ### CPU job and protocol manager

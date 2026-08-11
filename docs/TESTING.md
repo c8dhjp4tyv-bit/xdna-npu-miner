@@ -17,7 +17,7 @@ The focused target is `pearl_cpu_golden_tests`.
 P1 checks, in order, are:
 
 - explicit little-endian header/config/public-data/PlainProof round trips;
-- raw `[-64,63]` validation versus fp32 `max_val=63` quantization to
+- raw `[-64,64]` validation versus fp32 `max_val=63` quantization to
   `[-63,63]`, ties-to-even boundaries, and zero-point absence;
 - signed int8×int8 products with widened checked accumulation, deterministic
   rank-dependent noise, exact denoising, selected 2×64 data, and 16-word
@@ -625,10 +625,10 @@ Ensure later code does not:
 The Pearl gate sequence is CPU oracle → physical XDNA → exact pipeline →
 candidate → transport → interoperability → measurement → endurance → CLI.
 Current physical results are P2 100/100, P3 8/8 cases over 64 dispatches, P5
-256 dispatches with exact PlainProof round-trip, and P8/P9 zero mismatches.
-The gateway/work tests use bounded Unix-socket mocks and malformed-input
-failure cases; official live gateway/prover/node interoperability is recorded
-as blocked, never as a pass.
+256 dispatches with exact PlainProof round-trip, P8/P9 zero mismatches, and P7
+official SIMNET acceptance of a physical-XDNA PlainProof. The gateway/work
+tests use bounded Unix-socket mocks and malformed-input failure cases; the
+official P7 evidence is recorded in `docs/evidence/pearl-p7-e2e.json`.
 
 Run the real suite with:
 

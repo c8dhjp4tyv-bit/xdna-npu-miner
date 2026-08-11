@@ -10,14 +10,19 @@ this repository. The project-owned IRON/AIE2 build used MLIR-AIE commit
 historical runtime pin remains unchanged and the difference is recorded in
 P2/P9 evidence.
 
-P4/P6 clean-room transport matches the pinned local methods and framing. The
-official hot useful-work/prover/node runtime was not installed, so P7 is
-blocked. No official Stratum/pool protocol was found; record
+P4/P6 clean-room transport matches the pinned local methods and framing. P7
+then built the pinned official `pearld` (`1.3.1`, SHA-256
+`b894adba2bfb1c02dcb99599fc4ab9e796e88cc44e88865751639d70a92d0f75`) and ran
+the official gateway/prover in an isolated CPU-only Torch environment. The
+physical XDNA1 path submitted an official-wire PlainProof and the local
+SIMNET node accepted the resulting block; exact evidence is in
+`docs/evidence/pearl-p7-e2e.json`. The official CUDA/vLLM miner was not
+installed or launched. No official Stratum/pool protocol was found; record
 `POOL_PROTOCOL_UNAVAILABLE` rather than adding inferred compatibility.
 
 ## Source pins
 
-Audit date: **2026-08-10**. Only the official Pearl repository and official
+Audit date: **2026-08-11**. Only the official Pearl repository and official
 Pearl website/whitepaper were used for Pearl facts.
 
 | Source | Exact revision | Relevant role |
@@ -54,6 +59,8 @@ this repository:
 | `miner/miner-base/src/miner_base/block_submission.py` | Selected strips and Merkle proof packaging |
 | `miner/miner-base/src/miner_base/settings.py` | Current noise, tile, and `2 x 64` hash pattern settings |
 | `miner/miner-base/src/miner_base/noisy_gemm.py` | Current Python reference for int8 inputs, noise, int32 products, and correction |
+| `miner/py-pearl-mining/` | Official Python proof API used by the gateway/prover; installed externally as `py-pearl-mining 0.2.0` |
+| `miner/pearl-gateway/pyproject.toml` | Official gateway package metadata; installed externally as `pearl-gateway 0.1.0` |
 | `miner/pearl-gemm/csrc/gemm/kernel_traits.hpp` | CUDA main GEMM input element `int8_t`, accumulator `int32_t` |
 | `miner/pearl-gemm/csrc/gemm/collective_mainloop.hpp` | CUDA tiled GEMM and per-rank-chunk hash signal path |
 | `miner/pearl-gemm/csrc/gemm/pow_utils.hpp` | XOR reduction, rotate-left 13, keyed BLAKE3, and little-endian U256 comparison |
@@ -100,7 +107,23 @@ No `stratum`, `mining.subscribe`, `mining.authorize`, `mining.notify`, or
 `mining.submit` implementation was found in the pinned Pearl tree. The proof
 library's `nbits_override` allows a share target to be validated, but it does
 not define an external pool transport or payout protocol. Pool support is
-therefore `UNKNOWN` and remains out of P0.
+therefore `POOL_PROTOCOL_UNAVAILABLE` and remains outside the P7 SIMNET pass.
+
+### P7 runtime and wire findings
+
+The official local gateway exposes `getMiningInfo` and `submitPlainProof` over
+newline-delimited JSON-RPC. Its `PlainProof` payload is a Rust/bincode object:
+the four dimensions are followed by the two `MatrixMerkleProof` values and a
+dense-proof `Option::None` tag. The project adapter serializes this official
+wire separately from its P1 evidence envelope; the accepted 140225-byte
+payload is proof of interoperability. Consensus acceptance did not require a
+model-identity signature: commitments, openings, deterministic noise,
+transcript, and target checks were sufficient for the dense SIMNET fixture.
+
+The official raw signal validation is inclusive `[-64,64]`. Noised operands
+can exceed that raw-source interval while remaining valid signed-int8 physical
+inputs, so the project boundary validates raw matrices before noising and does
+not reject the noised values against the raw bound.
 
 ## P1 clean-room and black-box record
 

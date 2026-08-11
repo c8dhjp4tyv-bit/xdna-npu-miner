@@ -36,9 +36,9 @@
     "pearl_local_blake3_reused": false
   },
   "quantization_resolution": {
-    "raw_mining_matrix_range": "[-64,63]",
+    "raw_mining_matrix_range": "[-64,64]",
     "quantized_output_range": "[-63,63]",
-    "whitepaper_plus_64_raw_input": "rejected by current pinned raw path",
+    "whitepaper_plus_64_raw_input": "accepted by current pinned raw path",
     "max_val": 63,
     "scale": "fp32 max_abs/63",
     "rounding": "ties-to-even",

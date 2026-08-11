@@ -1,10 +1,10 @@
 {
   "schema": "pearl-full-one-shot-evidence/v1",
   "project": "Pearl XDNA1 NPU miner",
-  "branch": "feat/pearl-full-miner-one-shot",
-  "starting_sha": "ba286d5770c93290a38784f89ae75cea87867b25",
-  "implementation_commit": "9a83cfdb44762140afc0a147fe0ec6100391a767",
-  "overall_status": "SOFTWARE_COMPLETE_E2E_BLOCKED",
+  "branch": "fix/pearl-p7-official-simnet",
+  "starting_sha": "0a300097290694e335a7ad34607ade48c3775180",
+  "implementation_commit": "PENDING_FINAL_COMMIT",
+  "overall_status": "SOFTWARE_COMPLETE_E2E_PASS",
   "milestones": {
     "P0": "PASS",
     "P1": "PASS",
@@ -13,7 +13,7 @@
     "P4": "PASS_LOCAL_OFFICIAL_USEFUL_WORK_BLOCKED",
     "P5": "PASS_LOCAL_OFFICIAL_WIRE_PROVER_BLOCKED",
     "P6": "PASS_LOCAL_OFFICIAL_ENDPOINT_BLOCKED",
-    "P7": "BLOCKED",
+    "P7": "PASS_OFFICIAL_SIMNET_PHYSICAL_XDNA_ACCEPTED",
     "P8": "PASS",
     "P9": "PASS",
     "P10": "PASS",
@@ -46,6 +46,24 @@
     "cpu_fallbacks": 0,
     "unclean_shutdowns": 0
   },
+  "p7_official_simnet": {
+    "official_source_commit": "fe22b6a2b831d95b2f56564808f39d2f498f34a5",
+    "pearld_version": "1.3.1",
+    "pearld_sha256": "b894adba2bfb1c02dcb99599fc4ab9e796e88cc44e88865751639d70a92d0f75",
+    "gateway_version": "pearl-gateway 0.1.0",
+    "prover_version": "py-pearl-mining 0.2.0",
+    "torch": "2.11.0+cpu; CUDA not used",
+    "gateway_transport": "unix:/tmp/pearlgw.sock",
+    "pearld_rpc": "127.0.0.1:44107",
+    "job_cert_version": 2,
+    "physical_xdna_attempt": 21,
+    "official_wire_bytes": 140225,
+    "cpu_fallbacks": 0,
+    "height_before_physical_xdna": 1,
+    "height_after_physical_xdna": 2,
+    "accepted_block_hash": "8ab73f1fad05d5a2f1d767d5b8cda3f2a0aa0f79615f7913d8da884693bef7c5",
+    "gateway_submission": "submitted; pearld accepted the block"
+  },
   "performance": {
     "p8_selected_dispatch_throughput_dispatches_per_s": 7799.48,
     "p9_raw_gemm_throughput_dispatches_per_s": 7205.14,
@@ -65,12 +83,12 @@
     "verify_xdna1": "SUPPORTED_XDNA1_BUT_RUNTIME_VERSION_MISMATCH_EXPECTED_RC5_OBSERVED_RC7"
   },
   "external_boundaries": {
-    "official_node": "NOT_INSTALLED",
-    "official_gateway": "NOT_INSTALLED",
-    "official_prover_or_useful_work": "NOT_INSTALLED",
-    "local_or_simnet_e2e": "NOT_AVAILABLE",
-    "real_plainproof_submission": "NOT_ATTEMPTED",
-    "accepted_block_or_share": "NOT_PROVEN",
+    "official_node": "PASS_SIMNET",
+    "official_gateway": "PASS_LOCAL_UDS",
+    "official_prover_or_useful_work": "PASS_CPU_PROVER_WITH_PHYSICAL_XDNA_CANDIDATE",
+    "local_or_simnet_e2e": "PASS",
+    "real_plainproof_submission": "PASS_SUBMITTED",
+    "accepted_block_or_share": "PASS_BLOCK_ACCEPTED",
     "mainnet_payout_address": "MAINNET_PAYOUT_ADDRESS_NOT_CONFIGURED",
     "pool_protocol": "POOL_PROTOCOL_UNAVAILABLE"
   },
@@ -88,5 +106,5 @@
     "docs/evidence/pearl-p10-endurance.json",
     "docs/evidence/pearl-p11-delivery.json"
   ],
-  "next_exact_task": "Install the pinned official Pearl node/gateway/prover/useful-work runtime outside this repository, then rerun P7 local/simnet getMiningInfo, proof submission, and accepted-block/share validation without adding credentials or fabricated tensors."
+  "next_exact_task": "No P7 interoperability blocker remains. Preserve the SIMNET evidence; any mainnet payout or pool adapter requires a separate authorized protocol/runtime task."
 }

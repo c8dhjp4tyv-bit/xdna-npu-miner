@@ -2,7 +2,9 @@
 
 #include "pearl/compute_pipeline.hpp"
 
+#include <cstdint>
 #include <span>
+#include <vector>
 
 namespace xdna::pearl {
 
@@ -20,5 +22,10 @@ PlainProof build_plain_proof(const IncompleteBlockHeader& header,
                              const Digest& target);
 
 void verify_plain_proof_candidate(const PlainProof& proof);
+
+// Serialize the dense PlainProof payload expected by the pinned official
+// py-pearl-mining gateway.  This is deliberately separate from the
+// repository-owned P1 envelope used for local evidence.
+[[nodiscard]] std::vector<std::uint8_t> serialize_official_plain_proof(const PlainProof& proof);
 
 } // namespace xdna::pearl

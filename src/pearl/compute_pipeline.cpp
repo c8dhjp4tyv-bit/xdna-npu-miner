@@ -54,8 +54,6 @@ ComputePipelineResult ComputePipeline::run(const Int8Matrix& a,
         throw Error(ErrorCode::InvalidShape, "A and B common dimensions differ");
     }
     const NoisedOperands noised = make_noised_operands(a, b, noise);
-    noised.a.require_signal_range();
-    noised.b.require_signal_range();
     const auto preprocessing_end = Clock::now();
 
     std::vector<std::int8_t> padded_left(kP2LeftBytes, 0);

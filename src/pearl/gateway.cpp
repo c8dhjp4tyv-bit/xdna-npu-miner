@@ -552,6 +552,40 @@ SubmissionResult GatewayClient::submit_plain_proof(const PlainProof& proof,
     return submission;
 }
 
+SubmissionResult GatewayClient::submit_official_plain_proof(
+    std::span<const std::uint8_t> official_wire,
+    const MiningJob& job)
+{
+    const std::string plain_proof = base64_encode(official_wire);
+    const std::string header = base64_encode(job.incomplete_header_bytes);
+    const std::string params = "{\"plain_proof\":\"" + plain_proof
+        + "\",\"mining_job\":{\"incomplete_header_bytes\":\"" + header
+        + "\",\"target\":" + job.target_for_json()
+        + ",\"cert_version\":" + std::to_string(job.certificate_version) + "}}";
+    ++request_id_;
+    const json::Value result = rpc_call(config_, request_id_, "submitPlainProof", params);
+    SubmissionResult submission;
+    if (result.is_string()) {
+        submission.detail = result.as_string();
+        submission.accepted_by_gateway = submission.detail == "submitted";
+    } else if (result.is_object()) {
+        const json::Value* status = result.find("status");
+        if (status != nullptr && status->is_string()) {
+            submission.detail = status->as_string();
+            submission.accepted_by_gateway = submission.detail == "submitted"
+                || submission.detail == "accepted";
+        }
+    }
+    if (submission.detail.empty()) {
+        throw GatewayError(GatewayErrorCode::Protocol, "submitPlainProof result has no status");
+    }
+    if (!submission.accepted_by_gateway) {
+        throw GatewayError(GatewayErrorCode::GatewayRejected,
+                           "gateway did not accept official PlainProof: " + submission.detail);
+    }
+    return submission;
+}
+
 void GatewayClient::health_check()
 {
     (void)get_mining_info();

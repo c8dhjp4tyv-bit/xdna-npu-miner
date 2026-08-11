@@ -9,6 +9,44 @@
 namespace xdna::pearl {
 namespace {
 
+void append_u64(std::vector<std::uint8_t>& output, std::uint64_t value)
+{
+    for (std::uint32_t shift = 0U; shift < 64U; shift += 8U) {
+        output.push_back(static_cast<std::uint8_t>((value >> shift) & 0xFFU));
+    }
+}
+
+void append_official_merkle_proof(std::vector<std::uint8_t>& output,
+                                  const MerkleProof& proof)
+{
+    append_u64(output, static_cast<std::uint64_t>(proof.leaf_data.size()));
+    for (const auto& leaf : proof.leaf_data) {
+        append_u64(output, static_cast<std::uint64_t>(leaf.size()));
+        output.insert(output.end(), leaf.begin(), leaf.end());
+    }
+    append_u64(output, static_cast<std::uint64_t>(proof.leaf_indices.size()));
+    for (const std::size_t index : proof.leaf_indices) {
+        append_u64(output, static_cast<std::uint64_t>(index));
+    }
+    append_u64(output, static_cast<std::uint64_t>(proof.total_leaves));
+    output.insert(output.end(), proof.root.begin(), proof.root.end());
+    append_u64(output, static_cast<std::uint64_t>(proof.siblings.size()));
+    for (const Digest& sibling : proof.siblings) {
+        output.insert(output.end(), sibling.begin(), sibling.end());
+    }
+}
+
+void append_official_matrix_merkle_proof(std::vector<std::uint8_t>& output,
+                                         const MatrixOpening& opening)
+{
+    // Rust's MatrixMerkleProof fields are ordered as proof, then row_indices.
+    append_official_merkle_proof(output, opening.proof);
+    append_u64(output, static_cast<std::uint64_t>(opening.row_indices.size()));
+    for (const std::size_t index : opening.row_indices) {
+        append_u64(output, static_cast<std::uint64_t>(index));
+    }
+}
+
 [[nodiscard]] Int8Matrix transpose(const Int8Matrix& matrix)
 {
     std::vector<std::int8_t> values(matrix.rows() * matrix.cols(), 0);
@@ -126,6 +164,27 @@ void verify_plain_proof_candidate(const PlainProof& proof)
     if (decoded.serialize() != bytes) {
         throw Error(ErrorCode::NonCanonical, "PlainProof candidate is not canonical");
     }
+}
+
+std::vector<std::uint8_t> serialize_official_plain_proof(const PlainProof& proof)
+{
+    // Validate every repository-owned field before projecting to the smaller
+    // official wire object.  The official bincode object contains only these
+    // dimensions and the two MatrixMerkleProof values plus Option::None.
+    (void)proof.serialize();
+
+    std::vector<std::uint8_t> output;
+    output.reserve(16U * 1024U);
+    append_u64(output, static_cast<std::uint64_t>(proof.m));
+    append_u64(output, static_cast<std::uint64_t>(proof.n));
+    append_u64(output, static_cast<std::uint64_t>(proof.k));
+    append_u64(output, static_cast<std::uint64_t>(proof.rank));
+    append_official_matrix_merkle_proof(output, proof.a_opening);
+    append_official_matrix_merkle_proof(output, proof.bt_opening);
+    // bincode encodes Option::None as a single zero tag.  The dense proof is
+    // intentionally used here; MoE requires a separate routing wire object.
+    output.push_back(0U);
+    return output;
 }
 
 } // namespace xdna::pearl

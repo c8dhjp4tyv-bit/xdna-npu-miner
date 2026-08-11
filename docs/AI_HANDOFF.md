@@ -1,6 +1,57 @@
 # AI Handoff
 
-## Active Pearl one-shot checkpoint (2026-08-11)
+## Active Pearl P7 checkpoint (2026-08-11)
+
+The active target is Pearl (PRL) on `fix/pearl-p7-official-simnet`; all Qubic
+material below is frozen reference-only. This task started from exact SHA
+`0a300097290694e335a7ad34607ade48c3775180` with a clean worktree.
+
+P7 is **COMPLETE**. The pinned official Pearl checkout at
+`/tmp/pearl-xdna-p7-official`, commit
+`fe22b6a2b831d95b2f56564808f39d2f498f34a5`, built successfully. `pearld` is
+version `1.3.1`, SHA-256
+`b894adba2bfb1c02dcb99599fc4ab9e796e88cc44e88865751639d70a92d0f75`.
+The official `pearl-gateway 0.1.0` and `py-pearl-mining 0.2.0` ran in an
+isolated Python 3.12.13 environment with CPU-only Torch; vLLM/CUDA was not
+installed or used.
+
+The real local flow passed: official `getMiningInfo` was parsed, the physical
+XDNA1 search found a consensus-valid dense jackpot on attempt 21, CPU
+verification passed, the official bincode PlainProof wire was 140225 bytes,
+the official gateway returned `submitted`, and `pearld` accepted the block.
+The physical-XDNA block is height 2 with hash
+`8ab73f1fad05d5a2f1d767d5b8cda3f2a0aa0f79615f7913d8da884693bef7c5`.
+`cpu_fallbacks=0`; no credentials are recorded.
+
+Files changed are the official PlainProof bincode serializer and gateway
+adapter, the opt-in physical-XDNA SIMNET search path, the raw/noised signal
+boundary, P7 evidence, and the Pearl/top-level handoff and protocol records.
+Verification: locked Rust build PASS; Debug/Release builds PASS; Debug/Release
+CTest 13/13 PASS; CPU golden tests 67,765 assertions PASS; physical P2 100/100,
+P3 8/8 cases over 64 dispatches, and P5 256 dispatches PASS with zero
+mismatches/fallbacks; gateway/work tests, CLI checks, 20 JSON files, and
+`git diff --check` PASS. Hardware actually exercised was `RyzenAI-npu1` AIE2;
+the official runtime was loopback SIMNET only.
+
+Architectural decisions: CPU remains authoritative for verification and
+submission; the official bincode wire is separate from the P1 envelope; raw
+`[-64,64]` and noised signed-int8 bounds are distinct; and the P7 matrices are
+only a deterministic SIMNET interoperability fixture.
+
+Known failures/limits: mainnet payout is not configured, no pool/Stratum
+protocol is claimed, and the observed amdxdna rc7 stack differs from the
+historical rc5 verification pin. The SIMNET dense matrices are an
+interoperability fixture, not a reproduction claim for the official
+CUDA/vLLM useful-work provider. Do not redo P0-P6/P8-P11 or the control proof.
+
+The P7 evidence is in `docs/evidence/pearl-p7-e2e.json`; the aggregate is in
+`docs/evidence/pearl-full-one-shot.json`. Mainnet payout configuration and a
+pool/Stratum protocol remain intentionally unavailable and are not implied by
+this SIMNET pass. Do not redo P0-P6/P8-P11 or resume Qubic work. Run the final
+regression/docs/commit/push sequence on this branch, then leave the worktree
+clean and record the resulting commit and remote SHA here.
+
+## Historical Pearl one-shot checkpoint (superseded by the active P7 section)
 
 The active target is Pearl (PRL) on `feat/pearl-full-miner-one-shot`; all
 Qubic material below is frozen reference-only. P2 physical XDNA GEMM, P3

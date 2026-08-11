@@ -1,10 +1,62 @@
 # Pearl (PRL) AI Handoff
 
-## Current Pearl one-shot state (2026-08-11)
+## Current P7 interoperability checkpoint (2026-08-11)
 
-Current milestone: **P11 — final handoff**. Status: **COMPLETE**; overall
-status is `SOFTWARE_COMPLETE_E2E_BLOCKED` because P7's official runtime is
-unavailable. Branch: `feat/pearl-full-miner-one-shot`. Starting SHA:
+Current milestone: **P7 — official SIMNET interoperability**. Status:
+**COMPLETE** on branch `fix/pearl-p7-official-simnet`, starting from
+`0a300097290694e335a7ad34607ade48c3775180`.
+
+The pinned official checkout at `/tmp/pearl-xdna-p7-official` is
+`fe22b6a2b831d95b2f56564808f39d2f498f34a5`. Its `pearld` build is version
+`1.3.1`, SHA-256
+`b894adba2bfb1c02dcb99599fc4ab9e796e88cc44e88865751639d70a92d0f75`.
+The isolated official gateway/prover stack is `pearl-gateway 0.1.0`,
+`py-pearl-mining 0.2.0`, Python 3.12.13, and CPU-only Torch 2.11.0+cpu;
+vLLM/CUDA was not installed or used.
+
+The real flow passed: official `getMiningInfo` returned a cert-version 2
+job; the physical XDNA1 path found a consensus-valid jackpot on attempt 21;
+CPU verification and official bincode serialization passed; the 140225-byte
+PlainProof was submitted through `/tmp/pearlgw.sock`; the gateway returned
+`submitted`; and `pearld` accepted the block at height 2, hash
+`8ab73f1fad05d5a2f1d767d5b8cda3f2a0aa0f79615f7913d8da884693bef7c5`.
+`cpu_fallbacks=0`. Credentials were transient and are omitted.
+
+Files changed in this P7 continuation are the official PlainProof serializer
+and gateway submission adapter, the opt-in SIMNET dense search path, the raw
+versus noised signal-boundary fix, P7 evidence, and the Pearl/top-level
+handoff and protocol records. No upstream Pearl source was copied into the
+repository.
+
+Verification completed: locked Rust release build PASS; Debug and Release
+CMake builds PASS; Debug and Release CTest 13/13 PASS; CPU golden tests
+67,765 assertions PASS; physical P2 100/100, P3 8/8 cases over 64 dispatches,
+and P5 256 dispatches PASS with zero mismatches/fallbacks; gateway/work tests,
+CLI help/version/hardware/self-test, JSON validation for 20 evidence files,
+and `git diff --check` PASS. Hardware actually exercised was the observed
+`RyzenAI-npu1` AIE2 device; the official runtime was loopback SIMNET only.
+
+Known limitations are unchanged: mainnet payout is not configured, no
+pool/Stratum protocol is claimed, and the observed amdxdna rc7 stack differs
+from the historical rc5 verification pin. The SIMNET dense matrices are a
+deterministic interoperability fixture, not a reproduction claim for the
+official CUDA/vLLM useful-work provider. Do not redo P0-P6/P8-P11 or the
+official control proof. The next exact task after handoff is maintenance of
+the P7 evidence/branch; any mainnet or pool work needs separate authorization.
+
+Evidence: `docs/evidence/pearl-p7-e2e.json` and
+`docs/evidence/pearl-full-one-shot.json`. Mainnet payout and pool/Stratum
+support remain out of scope and unavailable. Do not redo completed milestones;
+finish the final regression, documentation, commit, push, and clean-worktree
+check on this branch.
+
+## Historical Pearl one-shot state before P7 (superseded by the current P7 checkpoint)
+
+The following is the pre-P7 snapshot and is retained for audit history only.
+Current milestone at that snapshot was **P11 — final handoff**. Status:
+**COMPLETE**; overall status was `SOFTWARE_COMPLETE_E2E_BLOCKED` because P7's
+official runtime was unavailable. Branch: `feat/pearl-full-miner-one-shot`.
+Starting SHA:
 `ba286d5770c93290a38784f89ae75cea87867b25`. Implementation checkpoint:
 `9a83cfdb44762140afc0a147fe0ec6100391a767` (`pearl: complete protocol
 boundaries and operator delivery`). Final evidence/handoff checkpoint:
@@ -92,7 +144,7 @@ P1-only status to infer the current Pearl milestone.
 - Added a minimal Rust C ABI helper under `src/pearl/blake3_ffi/` pinned to
   official `blake3 = 1.8.2`; no Pearl hot-component source was copied,
   translated, or structurally reproduced.
-- Resolved the range discrepancy: raw current mining matrices are `[-64,63]`,
+- Resolved the range discrepancy: raw current mining matrices are `[-64,64]`,
   quantized output is `[-63,63]`; quantization uses fp32 scale, no zero point,
   ties-to-even rounding, and clamp. Arithmetic widens to int64 and rejects
   int32 overflow; it does not wrap or saturate.

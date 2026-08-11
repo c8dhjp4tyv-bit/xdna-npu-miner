@@ -1,20 +1,59 @@
 {
   "schema": "pearl-p7-e2e-evidence/v1",
   "milestone": "P7",
-  "status": "BLOCKED",
-  "overall_reason": "official Pearl node/gateway/prover/useful-work runtime is not installed in the current workspace",
+  "status": "PASS",
+  "overall_reason": "The pinned official Pearl SIMNET node and official gateway/prover accepted a PlainProof produced by the physical XDNA1 path.",
+  "branch": "fix/pearl-p7-official-simnet",
+  "starting_sha": "0a300097290694e335a7ad34607ade48c3775180",
+  "official_runtime": {
+    "source_commit": "fe22b6a2b831d95b2f56564808f39d2f498f34a5",
+    "checkout": "/tmp/pearl-xdna-p7-official",
+    "pearld_version": "1.3.1",
+    "pearld_sha256": "b894adba2bfb1c02dcb99599fc4ab9e796e88cc44e88865751639d70a92d0f75",
+    "pearld_build": "PASS: official Taskfile build:zk-cache, build:zk-gobind, build:libxmss, and build:pearld",
+    "gateway_version": "pearl-gateway 0.1.0",
+    "prover_version": "py-pearl-mining 0.2.0",
+    "python_version": "3.12.13",
+    "torch_version": "2.11.0+cpu",
+    "cuda_backend": "NOT_USED: torch.version.cuda=None and torch.cuda.is_available()=False",
+    "vllm_or_cuda_miner": "NOT_USED"
+  },
+  "endpoints": {
+    "pearld_rpc": "127.0.0.1:44107",
+    "gateway_transport": "unix:/tmp/pearlgw.sock",
+    "simnet_mining_address": "rprl1p94k8ffwc4ufn78r9cz5ln8zrxjvdeqraecpzu4vuvz36wrszy04qtcg0d2",
+    "pearld_process": "PASS: loopback SIMNET pearld was running during the proof run",
+    "gateway_process": "PASS: official pearl-gateway was running during the proof run",
+    "credentials": "TRANSIENT_AND_OMITTED"
+  },
   "checks": {
-    "official_source_pin": "fe22b6a2b831d95b2f56564808f39d2f498f34a5",
-    "local_gateway_process": "NOT_FOUND",
-    "pearld_process": "NOT_FOUND",
-    "official_prover": "NOT_FOUND",
-    "simnet_local_node": "NOT_STARTED",
-    "real_plainproof_submission": "NOT_ATTEMPTED",
-    "accepted_block_or_share": "NOT_PROVEN",
+    "official_source_pin": "PASS: fe22b6a2b831d95b2f56564808f39d2f498f34a5",
+    "official_pearld_build": "PASS",
+    "official_prover": "PASS: Python API import/self-test and TestCertVersionEligibility 4 passed",
+    "simnet_local_node": "PASS: getcurrentnet=1347570771; getblockchaininfo initially reported blocks=0",
+    "official_gateway_get_mining_info": "PASS: cert_version=2, 76-byte incomplete header, target=6901746346790563787434755862277025452451108972170386555162524223799296",
+    "physical_xdna_search": "PASS: XDNA path found a consensus-valid jackpot on attempt 21; cpu_fallbacks=0",
+    "cpu_plainproof_verification": "PASS",
+    "official_wire_compatibility": "PASS: official bincode PlainProof wire, 140225 bytes",
+    "real_plainproof_submission": "PASS: official gateway RPC response=submitted",
+    "accepted_block_or_share": "PASS: official gateway submitted the block and pearld accepted it",
     "mainnet_payout_address": "MAINNET_PAYOUT_ADDRESS_NOT_CONFIGURED",
     "pool_protocol": "POOL_PROTOCOL_UNAVAILABLE"
   },
-  "safe_next_action": "Install the pinned official Pearl node and gateway/prover outside this repository, then rerun the documented --dry-run and local/simnet submission check without adding credentials to this repository.",
+  "accepted_block": {
+    "height_before_physical_xdna": 1,
+    "height_after_physical_xdna": 2,
+    "hash": "8ab73f1fad05d5a2f1d767d5b8cda3f2a0aa0f79615f7913d8da884693bef7c5",
+    "previous_hash": "0e85fcfd981f0869501c4e0347689694084e71bb87ef64438606e15f3a7aecbd",
+    "time": 1786433005,
+    "bits": "1e010000",
+    "proof_commitment": "95715b34c4bb184082bd0f456b8f065ea0c8a3040a744dca43314bf1da1b5869",
+    "gateway_log_result": "Block accepted by node; template advanced to height 3"
+  },
+  "control_run": {
+    "purpose": "Validate the official prover/gateway path before the physical-XDNA attempt; not counted as XDNA evidence",
+    "result": "PASS: official gateway accepted a CPU-generated control PlainProof and pearld advanced to height 1"
+  },
   "no_fabricated_work": true,
   "cpu_fallbacks": 0
 }

@@ -305,7 +305,9 @@ void test_gemm_and_overflow()
     expect_error(ErrorCode::ArithmeticOverflow,
                  [&] { (void)gemm_checked(overflow_left, overflow_right); },
                  "GEMM overflow is rejected rather than wrapped");
-    const Int8Matrix invalid_signal(1U, 2U, {-65, 64});
+    const Int8Matrix valid_signal_boundaries(1U, 2U, {-64, 64});
+    valid_signal_boundaries.require_signal_range();
+    const Int8Matrix invalid_signal(1U, 2U, {-65, 65});
     expect_error(ErrorCode::InvalidValue,
                  [&] { invalid_signal.require_signal_range(); },
                  "raw matrix signal boundary rejects -65 and +64");

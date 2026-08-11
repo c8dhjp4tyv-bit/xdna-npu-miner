@@ -20,7 +20,7 @@ constexpr std::uint32_t kPatternPeriodLimit = 1U << 24U;
 constexpr std::uint32_t kTileDwordBytes = 4U;
 constexpr std::uint32_t kWorkerInputLimit = 1U << 22U;
 constexpr std::int32_t kSignalMin = -64;
-constexpr std::int32_t kSignalMax = 63;
+constexpr std::int32_t kSignalMax = 64;
 constexpr std::int32_t kQuantizationMax = 63;
 
 [[noreturn]] void fail(ErrorCode code, const std::string& message)
@@ -711,7 +711,7 @@ void Int8Matrix::require_signal_range() const
         const std::int32_t widened = value;
         require(widened >= kSignalMin && widened <= kSignalMax,
                 ErrorCode::InvalidValue,
-                "matrix value is outside the [-64,63] mining signal range");
+                "matrix value is outside the [-64,64] mining signal range");
     }
 }
 

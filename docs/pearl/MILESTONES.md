@@ -20,15 +20,16 @@ FAIL, BLOCKED, or NOT_RUN.
 | P4 | PASS (live provider blocked) | `pearl-p4-job-integration.json` |
 | P5 | PASS (official wire/prover blocked) | `pearl-p5-candidate-proof.json` |
 | P6 | PASS (official endpoint blocked) | `pearl-p6-gateway.json` |
-| P7 | BLOCKED — external runtime unavailable | `pearl-p7-e2e.json` |
+| P7 | PASS — official SIMNET accepted physical-XDNA PlainProof | `pearl-p7-e2e.json` |
 | P8 | PASS | `pearl-p8-batching-four-column.json` |
 | P9 | PASS | `pearl-p9-benchmark.json` |
 | P10 | PASS | `pearl-p10-endurance.json` |
 | P11 | PASS | `pearl-p11-delivery.json` |
 
-The aggregate state is `SOFTWARE_COMPLETE_E2E_BLOCKED`. P7 is not collapsed
-into PASS merely because local mocks pass. P10 passed its exact 1,800-second
-physical run; P11 is the completed operator-delivery gate.
+The aggregate state is `SOFTWARE_COMPLETE_E2E_PASS` for the verified official
+SIMNET path. Mainnet payout configuration and pool/Stratum support remain
+unavailable boundaries and are not implied by this result. P10 passed its
+exact 1,800-second physical run; P11 is the completed operator-delivery gate.
 
 ## P0 — Upstream, protocol, license, and XDNA feasibility baseline
 
@@ -63,7 +64,7 @@ P1 defines and tests canonical header/config/public-data serialization,
 quantization, checked signed products, deterministic low-rank noise,
 commitment seeds, the selected 2x64 tile, transcript trace, keyed jackpot,
 1024-byte Merkle openings, and a fixed-width candidate PlainProof envelope.
-It resolves the raw `[-64,63]` versus quantized `[-63,63]` distinction and
+It resolves the raw `[-64,64]` versus quantized `[-63,63]` distinction and
 rejects arithmetic overflow instead of guessing wrap/saturation behavior.
 
 The fixed corpus is `tests/data/pearl/p1/`; the test target is
@@ -111,9 +112,20 @@ Stratum behavior from the existence of `nbits_override`.
 
 ## P7 — Bounded live operation
 
-Only with explicit user authorization, verified endpoint/version, isolated
-identity, stale-work handling, and CPU verification. This milestone is not
-permitted by P0.
+**Status: COMPLETE — official local SIMNET interoperability (2026-08-11).**
+
+The pinned official `pearld` `1.3.1`, `pearl-gateway 0.1.0`, and
+`py-pearl-mining 0.2.0` ran outside the repository. Official `getMiningInfo`
+was parsed, a physical XDNA1 dense search found a valid jackpot, the project
+CPU verifier passed, and the official bincode PlainProof was submitted through
+the gateway. The gateway's block submission was accepted by `pearld`; the
+physical-XDNA block is recorded in `docs/evidence/pearl-p7-e2e.json`.
+
+The SIMNET matrix source is a deterministic interoperability fixture. It does
+not claim reproduction of the official CUDA/vLLM useful-work provider. No
+mainnet address or pool protocol was used or inferred. The exact checkout,
+binary digest, Python/Torch isolation, wire length, block hash, and zero CPU
+fallbacks are machine-recorded in the P7 evidence file.
 
 ## P8 — Batching and four-column mapping
 

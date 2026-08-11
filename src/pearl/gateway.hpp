@@ -88,6 +88,9 @@ public:
     [[nodiscard]] MiningJob get_mining_info();
     [[nodiscard]] SubmissionResult submit_plain_proof(const PlainProof& proof,
                                                        const MiningJob& job);
+    [[nodiscard]] SubmissionResult submit_official_plain_proof(
+        std::span<const std::uint8_t> official_wire,
+        const MiningJob& job);
 
     // A health check intentionally uses the same bounded getMiningInfo path so
     // it verifies both transport and protocol framing.

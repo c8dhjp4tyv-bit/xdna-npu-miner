@@ -13,7 +13,7 @@ input rejection are exercised by `pearl_cpu_golden_tests`.
 | ID | Coverage |
 |---|---|
 | A | signed int8×int8→int32 arithmetic and checked overflow |
-| B | signed signal boundaries `[-64,63]` and noise boundaries `[-64,64]` |
+| B | raw signed signal boundary `[-64,64]` and noised signed-int8 boundary |
 | C | fp32 scale, zero-point absence, ties-to-even, and `[-63,63]` quantization |
 | D | deterministic uniform/sparse noise, labels, rank, and seed derivation |
 | E | header/config/pattern serialization and current/structural validation |

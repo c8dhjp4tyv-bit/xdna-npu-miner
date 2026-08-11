@@ -16,6 +16,14 @@ source and did not make a live connection. Pearl P1 adds only an independent
 CPU oracle and a pinned third-party BLAKE3 dependency; it does not reuse Pearl
 hot-component source.
 
+### Pearl P7 runtime record
+
+P7 built the pinned official runtime only in an external `/tmp` checkout and
+proved the official local SIMNET acceptance path. The exact runtime and block
+evidence is in [`docs/pearl/UPSTREAM.md`](pearl/UPSTREAM.md) and
+[`docs/evidence/pearl-p7-e2e.json`](evidence/pearl-p7-e2e.json). No official
+CUDA/vLLM miner was installed or launched.
+
 ### Pearl P1 implementation dependency record
 
 - `src/pearl/blake3_ffi/` pins the official `blake3` Rust crate at `1.8.2`.

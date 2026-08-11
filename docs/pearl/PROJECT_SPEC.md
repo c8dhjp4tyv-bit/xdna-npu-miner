@@ -2,15 +2,14 @@
 
 ## State and scope
 
-P2–P6, P8–P11 are now present and validated in the one-shot branch. P7 remains
-`BLOCKED` until an official gateway/prover/useful-work provider and a
-local/simnet node are available. The aggregate must therefore remain
-`SOFTWARE_COMPLETE_E2E_BLOCKED` unless that external interoperability is
-actually proven.
+P2–P11 are present and validated in the one-shot branch. P7 now passes the
+official local SIMNET gateway/prover/node interoperability gate with a
+physical-XDNA PlainProof. Mainnet payout and pool/Stratum support remain
+separate unavailable boundaries.
 
 This is the active Pearl implementation track on branch
-`feat/pearl-full-miner-one-shot`, created from P1 checkpoint
-`ba286d5770c93290a38784f89ae75cea87867b25`. P0 established the pinned
+`fix/pearl-p7-official-simnet`, created from the exact P7 starting SHA
+`0a300097290694e335a7ad34607ade48c3775180`. P0 established the pinned
 protocol/license baseline and P1 established the trusted clean-room CPU golden
 reference. P2 through P11 are now executed in one continuous engineering shot
 with separate, sequential evidence gates.
@@ -46,8 +45,9 @@ the same clean-room implementation. The P1 implementation is intentionally
 separate from `src/bpp9000/`, `src/qubic/`, and all Qubic wire types.
 
 P2 through P6 and P8 through P11 are **PASS** under their individual evidence
-records. P7 is **BLOCKED** by the unavailable official runtime; that blocker is
-not erased by local protocol mocks or fixture proofs.
+records. P7 is **PASS** under the official SIMNET evidence record; the pass is
+based on a real official gateway submission and accepted block, not a local
+mock.
 
 The current CPU reference is in [`../../src/pearl/reference.hpp`](../../src/pearl/reference.hpp)
 and [`../../src/pearl/reference.cpp`](../../src/pearl/reference.cpp). The
@@ -58,12 +58,11 @@ whose only cryptographic dependency is the official `blake3` crate pinned to
 
 ## P1 resolved CPU contracts
 
-- Raw mining matrices are signed int8 values in `[-64,63]`. The current
-  quantizer uses fp32 `scale=max_abs/63`, no zero point, ties-to-even rounding,
-  and clamps quantized output to `[-63,63]`. Thus the whitepaper's `+64` is not
-  accepted by the pinned current raw mining path; `-64` remains a valid raw
-  boundary value. This distinction is recorded in the vectors rather than
-  silently conflated.
+- Raw mining matrices are signed int8 values in `[-64,64]`; the pinned
+  verifier accepts both endpoints. The current quantizer uses fp32
+  `scale=max_abs/63`, no zero point, ties-to-even rounding, and clamps
+  quantized output to `[-63,63]`. The raw-source bound and quantized-output
+  bound are recorded separately rather than silently conflated.
 - Every dot product widens signed int8 operands to int64 for accumulation and
   rejects a result outside int32. No wrapping or saturation is used.
 - Header fields, patterns, dense configuration, public data, openings,

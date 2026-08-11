@@ -5,8 +5,8 @@ when every acceptance criterion passes and `docs/AI_HANDOFF.md` is updated.
 Static hypotheses, configured offload, and plausible source code are not
 evidence.
 
-**Current milestone:** Pearl P11 — final operator handoff
-**Current status:** COMPLETE; aggregate `SOFTWARE_COMPLETE_E2E_BLOCKED`
+**Current milestone:** Pearl P7 — official SIMNET interoperability
+**Current status:** COMPLETE; aggregate `SOFTWARE_COMPLETE_E2E_PASS`
 **M0 status:** COMPLETE
 **M3 status:** COMPLETE
 **M4 status:** COMPLETE
@@ -754,7 +754,8 @@ and leave the next maintenance task explicit.
 P0/P1 are complete. P2 physical XDNA, P3 exact compute, P4 work boundaries,
 P5 candidate/PlainProof, P6 local gateway adapter, P8 batching/columns, P9
 benchmark, P10 endurance, and P11 CLI/package are implemented and validated;
-P7 is `BLOCKED` by absent official gateway,
-prover, useful-work provider, and node runtime. The aggregate state is
-`SOFTWARE_COMPLETE_E2E_BLOCKED`. See `docs/pearl/MILESTONES.md` and
-`docs/evidence/pearl-full-one-shot.json`; Qubic milestones below are frozen.
+P7 now passes the pinned official SIMNET gateway/prover/node flow with a
+physical-XDNA PlainProof accepted as a block. Mainnet payout and pool/Stratum
+support remain unavailable. See `docs/pearl/MILESTONES.md`,
+`docs/evidence/pearl-p7-e2e.json`, and `docs/evidence/pearl-full-one-shot.json`;
+Qubic milestones below are frozen.

@@ -4,11 +4,10 @@
 
 Pearl is the active target and P2–P11 were advanced in one continuous shot
 with sequential gates. The physical P2/P3/P5/P8/P9/P10 paths and the safe P11
-CLI are implemented; the current overall status is
-`SOFTWARE_COMPLETE_E2E_BLOCKED` until
-an independently installed official Pearl useful-work provider, gateway/ZK
-prover, and local/simnet node prove submission interoperability. No live
-matrices, credentials, payout address, or profitability result is fabricated.
+CLI are implemented; P7 now passes an independently installed official Pearl
+gateway/ZK prover and local SIMNET node with a physical-XDNA PlainProof.
+Mainnet payout, pool protocol, and profitability remain unclaimed. No live
+credentials or fabricated matrices are recorded.
 
 The Pearl implementation boundary is documented in
 [`docs/pearl/OPERATIONS.md`](pearl/OPERATIONS.md) and the machine-readable

@@ -2,6 +2,23 @@
 
 Record material decisions here so later agents do not silently reverse them.
 
+## D-045 — P7 official SIMNET uses an isolated runtime and separate wire adapter
+
+**Status:** Accepted for `fix/pearl-p7-official-simnet` (2026-08-11)
+
+The pinned official Pearl node/gateway/prover may be built and run outside the
+repository for local SIMNET interoperability, but the official CUDA/vLLM
+miner is not installed or launched. The project-owned P1 PlainProof envelope
+is not sent to the gateway: a dedicated adapter emits the official bincode
+wire object, then the CPU verifies it before the physical-XDNA candidate is
+submitted. The accepted block is recorded in
+`docs/evidence/pearl-p7-e2e.json`; no pool protocol or mainnet payout is
+inferred from this SIMNET result.
+
+Reason: official acceptance must be demonstrated with the real protocol while
+preserving the clean-room and security boundaries. A local mock or an
+unverified CUDA package would not establish the P7 gate.
+
 ## D-044 — Pearl P2-P11 use one continuous execution shot with strict gates
 
 **Status:** Accepted for the Pearl full-project branch
@@ -657,18 +674,26 @@ required direct-node testnet submission preflight.
 
 ## D-042 — Pearl P1 raw versus quantized value boundary
 
-**Status:** Accepted for Pearl P1
+**Status:** Superseded by D-046 for the official P7-compatible raw boundary
 
-The current raw mining matrix contract accepts signed int8 values `[-64,63]`;
-the current quantizer uses `max_val=63` and therefore produces `[-63,63]`.
-P1 does not reinterpret the whitepaper's `+64` as a raw accepted value. It
-uses fp32 `max_abs/63` scales, no zero point, ties-to-even rounding, and
-explicit clamping. The two boundaries are distinct and are represented in the
-canonical corpus.
+The original P1 record treated the raw mining matrix boundary as `[-64,63]`
+while keeping the quantized output at `[-63,63]`. P7's pinned official
+verifier confirms that the raw source boundary is inclusive `[-64,64]`; the
+quantized output boundary remains unchanged.
 
-Reason: P0 observed both source-level conventions. Treating them as one range
-would make a CPU/NPU comparison appear correct while changing the pinned
-mining path.
+## D-046 — Pearl raw signal boundary follows the pinned verifier
+
+**Status:** Accepted for the P7 compatibility fix (2026-08-11)
+
+Raw mining matrices accept signed int8 values in inclusive `[-64,64]`, while
+the fp32 quantizer still clamps output to `[-63,63]`. Noised operands may
+leave the raw-source interval as long as they remain valid signed-int8 XDNA
+inputs. The CPU and physical backend boundaries now enforce those distinct
+contracts.
+
+Reason: P7 official verification and block acceptance are stronger evidence
+than the earlier ambiguous source interpretation; revalidating noised values
+against the raw bound rejected a valid official-compatible candidate.
 
 ## D-043 — Pearl P1 checked arithmetic and explicit proof envelope
 

@@ -75,8 +75,9 @@ void require_fixed_matrix_shapes(const Int8Matrix& left, const Int8Matrix& right
                 << " and B=" << right.rows() << "x" << right.cols();
         throw runtime::RuntimeError(runtime::ErrorCode::InvalidBuffer, message.str());
     }
-    left.require_signal_range();
-    right.require_signal_range();
+    // The caller validates consensus signal bounds on the original matrices.
+    // Noised operands may legitimately exceed that source range while still
+    // fitting the signed int8 XDNA input contract.
 }
 
 } // namespace
