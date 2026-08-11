@@ -6,13 +6,14 @@ The active target is Pearl (PRL) on `feat/pearl-full-miner-one-shot`; all
 Qubic material below is frozen reference-only. P2 physical XDNA GEMM, P3
 noise/GEMM/denoise/transcript, P4 work/provider boundaries, P5
 candidate/PlainProof, P6 local gateway transport, P8 placement sweep, P9
-benchmark, and P11 CLI implementation are complete in software. P10 is the
-current physical gate: a 30-minute Hawk Point endurance run is in progress.
+benchmark, P10 endurance, and P11 CLI implementation are complete in software
+and physically validated where hardware is available.
 P7 official gateway/prover/node interoperability is externally blocked because
 those processes are not installed in this workspace.
 
-Checkpoint commit: `e49e69ee85907ee7c32d40600c7c042d4172104d` contains P2/P3;
-later source and evidence changes are uncommitted while the shot continues.
+Implementation checkpoint: `9a83cfdb44762140afc0a147fe0ec6100391a767` contains
+the complete local implementation and protocol boundaries. Final aggregate
+evidence and handoff updates are staged for the delivery checkpoint.
 The P2 artifact passed 100/100 exact physical cases; P3 passed 8 full cases
 and 64 dispatches; P5 passed a 256-dispatch selected proof with exact
 PlainProof round-trip; P8 selected 4 columns/batch 8 from a fixed physical
@@ -24,9 +25,8 @@ Relevant commands are `cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug`,
 `./build/pearl-xdna-miner --self-test --artifact-dir
 build/pearl-xdna-gemm-p2-c4`, and the artifact builder
 `./scripts/build-pearl-xdna-gemm.sh build 4`. Do not redo P2/P3 bring-up or
-resume Qubic work. After P10 completes, finish aggregate evidence, update
-this handoff and the Pearl handoff, run the full verification suite, create a
-checkpoint commit, and push only the feature branch.
+resume Qubic work. The next handoff action is to create the final evidence/docs
+checkpoint and push only this feature branch.
 
 This file is the authoritative short-form state for the next zero-context
 engineering agent.

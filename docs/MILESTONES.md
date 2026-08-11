@@ -5,8 +5,8 @@ when every acceptance criterion passes and `docs/AI_HANDOFF.md` is updated.
 Static hypotheses, configured offload, and plausible source code are not
 evidence.
 
-**Current milestone:** Pearl P2 — physical XDNA1 signed-int8 GEMM
-**Current status:** IN PROGRESS
+**Current milestone:** Pearl P11 — final operator handoff
+**Current status:** COMPLETE; aggregate `SOFTWARE_COMPLETE_E2E_BLOCKED`
 **M0 status:** COMPLETE
 **M3 status:** COMPLETE
 **M4 status:** COMPLETE
@@ -16,8 +16,8 @@ evidence.
 ## Active Pearl track
 
 Pearl (PRL) is the active implementation target on branch
-`feat/pearl-full-miner-one-shot`. P0 and P1 are complete. P2 through P11 are
-being implemented in one continuous engineering shot, but remain sequential,
+`feat/pearl-full-miner-one-shot`. P0 and P1 are complete. P2 through P11 were
+implemented in one continuous engineering shot and remain sequential,
 independent acceptance gates under
 [`docs/pearl/MILESTONES.md`](pearl/MILESTONES.md). Qubic milestones, including
 M6/M7, are frozen/reference-only during the Pearl track.
@@ -753,8 +753,8 @@ and leave the next maintenance task explicit.
 
 P0/P1 are complete. P2 physical XDNA, P3 exact compute, P4 work boundaries,
 P5 candidate/PlainProof, P6 local gateway adapter, P8 batching/columns, P9
-benchmark, and P11 CLI/package are implemented; P10 is in progress on the
-physical Hawk Point device; P7 is `BLOCKED` by absent official gateway,
+benchmark, P10 endurance, and P11 CLI/package are implemented and validated;
+P7 is `BLOCKED` by absent official gateway,
 prover, useful-work provider, and node runtime. The aggregate state is
 `SOFTWARE_COMPLETE_E2E_BLOCKED`. See `docs/pearl/MILESTONES.md` and
 `docs/evidence/pearl-full-one-shot.json`; Qubic milestones below are frozen.

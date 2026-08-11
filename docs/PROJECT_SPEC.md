@@ -2,10 +2,10 @@
 
 ## Pearl one-shot delivery state
 
-Pearl is the active target and P2–P11 are being advanced in one continuous
-shot with sequential gates. The physical P2/P3/P5 paths and the P8/P9
-measurements are now implemented; the safe P11 CLI is explicit about live
-mining. The current overall status is `SOFTWARE_COMPLETE_E2E_BLOCKED` until
+Pearl is the active target and P2–P11 were advanced in one continuous shot
+with sequential gates. The physical P2/P3/P5/P8/P9/P10 paths and the safe P11
+CLI are implemented; the current overall status is
+`SOFTWARE_COMPLETE_E2E_BLOCKED` until
 an independently installed official Pearl useful-work provider, gateway/ZK
 prover, and local/simnet node prove submission interoperability. No live
 matrices, credentials, payout address, or profitability result is fabricated.
@@ -18,8 +18,8 @@ remains frozen/reference-only.
 ## Active target: Pearl (PRL)
 
 Pearl is the active implementation target. P0 and P1 are complete, and P2
-through P11 are being executed in one continuous engineering shot while each
-milestone retains its independent acceptance gate. The complete Qubic work
+through P11 were executed in one continuous engineering shot while each
+milestone retained its independent acceptance gate. The complete Qubic work
 described below remains frozen/reference-only;
 Qubic source, Qatum boundaries, identities, and M6/M7 work must not be
 continued or rewritten as part of this pivot. The Pearl specification,
@@ -28,10 +28,9 @@ architecture, upstream/license record, milestones, and handoff are in
 [`docs/evidence/pearl-p0.json`](evidence/pearl-p0.json).
 
 Pearl P0's feasibility gate was `UNKNOWN_NEEDS_EXPERIMENT`; P1 established the
-trusted CPU oracle. P2 is now the active gate and must establish a real
-physical signed-int8 XDNA1 GEMM before later accelerated stages can pass. No
-Pearl hashrate, profitability, or NPU execution claim is made until the
-corresponding evidence exists.
+trusted CPU oracle, P2–P6 and P8–P11 have evidence-backed results, and P7 is
+blocked by unavailable official runtime components. No Pearl profitability or
+live-network acceptance claim is made.
 
 ## M0 status and scope
 

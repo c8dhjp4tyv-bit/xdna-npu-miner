@@ -4,10 +4,10 @@
   "status": "PASS",
   "workload": {"base_rows": 2, "base_common": 64, "base_columns": 64, "rank": 64, "selected_rows": 2, "selected_columns": 64},
   "target": {"device": "RyzenAI-npu1", "architecture": "aie2", "bdf": "0000:06:00.1", "firmware": "1.5.5.391", "xrt": "2.26.0", "amdxdna": "7.2.0-0.rc7.452.vanilla.fc45.x86_64"},
-  "artifact": {"uuid": "2293474c-6fa7-afef-8320-e2ddfb786285", "kernel": "MLIR_AIE"},
+  "artifact": {"uuid": "1b63d9e6-9bd5-5405-b904-877b67569392", "kernel": "MLIR_AIE"},
   "cases": {"requested": 8, "completed": 8, "mismatches": 0, "runtime_failures": 0, "cpu_fallbacks": 0},
-  "dispatches": {"requested": 64, "completed": 64, "h2d_syncs": 192, "d2h_syncs": 64, "dispatch_wait_ns": 8695801},
-  "timings_last_case_ns": {"cpu_preprocessing": 1414669, "packing": 220, "npu_execution": 1865006, "cpu_verification": 3254958, "transcript": 1161944, "blake3_and_target": 5811, "total": 7703149},
+  "dispatches": {"requested": 64, "completed": 64, "h2d_syncs": 192, "d2h_syncs": 64, "dispatch_wait_ns": 8096588},
+  "timings_last_case_ns": {"cpu_preprocessing": 1334260, "packing": 394050, "npu_execution": 1230644, "cpu_verification": 4100402, "transcript": 1246194, "blake3_and_target": 4268, "total": 8326773},
   "hardware_context_created": true,
   "silent_cpu_fallback": false
 }

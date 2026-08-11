@@ -6,5 +6,5 @@
   "target": {"device": "RyzenAI-npu1", "architecture": "aie2", "bdf": "0000:06:00.1"},
   "dispatches": {"completed": 256, "h2d_syncs": 768, "d2h_syncs": 256, "cpu_fallbacks": 0},
   "jackpot_hex_bytes": "exact-32-byte-value-recorded-in-memory-only",
-  "timings_ns": {"total": 222653807, "npu_execution": 44954167, "cpu_verification": 101475907}
+  "timings_ns": {"total": 235539316, "npu_execution": 39733408, "cpu_verification": 105955351}
 }

@@ -1,0 +1,30 @@
+{
+  "schema": "pearl-p11-cli-delivery-evidence/v1",
+  "milestone": "P11",
+  "status": "PASS",
+  "project_commit": "9a83cfdb44762140afc0a147fe0ec6100391a767",
+  "cli": "pearl-xdna-miner",
+  "version": "0.1.0-p11",
+  "commands": [
+    {"command": "--help", "result": "PASS", "safe_default": true},
+    {"command": "--version", "result": "PASS"},
+    {"command": "--hardware-info --json-status", "result": "PASS", "device": "RyzenAI-npu1", "architecture": "aie2", "bdf": "0000:06:00.1"},
+    {"command": "--self-test --artifact-dir build/pearl-xdna-gemm-p2-c4", "result": "PASS", "cpu_vectors": "PASS", "physical_xdna_gemm": "PASS"},
+    {"command": "--benchmark --benchmark-iterations 8 --columns 4 --batch 8 --json-status", "result": "PASS", "throughput_dispatches_per_s": 2373.06, "mismatches": 0, "cpu_fallbacks": 0},
+    {"command": "--dry-run --fixture-work --columns 4 --batch 8 --json-status", "result": "PASS", "proof_bytes": 139736, "submission": "skipped", "cpu_fallbacks": 0}
+  ],
+  "live_boundaries": {
+    "dry_run_without_gateway": "TRANSPORT",
+    "mine_without_public_address": "MAINNET_PAYOUT_ADDRESS_NOT_CONFIGURED",
+    "pool_protocol": "POOL_PROTOCOL_UNAVAILABLE",
+    "official_useful_work_provider": "BLOCKED_OFFICIAL_RUNTIME_NOT_INSTALLED"
+  },
+  "safety": {
+    "live_mining_requires_explicit_mine": true,
+    "live_mining_requires_public_address": true,
+    "secrets_logged": false,
+    "autostart_or_persistence": false,
+    "hidden_resource_consumption": false
+  },
+  "packaging": {"cmake_install_target": "pearl-xdna-miner", "config_example": "config.example.toml"}
+}

@@ -23,13 +23,12 @@ FAIL, BLOCKED, or NOT_RUN.
 | P7 | BLOCKED — external runtime unavailable | `pearl-p7-e2e.json` |
 | P8 | PASS | `pearl-p8-batching-four-column.json` |
 | P9 | PASS | `pearl-p9-benchmark.json` |
-| P10 | IN PROGRESS | `pearl-p10-endurance.json` |
+| P10 | PASS | `pearl-p10-endurance.json` |
 | P11 | PASS | `pearl-p11-delivery.json` |
 
 The aggregate state is `SOFTWARE_COMPLETE_E2E_BLOCKED`. P7 is not collapsed
-into PASS merely because local mocks pass. The current active work is the
-physical P10 endurance run; once it ends, update this table and the aggregate
-with its exact duration and counters.
+into PASS merely because local mocks pass. P10 passed its exact 1,800-second
+physical run; P11 is the completed operator-delivery gate.
 
 ## P0 — Upstream, protocol, license, and XDNA feasibility baseline
 

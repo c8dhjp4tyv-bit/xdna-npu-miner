@@ -2,12 +2,12 @@
 
 ## Current Pearl one-shot state (2026-08-11)
 
-Current milestone: **P10 — endurance/recovery**. Status: **IN PROGRESS**;
-the 30-minute physical run is active on `RyzenAI-npu1`/AIE2 BDF
-`0000:06:00.1`. Branch: `feat/pearl-full-miner-one-shot`. Starting SHA:
-`ba286d5770c93290a38784f89ae75cea87867b25`. Last checkpoint:
-`e49e69ee85907ee7c32d40600c7c042d4172104d` (`pearl: complete physical XDNA
-and compute pipeline`).
+Current milestone: **P11 — final handoff**. Status: **COMPLETE**; overall
+status is `SOFTWARE_COMPLETE_E2E_BLOCKED` because P7's official runtime is
+unavailable. Branch: `feat/pearl-full-miner-one-shot`. Starting SHA:
+`ba286d5770c93290a38784f89ae75cea87867b25`. Implementation checkpoint:
+`9a83cfdb44762140afc0a147fe0ec6100391a767` (`pearl: complete protocol
+boundaries and operator delivery`).
 
 Completed in this shot:
 
@@ -24,8 +24,8 @@ Completed in this shot:
 - P8 one/two/four-column artifacts and batch 1/2/4/8 physical sweep; c4/batch
   8 selected by measured dispatch throughput with zero mismatches.
 - P9 actual runtime/firmware/driver/toolchain benchmark evidence; raw GEMM
-  ~7.69k dispatches/s and full fixture candidate ~3.01/s, with null power and
-  telemetry when unavailable.
+  7.205k dispatches/s and full fixture candidate 3.01093/s, with null power
+  and telemetry when unavailable.
 - P11 safe `pearl-xdna-miner` CLI, config example, installation/operations
   documentation, explicit `--mine`, fixture dry-run, JSON status, and signal
   handling.
@@ -35,23 +35,24 @@ miner_main}.*`, the AIE program/kernel, `scripts/build-pearl-xdna-gemm.sh`,
 P2–P11 test/benchmark harnesses, `config.example.toml`, and milestone
 evidence. Existing Qubic files and evidence remain frozen.
 
-Tests already executed: CMake Debug configure/build PASS; P2/P3/P5 physical
-tests PASS; gateway/work contract tests PASS; P8/P9 physical measurements
-PASS; CLI help/version/hardware/self-test/benchmark/fixture dry-run PASS; the
-short endurance run passed 14,427 dispatches. The final full CTest, release
-build, JSON validation, 30-minute endurance result, aggregate evidence, and
-final checkpoint commit remain to be recorded.
+Tests executed: CMake Debug and Release configure/build PASS; full CTest
+13/13 PASS; P2 100/100, P3 8/8, and P5 256-dispatch physical differential
+tests PASS; gateway/work contract tests PASS; P8/P9 measurements PASS; CLI
+help/version/hardware/self-test/benchmark/fixture dry-run PASS; P10 passed
+1,800 seconds and 11,956,807 dispatches with zero mismatches/failures.
+Aggregate and P11 evidence are in `docs/evidence/`.
 
 Known external blockers: no official Pearl `pearld`, `pearl-gateway`,
 useful-work/inference runtime, or local/simnet node is installed; therefore
 P7 live gateway/prover/node acceptance is `BLOCKED`, not PASS. No public
 mainnet payout address is configured. No pool/Stratum protocol is claimed.
+The historical XDNA verification pin also reports `RUNTIME_VERSION_MISMATCH`
+(expected amdxdna rc5, observed rc7); the observed rc7 stack is recorded in
+the physical evidence and must not be silently relabeled.
 
-Exact next task: finish the endurance process, run the complete validation
-matrix, write `docs/evidence/pearl-full-one-shot.json` and P4/P6/P7/P11
-records, update all handoff/docs statuses, commit/push the feature branch,
-and report `SOFTWARE_COMPLETE_E2E_BLOCKED` unless a real local/simnet stack
-becomes available.
+Exact next task: push the final handoff checkpoint, then install the pinned
+official Pearl node/gateway/prover/useful-work runtime outside this repository
+and rerun the blocked P7 local/simnet interoperability gate.
 
 This is the authoritative handoff for the Pearl research track. Qubic remains
 frozen/reference-only; do not resume Qubic M6/M7 or Qatum work while Pearl is

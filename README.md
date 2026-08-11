@@ -26,8 +26,8 @@ frozen reference-only and is not used as Pearl protocol evidence.
 ## Current status
 
 P2 physical XDNA GEMM, P3 exact compute pipeline, P5 candidate/PlainProof,
-P8 placement measurements, P9 benchmark, and the P11 operator CLI are
-implemented and physically verified on Hawk Point. P4/P6 are locally tested;
+P8 placement measurements, P9 benchmark, P10 endurance, and the P11 operator
+CLI are implemented and physically verified on Hawk Point. P4/P6 are locally tested;
 the official useful-work provider, gateway/prover, and local/simnet node are
 external blockers for live end-to-end acceptance. The current overall state is
 `SOFTWARE_COMPLETE_E2E_BLOCKED`, not a profitability claim.

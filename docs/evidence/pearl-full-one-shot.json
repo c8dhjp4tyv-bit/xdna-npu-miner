@@ -1,0 +1,92 @@
+{
+  "schema": "pearl-full-one-shot-evidence/v1",
+  "project": "Pearl XDNA1 NPU miner",
+  "branch": "feat/pearl-full-miner-one-shot",
+  "starting_sha": "ba286d5770c93290a38784f89ae75cea87867b25",
+  "implementation_commit": "9a83cfdb44762140afc0a147fe0ec6100391a767",
+  "overall_status": "SOFTWARE_COMPLETE_E2E_BLOCKED",
+  "milestones": {
+    "P0": "PASS",
+    "P1": "PASS",
+    "P2": "PASS",
+    "P3": "PASS",
+    "P4": "PASS_LOCAL_OFFICIAL_USEFUL_WORK_BLOCKED",
+    "P5": "PASS_LOCAL_OFFICIAL_WIRE_PROVER_BLOCKED",
+    "P6": "PASS_LOCAL_OFFICIAL_ENDPOINT_BLOCKED",
+    "P7": "BLOCKED",
+    "P8": "PASS",
+    "P9": "PASS",
+    "P10": "PASS",
+    "P11": "PASS"
+  },
+  "hardware": {
+    "device": "RyzenAI-npu1",
+    "architecture": "aie2",
+    "bdf": "0000:06:00.1",
+    "device_node": "/dev/accel/accel0",
+    "firmware": "1.5.5.391",
+    "xrt": "2.26.0",
+    "amdxdna_observed": "7.2.0-0.rc7.452.vanilla.fc45.x86_64",
+    "mlir_aie_commit": "57d7494e99c214f5f53b328a0ed43a99e759e835"
+  },
+  "physical_correctness": {
+    "tile": "4x64x8 signed-int8 to int32",
+    "selected_columns": 4,
+    "selected_batch": 8,
+    "p2_cases": 100,
+    "p3_cases": 8,
+    "p3_dispatches": 64,
+    "p5_dispatches": 256,
+    "p10_duration_ms": 1800007,
+    "p10_dispatches": 11956807,
+    "p10_jobs": 186826,
+    "p10_peak_host_ram_kb": 184896,
+    "mismatches": 0,
+    "runtime_failures": 0,
+    "cpu_fallbacks": 0,
+    "unclean_shutdowns": 0
+  },
+  "performance": {
+    "p8_selected_dispatch_throughput_dispatches_per_s": 7799.48,
+    "p9_raw_gemm_throughput_dispatches_per_s": 7205.14,
+    "p9_raw_gemm_latency_ns": 138790,
+    "p9_candidate_throughput_per_s": 3.01093,
+    "p9_candidate_latency_ns": 332123000,
+    "p9_proof_bytes": 139736,
+    "power_watts": null,
+    "npu_telemetry": null
+  },
+  "validation": {
+    "cargo_release_locked": "PASS",
+    "cmake_debug_build": "PASS",
+    "cmake_release_build": "PASS",
+    "ctest": "13/13 PASS",
+    "evidence_json_and_git_diff_check": "PASS",
+    "verify_xdna1": "SUPPORTED_XDNA1_BUT_RUNTIME_VERSION_MISMATCH_EXPECTED_RC5_OBSERVED_RC7"
+  },
+  "external_boundaries": {
+    "official_node": "NOT_INSTALLED",
+    "official_gateway": "NOT_INSTALLED",
+    "official_prover_or_useful_work": "NOT_INSTALLED",
+    "local_or_simnet_e2e": "NOT_AVAILABLE",
+    "real_plainproof_submission": "NOT_ATTEMPTED",
+    "accepted_block_or_share": "NOT_PROVEN",
+    "mainnet_payout_address": "MAINNET_PAYOUT_ADDRESS_NOT_CONFIGURED",
+    "pool_protocol": "POOL_PROTOCOL_UNAVAILABLE"
+  },
+  "evidence_files": [
+    "docs/evidence/pearl-p0.json",
+    "docs/evidence/pearl-p1.json",
+    "docs/evidence/pearl-p2-xdna-matmul.json",
+    "docs/evidence/pearl-p3-compute-pipeline.json",
+    "docs/evidence/pearl-p4-job-integration.json",
+    "docs/evidence/pearl-p5-candidate-proof.json",
+    "docs/evidence/pearl-p6-gateway.json",
+    "docs/evidence/pearl-p7-e2e.json",
+    "docs/evidence/pearl-p8-batching-four-column.json",
+    "docs/evidence/pearl-p9-benchmark.json",
+    "docs/evidence/pearl-p10-endurance.json",
+    "docs/evidence/pearl-p11-delivery.json"
+  ],
+  "next_exact_task": "Install the pinned official Pearl node/gateway/prover/useful-work runtime outside this repository, then rerun P7 local/simnet getMiningInfo, proof submission, and accepted-block/share validation without adding credentials or fabricated tensors."
+}

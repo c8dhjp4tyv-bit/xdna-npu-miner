@@ -7,10 +7,10 @@ Pearl (PRL) is the active implementation track documented in
 rewrite the Qubic architecture below. P1 now contains the clean-room CPU
 oracle under `src/pearl/`; it uses no Qubic types or Pearl hot-component source.
 Pearl protocol, matrix, proof, network, and license decisions remain
-independent. P2-P11 are being delivered in one continuous shot with separate
+independent. P2-P11 were delivered in one continuous shot with separate
 gates. The Pearl boundary keeps networking, canonical verification, ZK proof
 generation, and submission on the CPU, with XDNA1 limited to explicitly
-verified compute buffers.
+verified compute buffers. P7 remains externally blocked.
 
 ## M0 architecture status
 

@@ -2,8 +2,7 @@
 
 ## State and scope
 
-P2–P6, P8, P9, and the P11 delivery implementation are now present in the
-one-shot branch. P10 is the current physical endurance gate. P7 remains
+P2–P6, P8–P11 are now present and validated in the one-shot branch. P7 remains
 `BLOCKED` until an official gateway/prover/useful-work provider and a
 local/simnet node are available. The aggregate must therefore remain
 `SOFTWARE_COMPLETE_E2E_BLOCKED` unless that external interoperability is
@@ -34,9 +33,10 @@ dense int8 MAC/reduction primitive: POSSIBLE_FIT
 overall Pearl mining path: UNKNOWN_NEEDS_EXPERIMENT
 ```
 
-The primitive is a plausible AIE2 workload, but no Pearl kernel has yet been
-implemented or differentially verified on this host. P0 makes no hashrate,
-latency, energy, profitability, or speedup claim.
+The primitive was a plausible AIE2 workload at P0. The project-owned kernel
+has since been implemented and differentially verified on this host; P8/P9
+record measured dispatch and candidate throughput, while making no energy,
+profitability, or live-network acceptance claim.
 
 ## Execution status and gate
 
@@ -45,9 +45,9 @@ CTest suite, JSON evidence, corpus digest, and `git diff --check` all pass on
 the same clean-room implementation. The P1 implementation is intentionally
 separate from `src/bpp9000/`, `src/qubic/`, and all Qubic wire types.
 
-P2 is **IN PROGRESS** and owns only the physical signed-int8 GEMM gate. Later
-milestones may be prepared only after their predecessor passes or is truthfully
-recorded as an external blocker; a later pass cannot erase an earlier failure.
+P2 through P6 and P8 through P11 are **PASS** under their individual evidence
+records. P7 is **BLOCKED** by the unavailable official runtime; that blocker is
+not erased by local protocol mocks or fixture proofs.
 
 The current CPU reference is in [`../../src/pearl/reference.hpp`](../../src/pearl/reference.hpp)
 and [`../../src/pearl/reference.cpp`](../../src/pearl/reference.cpp). The
