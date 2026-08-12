@@ -27,6 +27,28 @@ constexpr std::uint32_t kTranscriptRotation = 13U;
 
 using Digest = std::array<std::uint8_t, kDigestBytes>;
 
+// Certificate versions are consensus values carried by every mining job.  Do
+// not infer them from local chain height: the gateway/node template is the
+// authority for an individual candidate.
+enum class CertificateVersion : std::uint32_t {
+    V1 = 1U,
+    V2 = 2U,
+    V3 = 3U,
+};
+
+// The seed derivation is deliberately separate from the certificate wire
+// version.  V1/V2 retain the legacy chain; V3 binds raw Merkle roots to their
+// matrix dimensions before entering that otherwise unchanged chain.
+enum class SeedDerivation : std::uint8_t {
+    Legacy,
+    Salted,
+};
+
+[[nodiscard]] bool is_supported_certificate_version(std::uint32_t version) noexcept;
+[[nodiscard]] CertificateVersion certificate_version_from_u32(std::uint32_t version);
+[[nodiscard]] std::uint32_t certificate_version_number(CertificateVersion version) noexcept;
+[[nodiscard]] SeedDerivation seed_derivation_for(CertificateVersion version) noexcept;
+
 enum class ErrorCode : std::uint8_t {
     InvalidLength,
     InvalidValue,
@@ -177,6 +199,11 @@ struct CommitmentSeeds {
     Digest a_noise_seed{};
 };
 
+struct BoundRoots {
+    Digest bound_a{};
+    Digest bound_b{};
+};
+
 Digest blake3_keyed(const Digest& key, std::span<const std::uint8_t> data);
 Digest blake3_chunk_cv(const Digest& key,
                        std::span<const std::uint8_t> data,
@@ -187,9 +214,24 @@ Digest blake3_parent_cv(const Digest& key,
                         bool root);
 
 Digest job_key(const IncompleteBlockHeader& header, const MiningConfiguration& config);
+[[nodiscard]] Digest certificate_v3_domain_key_a();
+[[nodiscard]] Digest certificate_v3_domain_key_b();
+[[nodiscard]] Digest bind_certificate_v3_root_a(const Digest& hash_a, std::uint64_t m);
+[[nodiscard]] Digest bind_certificate_v3_root_b(const Digest& hash_b, std::uint64_t n);
+[[nodiscard]] BoundRoots bind_commitment_roots(SeedDerivation derivation,
+                                                const Digest& hash_a,
+                                                const Digest& hash_b,
+                                                std::uint64_t m,
+                                                std::uint64_t n);
 CommitmentSeeds commitment_seeds(const Digest& job_key,
                                  const Digest& hash_a,
                                  const Digest& hash_b);
+CommitmentSeeds commitment_seeds(CertificateVersion certificate_version,
+                                 const Digest& job_key,
+                                 const Digest& hash_a,
+                                 const Digest& hash_b,
+                                 std::uint64_t m,
+                                 std::uint64_t n);
 NoiseMatrices generate_noise(std::size_t k,
                              std::size_t rank,
                              const CommitmentSeeds& seeds,
@@ -257,6 +299,11 @@ Digest jackpot_hash(const std::array<std::uint32_t, kTranscriptWords>& transcrip
 Digest target_from_bytes(std::span<const std::uint8_t> bytes);
 bool jackpot_meets_target(const Digest& jackpot, const Digest& target);
 
+// Pearl certificate commitments are version-domain-separated SHA256d values.
+// This is distinct from the BLAKE3 work/noise path.
+[[nodiscard]] Digest proof_commitment(CertificateVersion certificate_version,
+                                      std::span<const std::uint8_t> public_data);
+
 struct MerkleProof {
     std::vector<std::array<std::uint8_t, kMerkleChunkBytes>> leaf_data;
     std::vector<std::size_t> leaf_indices;
@@ -305,6 +352,13 @@ struct PlainProof {
     [[nodiscard]] std::vector<std::uint8_t> serialize() const;
     static PlainProof deserialize(std::span<const std::uint8_t> bytes);
 };
+
+// Validates the P1 envelope under the selected Certificate V1/V2/V3 seed
+// rules.  PlainProof::serialize() intentionally keeps the historic V2 local
+// envelope behavior so existing P1/P7 bytes remain stable; callers preparing
+// an official wire proof must use this explicit certificate-aware boundary.
+void validate_plain_proof_for_certificate(const PlainProof& proof,
+                                          CertificateVersion certificate_version);
 
 struct PublicData {
     MiningConfiguration config{};

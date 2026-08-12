@@ -136,7 +136,13 @@ using Clock = std::chrono::steady_clock;
     if (version == nullptr || !version->is_number()) {
         fail(GatewayErrorCode::MalformedResponse, "cert_version is missing or not an integer");
     }
-    job.certificate_version = parse_u32(version->as_number().value, "cert_version");
+    const std::uint32_t raw_certificate_version = parse_u32(
+        version->as_number().value, "cert_version");
+    if (!is_supported_certificate_version(raw_certificate_version)) {
+        fail(GatewayErrorCode::UnsupportedCertificateVersion,
+             "UNSUPPORTED_CERTIFICATE_VERSION_" + std::to_string(raw_certificate_version));
+    }
+    job.certificate_version = certificate_version_from_u32(raw_certificate_version);
     const json::Value* job_id = value.find("job_id");
     if (job_id != nullptr) {
         if (!job_id->is_string()) {
@@ -147,7 +153,8 @@ using Clock = std::chrono::steady_clock;
         Digest key{};
         std::vector<std::uint8_t> fingerprint_input = job.incomplete_header_bytes;
         fingerprint_input.insert(fingerprint_input.end(), job.target.begin(), job.target.end());
-        const auto version_text = std::to_string(job.certificate_version);
+        const auto version_text = std::to_string(
+            certificate_version_number(job.certificate_version));
         fingerprint_input.insert(fingerprint_input.end(), version_text.begin(), version_text.end());
         job.job_id = "derived-" + digest_hex(blake3_keyed(key, fingerprint_input))
             .substr(0U, 32U);
@@ -424,12 +431,27 @@ const char* gateway_error_code_name(GatewayErrorCode code) noexcept
     case GatewayErrorCode::MalformedResponse: return "MALFORMED_RESPONSE";
     case GatewayErrorCode::StaleJob: return "STALE_JOB";
     case GatewayErrorCode::InvalidCandidate: return "INVALID_CANDIDATE";
+    case GatewayErrorCode::UnsupportedCertificateVersion:
+        return "UNSUPPORTED_CERTIFICATE_VERSION";
     case GatewayErrorCode::GatewayRejected: return "GATEWAY_REJECTED";
     case GatewayErrorCode::ProverFailure: return "PROVER_FAILURE";
     case GatewayErrorCode::NodeRejected: return "NODE_REJECTED";
     case GatewayErrorCode::Shutdown: return "SHUTDOWN";
     }
     return "UNKNOWN";
+}
+
+MiningJobIdentity mining_job_identity(const MiningJob& job)
+{
+    return MiningJobIdentity{job.job_id,
+                             job.incomplete_header_bytes,
+                             job.target,
+                             job.certificate_version};
+}
+
+bool same_mining_job_identity(const MiningJob& left, const MiningJob& right) noexcept
+{
+    return mining_job_identity(left) == mining_job_identity(right);
 }
 
 GatewayError::GatewayError(GatewayErrorCode code, const std::string& message)
@@ -527,7 +549,8 @@ SubmissionResult GatewayClient::submit_plain_proof(const PlainProof& proof,
     const std::string params = "{\"plain_proof\":\"" + plain_proof
         + "\",\"mining_job\":{\"incomplete_header_bytes\":\"" + header
         + "\",\"target\":" + job.target_for_json()
-        + ",\"cert_version\":" + std::to_string(job.certificate_version) + "}}";
+        + ",\"cert_version\":"
+        + std::to_string(certificate_version_number(job.certificate_version)) + "}}";
     ++request_id_;
     const json::Value result = rpc_call(config_, request_id_, "submitPlainProof", params);
     SubmissionResult submission;
@@ -561,7 +584,8 @@ SubmissionResult GatewayClient::submit_official_plain_proof(
     const std::string params = "{\"plain_proof\":\"" + plain_proof
         + "\",\"mining_job\":{\"incomplete_header_bytes\":\"" + header
         + "\",\"target\":" + job.target_for_json()
-        + ",\"cert_version\":" + std::to_string(job.certificate_version) + "}}";
+        + ",\"cert_version\":"
+        + std::to_string(certificate_version_number(job.certificate_version)) + "}}";
     ++request_id_;
     const json::Value result = rpc_call(config_, request_id_, "submitPlainProof", params);
     SubmissionResult submission;

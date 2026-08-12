@@ -57,7 +57,8 @@ struct Options {
     std::size_t benchmark_iterations = 100U;
 };
 
-constexpr std::string_view kVersion = "pearl-xdna-miner 0.1.0-p11";
+constexpr std::string_view kVersion = "pearl-xdna-miner 0.2.0-v3";
+constexpr std::string_view kPearlTestedSha = "bfd064717de4af0e8471bdc24ca4a28aa6278227";
 
 [[nodiscard]] std::string json_escape(std::string_view value)
 {
@@ -74,6 +75,29 @@ constexpr std::string_view kVersion = "pearl-xdna-miner 0.1.0-p11";
         }
     }
     return result;
+}
+
+[[nodiscard]] std::string digest_hex(const Digest& value)
+{
+    std::ostringstream output;
+    output << std::hex << std::setfill('0');
+    for (const std::uint8_t byte : value) {
+        output << std::setw(2) << static_cast<unsigned int>(byte);
+    }
+    return output.str();
+}
+
+void print_version_report(const Options& options)
+{
+    const auto capability = xdna::runtime::probe_device(options.device);
+    std::cout << kVersion << '\n'
+              << "project-commit: " << XDNA_PROJECT_COMMIT << '\n'
+              << "supported-certificates: 1,2,3\n"
+              << "pearl-tested-sha: " << kPearlTestedSha << '\n'
+              << "xdna: " << (capability.device_name.empty()
+                  ? std::string("unavailable") : capability.device_name) << '\n'
+              << "xrt: " << (capability.xrt_version.empty()
+                  ? std::string("unavailable") : capability.xrt_version) << '\n';
 }
 
 [[nodiscard]] std::string trim(std::string value)
@@ -226,6 +250,21 @@ void print_help()
     return config;
 }
 
+[[nodiscard]] MiningJob fixture_job(const IncompleteBlockHeader& header,
+                                    const Digest& target,
+                                    CertificateVersion certificate_version,
+                                    std::string job_id)
+{
+    const auto bytes = serialize_header(header);
+    MiningJob job;
+    job.incomplete_header_bytes.assign(bytes.begin(), bytes.end());
+    job.target = target;
+    job.target_decimal = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
+    job.certificate_version = certificate_version;
+    job.job_id = std::move(job_id);
+    return job;
+}
+
 [[nodiscard]] PlainProof run_fixture_pipeline(const Options& options,
                                                XdnaMatmulExecutor& executor)
 {
@@ -262,17 +301,24 @@ void print_help()
     }
     const Int8Matrix bt(250U, 2048U, std::move(bt_values));
     const Digest hash_b = merkle_root(bt.raw_bytes(), key);
-    const CommitmentSeeds seeds = commitment_seeds(key, hash_a, hash_b);
+    const CommitmentSeeds seeds = commitment_seeds(
+        CertificateVersion::V2, key, hash_a, hash_b, full_a.rows(), full_b.cols());
     const std::vector<std::size_t> row_indices(rows.begin(), rows.end());
     const std::vector<std::size_t> column_indices(columns.begin(), columns.end());
     const NoiseMatrices noise = generate_noise(2048U, 128U, seeds, row_indices, column_indices);
     Digest target{};
     target.fill(0xFFU);
+    const CandidateBinding binding = make_candidate_binding(
+        fixture_job(header, target, CertificateVersion::V2, "fixture-v2"),
+        header,
+        full_a.rows(),
+        full_b.cols());
     ComputePipeline pipeline(executor);
     const ComputePipelineResult result = pipeline.run(
         selected_a, selected_b, noise, 128U, seeds.a_noise_seed, target);
-    PlainProof proof = build_plain_proof(header, config, full_a, full_b, 0U, 0U, result, target);
-    verify_plain_proof_candidate(proof);
+    PlainProof proof = build_plain_proof(
+        binding, header, config, full_a, full_b, 0U, 0U, result);
+    verify_plain_proof_candidate(proof, binding);
     (void)options;
     return proof;
 }
@@ -379,7 +425,7 @@ void print_status(const Options& options, std::string_view state, std::string_vi
         }
         seed_words.push_back(word);
     }
-    seed_words.push_back(job.certificate_version);
+    seed_words.push_back(certificate_version_number(job.certificate_version));
     seed_words.push_back(0x50375037U);
     std::seed_seq seed(seed_words.begin(), seed_words.end());
     return std::mt19937_64(seed);
@@ -390,9 +436,10 @@ int run_official_simnet_e2e(const Options& options,
 {
     GatewayJobProvider jobs(client);
     const PearlJob job = jobs.fetch();
-    if (job.gateway_job.certificate_version != 2U) {
+    const CertificateVersion certificate_version = job.gateway_job.certificate_version;
+    if (!is_supported_certificate_version(certificate_version_number(certificate_version))) {
         throw WorkError(WorkErrorCode::InvalidWork,
-                        "official SIMNET P7 path requires cert_version=2");
+                        "gateway requested an unsupported certificate version");
     }
 
     const MiningConfiguration config = fixture_config();
@@ -400,6 +447,8 @@ int run_official_simnet_e2e(const Options& options,
     constexpr std::uint32_t kColumns = 256U;
     constexpr std::uint32_t kCommon = 2048U;
     constexpr std::uint32_t kRank = 128U;
+    const CandidateBinding binding = make_candidate_binding(
+        job.gateway_job, job.header, kRows, kColumns);
     const std::vector<std::uint32_t> a_rows = config.rows_pattern.indices_with_offset(0U);
     const std::vector<std::uint32_t> b_columns = config.cols_pattern.indices_with_offset(0U);
     const Digest adjusted_target = scale_target_for_official_e2e(
@@ -417,7 +466,9 @@ int run_official_simnet_e2e(const Options& options,
     print_status(options,
                  "OFFICIAL_GATEWAY_GET_MINING_INFO_PASS",
                  "job_id=" + job.gateway_job.job_id
-                     + " cert_version=2 header_bytes=76 target="
+                     + " cert_version="
+                     + std::to_string(certificate_version_number(certificate_version))
+                     + " header_bytes=76 target="
                      + job.gateway_job.target_decimal);
     print_status(options,
                  "OFFICIAL_XDNA_SEARCH_START",
@@ -436,7 +487,12 @@ int run_official_simnet_e2e(const Options& options,
         const Digest key = job_key(job.header, config);
         const Digest hash_a = merkle_root(full_a.raw_bytes(), key);
         const Digest hash_b = merkle_root(full_bt.raw_bytes(), key);
-        const CommitmentSeeds seeds = commitment_seeds(key, hash_a, hash_b);
+        const CommitmentSeeds seeds = commitment_seeds(certificate_version,
+                                                       key,
+                                                       hash_a,
+                                                       hash_b,
+                                                       kRows,
+                                                       kColumns);
         const std::vector<std::size_t> a_opening_rows(a_rows.begin(), a_rows.end());
         const std::vector<std::size_t> b_opening_rows(b_columns.begin(), b_columns.end());
         const NoiseMatrices noise = generate_noise(
@@ -453,21 +509,22 @@ int run_official_simnet_e2e(const Options& options,
         }
 
         const PlainProof proof = build_plain_proof(
+            binding,
             job.header,
             config,
             full_a,
             full_b,
             0U,
             0U,
-            result,
-            job.gateway_job.target);
-        verify_plain_proof_candidate(proof);
-        const std::vector<std::uint8_t> official_wire = serialize_official_plain_proof(proof);
+            result);
+        verify_plain_proof_candidate(proof, binding);
+        const std::vector<std::uint8_t> official_wire = serialize_official_plain_proof(proof, binding);
         print_status(options,
                      "OFFICIAL_PLAINPROOF_CPU_VERIFIED",
                      "attempt=" + std::to_string(attempts)
                          + " official_wire_bytes=" + std::to_string(official_wire.size())
                          + " cpu_fallbacks=0");
+        jobs.assert_current(binding.job);
         const SubmissionResult submission = client.submit_official_plain_proof(
             official_wire, job.gateway_job);
         print_status(options,
@@ -499,6 +556,47 @@ int run_self_test(const Options& options)
         print_status(options, "CPU_SELF_TEST_FAIL", "BLAKE3 returned an all-zero digest unexpectedly");
         return 1;
     }
+    const Digest vector_key = [] {
+        Digest value{};
+        value.fill(0x11U);
+        return value;
+    }();
+    const Digest vector_a = [] {
+        Digest value{};
+        value.fill(0xAAU);
+        return value;
+    }();
+    const Digest vector_b = [] {
+        Digest value{};
+        value.fill(0xBBU);
+        return value;
+    }();
+    const CommitmentSeeds v2 = commitment_seeds(
+        CertificateVersion::V2, vector_key, vector_a, vector_b, 192U, 320U);
+    if (digest_hex(v2.b_noise_seed)
+            != "add6f7ea5feebf89c8a77e2ebfa0d82442e7dbb0046dbd48971861d12fcb0177"
+        || digest_hex(v2.a_noise_seed)
+            != "483b07b6f73105030b9482255f37723f3fed69ae916724ee8291848b8c28794b") {
+        print_status(options, "V2_REFERENCE_FAIL", "legacy seed vector mismatch");
+        return 1;
+    }
+    print_status(options, "V2_REFERENCE_PASS", "legacy seed vectors passed");
+    const BoundRoots bound = bind_commitment_roots(
+        SeedDerivation::Salted, vector_a, vector_b, 192U, 320U);
+    const CommitmentSeeds v3 = commitment_seeds(
+        CertificateVersion::V3, vector_key, vector_a, vector_b, 192U, 320U);
+    if (digest_hex(bound.bound_a)
+            != "8310b848ff095c9af7256f6a52557cce1dec3f51cd48eb63d494036de6f5e56a"
+        || digest_hex(bound.bound_b)
+            != "36fd9f94a38303d8b0a8bc2a6b71ac89c8337505afbd6e118f6868e06fc1d48d"
+        || digest_hex(v3.b_noise_seed)
+            != "60ed9b73c5a9599b200b6cd563e7f0d5d9a67d2402d85fd4ef966c580080d0e5"
+        || digest_hex(v3.a_noise_seed)
+            != "301784168005ec833ab0aa60006f7fe7faaa95307d8c1fc6819b2ffdd717eccf") {
+        print_status(options, "V3_REFERENCE_FAIL", "salted seed vector mismatch");
+        return 1;
+    }
+    print_status(options, "V3_REFERENCE_PASS", "salted V3 seed and bound-root vectors passed");
     print_status(options, "CPU_SELF_TEST_PASS", "P1 vectors and BLAKE3 passed");
     try {
         XdnaMatmulExecutor executor(artifact_for(options), options.device);
@@ -643,7 +741,7 @@ int main(int argc, char** argv)
             return options.mode == Mode::None ? 0 : 0;
         }
         if (options.mode == Mode::Version) {
-            std::cout << kVersion << '\n';
+            print_version_report(options);
             return 0;
         }
         if (options.mode == Mode::SelfTest) return run_self_test(options);

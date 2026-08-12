@@ -6,6 +6,16 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+execute_process(
+    COMMAND git -C "${CMAKE_CURRENT_SOURCE_DIR}" rev-parse HEAD
+    OUTPUT_VARIABLE XDNA_PROJECT_COMMIT
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
+)
+if(XDNA_PROJECT_COMMIT STREQUAL "")
+    set(XDNA_PROJECT_COMMIT "unknown")
+endif()
+
 option(XDNA_ENABLE_PRODUCTION_CRYPTO
     "Build the pinned K12/FourQ production crypto provider and its KATs"
     OFF
@@ -690,6 +700,22 @@ if(XRT_INCLUDE_DIR AND XRT_COREUTIL_LIBRARY)
         -Wno-shadow
     )
 
+    add_executable(pearl_v3_xdna_differential
+        tests/pearl_v3_xdna_differential.cpp
+    )
+    target_link_libraries(pearl_v3_xdna_differential PRIVATE pearl_candidate)
+    target_compile_options(pearl_v3_xdna_differential PRIVATE
+        -Wall
+        -Wextra
+        -Wpedantic
+        -Wconversion
+        -Wshadow
+        -Werror
+        -Wno-conversion
+        -Wno-ignored-qualifiers
+        -Wno-shadow
+    )
+
     add_executable(pearl_final_benchmark
         tests/pearl_final_benchmark.cpp
     )
@@ -710,6 +736,9 @@ if(XRT_INCLUDE_DIR AND XRT_COREUTIL_LIBRARY)
         src/pearl/miner_main.cpp
     )
     target_link_libraries(pearl-xdna-miner PRIVATE pearl_candidate pearl_gateway)
+    target_compile_definitions(pearl-xdna-miner PRIVATE
+        XDNA_PROJECT_COMMIT="${XDNA_PROJECT_COMMIT}"
+    )
     target_compile_options(pearl-xdna-miner PRIVATE
         -Wall
         -Wextra

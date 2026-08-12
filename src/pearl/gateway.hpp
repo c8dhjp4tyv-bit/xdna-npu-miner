@@ -19,6 +19,7 @@ enum class GatewayErrorCode : std::uint8_t {
     MalformedResponse,
     StaleJob,
     InvalidCandidate,
+    UnsupportedCertificateVersion,
     GatewayRejected,
     ProverFailure,
     NodeRejected,
@@ -62,7 +63,7 @@ struct MiningJob {
     std::vector<std::uint8_t> incomplete_header_bytes;
     Digest target{};
     std::string target_decimal;
-    std::uint32_t certificate_version = 0U;
+    CertificateVersion certificate_version = CertificateVersion::V1;
     std::string job_id;
 
     [[nodiscard]] std::string target_for_json() const
@@ -70,6 +71,22 @@ struct MiningJob {
         return target_decimal;
     }
 };
+
+// This is the immutable identity bound to every locally constructed
+// candidate.  A job-id alone is insufficient because official template
+// refreshes may change header, target, or certificate version independently.
+struct MiningJobIdentity {
+    std::string job_id;
+    std::vector<std::uint8_t> incomplete_header_bytes;
+    Digest target{};
+    CertificateVersion certificate_version = CertificateVersion::V1;
+
+    friend bool operator==(const MiningJobIdentity&, const MiningJobIdentity&) = default;
+};
+
+[[nodiscard]] MiningJobIdentity mining_job_identity(const MiningJob& job);
+[[nodiscard]] bool same_mining_job_identity(const MiningJob& left,
+                                             const MiningJob& right) noexcept;
 
 struct SubmissionResult {
     bool accepted_by_gateway = false;

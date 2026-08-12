@@ -49,6 +49,9 @@ public:
     }
 
     [[nodiscard]] PearlJob fetch();
+    // Fetches a fresh template immediately before a submission boundary.  A
+    // candidate is stale if *any* immutable identity field changed.
+    void assert_current(const MiningJobIdentity& expected);
 
 private:
     GatewayClient& client_;

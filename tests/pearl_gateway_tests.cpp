@@ -109,9 +109,14 @@ void expect(bool condition, const char* message)
 
 class UnixResponder final {
 public:
-    explicit UnixResponder(std::string path, bool malformed = false)
+    explicit UnixResponder(std::string path,
+                           bool malformed = false,
+                           std::string certificate_version = "1",
+                           bool omit_certificate_version = false)
         : path_(std::move(path)),
-          malformed_(malformed)
+          malformed_(malformed),
+          certificate_version_(std::move(certificate_version)),
+          omit_certificate_version_(omit_certificate_version)
     {
         listener_ = socket(AF_UNIX, SOCK_STREAM, 0);
         if (listener_ < 0) {
@@ -170,9 +175,13 @@ private:
             } else if (line.find("getMiningInfo") != std::string::npos) {
                 saw_get_ = true;
                 const std::vector<std::uint8_t> header(kHeaderBytes, 0U);
+                const std::string certificate_field = omit_certificate_version_
+                    ? std::string{}
+                    : ",\"cert_version\":" + certificate_version_;
                 response = "{\"jsonrpc\":\"2.0\",\"result\":{\"incomplete_header_bytes\":\""
                     + base64_encode(header)
-                    + "\",\"target\":115792089237316195423570985008687907853269984665640564039457584007913129639935,\"cert_version\":1,\"ignored\":true},\"id\":1}\n";
+                    + "\",\"target\":115792089237316195423570985008687907853269984665640564039457584007913129639935"
+                    + certificate_field + ",\"ignored\":true},\"id\":1}\n";
             } else if (line.find("submitPlainProof") != std::string::npos) {
                 saw_submit_ = true;
                 response = "{\"jsonrpc\":\"2.0\",\"result\":\"submitted\",\"id\":2}\n";
@@ -187,6 +196,8 @@ private:
 
     std::string path_;
     bool malformed_ = false;
+    std::string certificate_version_;
+    bool omit_certificate_version_ = false;
     int listener_ = -1;
     std::thread thread_;
     std::atomic<bool> saw_get_{false};
@@ -217,7 +228,7 @@ int main()
         GatewayClient client(config);
         const MiningJob job = client.get_mining_info();
         expect(job.incomplete_header_bytes.size() == kHeaderBytes, "header decoded");
-        expect(job.certificate_version == 1U, "certificate version decoded");
+        expect(job.certificate_version == CertificateVersion::V1, "certificate version decoded");
         const Digest max_target = [] {
             Digest value{};
             value.fill(0xFFU);
@@ -238,6 +249,33 @@ int main()
             malformed_seen = error.code() == GatewayErrorCode::MalformedResponse;
         }
         expect(malformed_seen, "malformed JSON is categorized");
+
+        const std::string unsupported_path = "/tmp/pearl-gateway-unsupported-"
+            + std::to_string(getpid()) + ".sock";
+        UnixResponder unsupported(unsupported_path, false, "4");
+        GatewayClientConfig unsupported_config = config;
+        unsupported_config.endpoint.unix_path = unsupported_path;
+        bool unsupported_seen = false;
+        try {
+            (void)GatewayClient(unsupported_config).get_mining_info();
+        } catch (const GatewayError& error) {
+            unsupported_seen = error.code() == GatewayErrorCode::UnsupportedCertificateVersion
+                && std::string(error.what()) == "UNSUPPORTED_CERTIFICATE_VERSION_4";
+        }
+        expect(unsupported_seen, "unknown certificate versions fail closed with a stable code");
+
+        const std::string missing_cert_path = "/tmp/pearl-gateway-missing-cert-"
+            + std::to_string(getpid()) + ".sock";
+        UnixResponder missing_cert(missing_cert_path, false, "1", true);
+        GatewayClientConfig missing_cert_config = config;
+        missing_cert_config.endpoint.unix_path = missing_cert_path;
+        bool missing_cert_seen = false;
+        try {
+            (void)GatewayClient(missing_cert_config).get_mining_info();
+        } catch (const GatewayError& error) {
+            missing_cert_seen = error.code() == GatewayErrorCode::MalformedResponse;
+        }
+        expect(missing_cert_seen, "missing certificate version is rejected");
 
         GatewayClientConfig unsafe = config;
         unsafe.endpoint.transport = GatewayTransport::LoopbackTcp;

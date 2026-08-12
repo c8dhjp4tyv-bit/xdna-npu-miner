@@ -377,6 +377,33 @@ Error::Error(ErrorCode code, const std::string& message)
 {
 }
 
+bool is_supported_certificate_version(std::uint32_t version) noexcept
+{
+    return version == certificate_version_number(CertificateVersion::V1)
+        || version == certificate_version_number(CertificateVersion::V2)
+        || version == certificate_version_number(CertificateVersion::V3);
+}
+
+CertificateVersion certificate_version_from_u32(std::uint32_t version)
+{
+    if (!is_supported_certificate_version(version)) {
+        fail(ErrorCode::InvalidValue,
+             "unsupported Pearl certificate version " + std::to_string(version));
+    }
+    return static_cast<CertificateVersion>(version);
+}
+
+std::uint32_t certificate_version_number(CertificateVersion version) noexcept
+{
+    return static_cast<std::uint32_t>(version);
+}
+
+SeedDerivation seed_derivation_for(CertificateVersion version) noexcept
+{
+    return version == CertificateVersion::V3 ? SeedDerivation::Salted
+                                              : SeedDerivation::Legacy;
+}
+
 std::vector<std::uint32_t> PeriodicPattern::indices() const
 {
     validate_pattern_shape(shape_);
@@ -814,19 +841,113 @@ Digest job_key(const IncompleteBlockHeader& header, const MiningConfiguration& c
     return hash_unkeyed(input);
 }
 
+namespace {
+
+constexpr std::string_view kCertificateV3ContextA = "pearl/cert-v3/noise-seed/A";
+constexpr std::string_view kCertificateV3ContextB = "pearl/cert-v3/noise-seed/B";
+
+[[nodiscard]] Digest domain_key(std::string_view context)
+{
+    std::vector<std::uint8_t> bytes;
+    bytes.reserve(context.size());
+    for (const char character : context) {
+        bytes.push_back(static_cast<std::uint8_t>(character));
+    }
+    return hash_unkeyed(bytes);
+}
+
+[[nodiscard]] std::uint32_t canonical_dimension(std::uint64_t dimension,
+                                                 const char* label)
+{
+    require(dimension <= std::numeric_limits<std::uint32_t>::max(),
+            ErrorCode::InvalidValue,
+            std::string(label) + " does not fit canonical u32");
+    return static_cast<std::uint32_t>(dimension);
+}
+
+[[nodiscard]] Digest bind_root(const Digest& root,
+                                std::uint64_t dimension,
+                                std::string_view context,
+                                const char* label)
+{
+    std::array<std::uint8_t, 64U> message{};
+    std::copy(root.begin(), root.end(), message.begin());
+    const std::uint32_t canonical = canonical_dimension(dimension, label);
+    for (std::uint32_t shift = 0U; shift < 32U; shift += 8U) {
+        message[32U + shift / 8U] = static_cast<std::uint8_t>((canonical >> shift) & 0xFFU);
+    }
+    // The value-initialized tail is exactly the required 28 zero bytes.
+    return blake3_keyed(domain_key(context), message);
+}
+
+} // namespace
+
+Digest certificate_v3_domain_key_a()
+{
+    return domain_key(kCertificateV3ContextA);
+}
+
+Digest certificate_v3_domain_key_b()
+{
+    return domain_key(kCertificateV3ContextB);
+}
+
+Digest bind_certificate_v3_root_a(const Digest& hash_a, std::uint64_t m)
+{
+    return bind_root(hash_a, m, kCertificateV3ContextA, "A binding dimension");
+}
+
+Digest bind_certificate_v3_root_b(const Digest& hash_b, std::uint64_t n)
+{
+    return bind_root(hash_b, n, kCertificateV3ContextB, "B binding dimension");
+}
+
+BoundRoots bind_commitment_roots(SeedDerivation derivation,
+                                 const Digest& hash_a,
+                                 const Digest& hash_b,
+                                 std::uint64_t m,
+                                 std::uint64_t n)
+{
+    switch (derivation) {
+    case SeedDerivation::Legacy:
+        return BoundRoots{hash_a, hash_b};
+    case SeedDerivation::Salted:
+        return BoundRoots{bind_certificate_v3_root_a(hash_a, m),
+                          bind_certificate_v3_root_b(hash_b, n)};
+    }
+    fail(ErrorCode::InvalidValue, "unknown Pearl seed derivation");
+}
+
+CommitmentSeeds commitment_seeds(CertificateVersion certificate_version,
+                                 const Digest& key,
+                                 const Digest& hash_a,
+                                 const Digest& hash_b,
+                                 std::uint64_t m,
+                                 std::uint64_t n)
+{
+    if (!is_supported_certificate_version(certificate_version_number(certificate_version))) {
+        fail(ErrorCode::InvalidValue, "unsupported Pearl certificate version");
+    }
+    const BoundRoots roots = bind_commitment_roots(
+        seed_derivation_for(certificate_version), hash_a, hash_b, m, n);
+    std::vector<std::uint8_t> input;
+    input.reserve(64U);
+    append_digest(input, key);
+    append_digest(input, roots.bound_b);
+    const Digest b_noise_seed = hash_unkeyed(input);
+    input.clear();
+    append_digest(input, b_noise_seed);
+    append_digest(input, roots.bound_a);
+    return CommitmentSeeds{b_noise_seed, hash_unkeyed(input)};
+}
+
 CommitmentSeeds commitment_seeds(const Digest& key,
                                  const Digest& hash_a,
                                  const Digest& hash_b)
 {
-    std::vector<std::uint8_t> input;
-    input.reserve(64U);
-    append_digest(input, key);
-    append_digest(input, hash_b);
-    const Digest b_noise_seed = hash_unkeyed(input);
-    input.clear();
-    append_digest(input, b_noise_seed);
-    append_digest(input, hash_a);
-    return CommitmentSeeds{b_noise_seed, hash_unkeyed(input)};
+    // Historical P1/P7 fixtures use the V2 legacy chain byte-for-byte.  New
+    // candidate paths must call the explicit certificate-version overload.
+    return commitment_seeds(CertificateVersion::V2, key, hash_a, hash_b, 0U, 0U);
 }
 
 namespace {
@@ -1275,6 +1396,126 @@ bool jackpot_meets_target(const Digest& jackpot, const Digest& target)
     return true; // Pinned Pearl uses <=, including equality.
 }
 
+namespace {
+
+constexpr std::array<std::uint32_t, 64U> kSha256RoundConstants = {
+    0x428A2F98U, 0x71374491U, 0xB5C0FBCFU, 0xE9B5DBA5U, 0x3956C25BU, 0x59F111F1U, 0x923F82A4U, 0xAB1C5ED5U,
+    0xD807AA98U, 0x12835B01U, 0x243185BEU, 0x550C7DC3U, 0x72BE5D74U, 0x80DEB1FEU, 0x9BDC06A7U, 0xC19BF174U,
+    0xE49B69C1U, 0xEFBE4786U, 0x0FC19DC6U, 0x240CA1CCU, 0x2DE92C6FU, 0x4A7484AAU, 0x5CB0A9DCU, 0x76F988DAU,
+    0x983E5152U, 0xA831C66DU, 0xB00327C8U, 0xBF597FC7U, 0xC6E00BF3U, 0xD5A79147U, 0x06CA6351U, 0x14292967U,
+    0x27B70A85U, 0x2E1B2138U, 0x4D2C6DFCU, 0x53380D13U, 0x650A7354U, 0x766A0ABBU, 0x81C2C92EU, 0x92722C85U,
+    0xA2BFE8A1U, 0xA81A664BU, 0xC24B8B70U, 0xC76C51A3U, 0xD192E819U, 0xD6990624U, 0xF40E3585U, 0x106AA070U,
+    0x19A4C116U, 0x1E376C08U, 0x2748774CU, 0x34B0BCB5U, 0x391C0CB3U, 0x4ED8AA4AU, 0x5B9CCA4FU, 0x682E6FF3U,
+    0x748F82EEU, 0x78A5636FU, 0x84C87814U, 0x8CC70208U, 0x90BEFFFAU, 0xA4506CEBU, 0xBEF9A3F7U, 0xC67178F2U,
+};
+
+void sha256_compress(std::array<std::uint32_t, 8U>& state,
+                     const std::array<std::uint8_t, 64U>& block)
+{
+    std::array<std::uint32_t, 64U> words{};
+    for (std::size_t index = 0U; index < 16U; ++index) {
+        const std::size_t offset = index * 4U;
+        words[index] = (static_cast<std::uint32_t>(block[offset]) << 24U)
+            | (static_cast<std::uint32_t>(block[offset + 1U]) << 16U)
+            | (static_cast<std::uint32_t>(block[offset + 2U]) << 8U)
+            | static_cast<std::uint32_t>(block[offset + 3U]);
+    }
+    for (std::size_t index = 16U; index < words.size(); ++index) {
+        const std::uint32_t s0 = std::rotr(words[index - 15U], 7)
+            ^ std::rotr(words[index - 15U], 18) ^ (words[index - 15U] >> 3U);
+        const std::uint32_t s1 = std::rotr(words[index - 2U], 17)
+            ^ std::rotr(words[index - 2U], 19) ^ (words[index - 2U] >> 10U);
+        words[index] = words[index - 16U] + s0 + words[index - 7U] + s1;
+    }
+    std::uint32_t a = state[0U];
+    std::uint32_t b = state[1U];
+    std::uint32_t c = state[2U];
+    std::uint32_t d = state[3U];
+    std::uint32_t e = state[4U];
+    std::uint32_t f = state[5U];
+    std::uint32_t g = state[6U];
+    std::uint32_t h = state[7U];
+    for (std::size_t index = 0U; index < words.size(); ++index) {
+        const std::uint32_t sum1 = std::rotr(e, 6) ^ std::rotr(e, 11) ^ std::rotr(e, 25);
+        const std::uint32_t choice = (e & f) ^ ((~e) & g);
+        const std::uint32_t temp1 = h + sum1 + choice + kSha256RoundConstants[index] + words[index];
+        const std::uint32_t sum0 = std::rotr(a, 2) ^ std::rotr(a, 13) ^ std::rotr(a, 22);
+        const std::uint32_t majority = (a & b) ^ (a & c) ^ (b & c);
+        const std::uint32_t temp2 = sum0 + majority;
+        h = g;
+        g = f;
+        f = e;
+        e = d + temp1;
+        d = c;
+        c = b;
+        b = a;
+        a = temp1 + temp2;
+    }
+    state[0U] += a;
+    state[1U] += b;
+    state[2U] += c;
+    state[3U] += d;
+    state[4U] += e;
+    state[5U] += f;
+    state[6U] += g;
+    state[7U] += h;
+}
+
+[[nodiscard]] Digest sha256(std::span<const std::uint8_t> data)
+{
+    require(data.size() <= std::numeric_limits<std::uint64_t>::max() / 8U,
+            ErrorCode::InvalidLength,
+            "SHA256 input is too large");
+    std::array<std::uint32_t, 8U> state = {
+        0x6A09E667U, 0xBB67AE85U, 0x3C6EF372U, 0xA54FF53AU,
+        0x510E527FU, 0x9B05688CU, 0x1F83D9ABU, 0x5BE0CD19U,
+    };
+    std::size_t offset = 0U;
+    while (data.size() - offset >= 64U) {
+        std::array<std::uint8_t, 64U> block{};
+        std::copy_n(data.begin() + static_cast<std::ptrdiff_t>(offset), block.size(), block.begin());
+        sha256_compress(state, block);
+        offset += block.size();
+    }
+    std::array<std::uint8_t, 64U> block{};
+    const std::size_t remainder = data.size() - offset;
+    std::copy_n(data.begin() + static_cast<std::ptrdiff_t>(offset), remainder, block.begin());
+    block[remainder] = 0x80U;
+    if (remainder >= 56U) {
+        sha256_compress(state, block);
+        block.fill(0U);
+    }
+    const std::uint64_t bit_length = static_cast<std::uint64_t>(data.size()) * 8U;
+    for (std::size_t index = 0U; index < 8U; ++index) {
+        block[63U - index] = static_cast<std::uint8_t>((bit_length >> (index * 8U)) & 0xFFU);
+    }
+    sha256_compress(state, block);
+    Digest result{};
+    for (std::size_t index = 0U; index < state.size(); ++index) {
+        const std::uint32_t word = state[index];
+        result[index * 4U] = static_cast<std::uint8_t>(word >> 24U);
+        result[index * 4U + 1U] = static_cast<std::uint8_t>(word >> 16U);
+        result[index * 4U + 2U] = static_cast<std::uint8_t>(word >> 8U);
+        result[index * 4U + 3U] = static_cast<std::uint8_t>(word);
+    }
+    return result;
+}
+
+} // namespace
+
+Digest proof_commitment(CertificateVersion certificate_version,
+                        std::span<const std::uint8_t> public_data)
+{
+    require(is_supported_certificate_version(certificate_version_number(certificate_version)),
+            ErrorCode::InvalidValue,
+            "unsupported Pearl certificate version for proof commitment");
+    std::vector<std::uint8_t> preimage;
+    preimage.reserve(4U + public_data.size());
+    append_u32(preimage, certificate_version_number(certificate_version));
+    preimage.insert(preimage.end(), public_data.begin(), public_data.end());
+    return sha256(sha256(preimage));
+}
+
 Digest merkle_root(std::span<const std::uint8_t> data, const Digest& key)
 {
     const MerkleLayers tree = build_merkle_layers(data, key);
@@ -1526,9 +1767,12 @@ void serialize_matrix_opening(std::vector<std::uint8_t>& output,
     return {leaves.begin(), leaves.end()};
 }
 
-void validate_plain_proof(const PlainProof& proof)
+void validate_plain_proof(const PlainProof& proof, CertificateVersion certificate_version)
 {
     require(proof.version == 1U, ErrorCode::InvalidValue, "unsupported P1 PlainProof version");
+    require(is_supported_certificate_version(certificate_version_number(certificate_version)),
+            ErrorCode::InvalidValue,
+            "unsupported Pearl certificate version for PlainProof");
     require(proof.k == proof.config.common_dim && proof.rank == proof.config.rank,
             ErrorCode::InvalidValue,
             "PlainProof dimensions do not agree with the mining configuration");
@@ -1579,17 +1823,16 @@ void validate_plain_proof(const PlainProof& proof)
                 && verify_merkle_proof(proof.bt_opening.proof, proof.header_config_key),
             ErrorCode::InvalidValue,
             "PlainProof Merkle opening verification failed");
-    std::vector<std::uint8_t> hash_input;
-    hash_input.reserve(64U);
-    append_digest(hash_input, proof.header_config_key);
-    append_digest(hash_input, proof.hash_b);
-    require(proof.commitment_b == hash_unkeyed(hash_input),
+    const CommitmentSeeds expected_seeds = commitment_seeds(certificate_version,
+                                                            proof.header_config_key,
+                                                            proof.hash_a,
+                                                            proof.hash_b,
+                                                            proof.m,
+                                                            proof.n);
+    require(proof.commitment_b == expected_seeds.b_noise_seed,
             ErrorCode::InvalidValue,
             "PlainProof B commitment derivation is not canonical");
-    hash_input.clear();
-    append_digest(hash_input, proof.commitment_b);
-    append_digest(hash_input, proof.hash_a);
-    require(proof.commitment_a == hash_unkeyed(hash_input),
+    require(proof.commitment_a == expected_seeds.a_noise_seed,
             ErrorCode::InvalidValue,
             "PlainProof A commitment derivation is not canonical");
     const std::size_t expected_trace = proof.config.dot_product_length() / proof.rank;
@@ -1618,9 +1861,19 @@ void validate_plain_proof(const PlainProof& proof)
 
 } // namespace
 
+void validate_plain_proof_for_certificate(const PlainProof& proof,
+                                          CertificateVersion certificate_version)
+{
+    validate_plain_proof(proof, certificate_version);
+}
+
 std::vector<std::uint8_t> PlainProof::serialize() const
 {
-    validate_plain_proof(*this);
+    // The fixed-width P1 envelope was historically a V2 local fixture. Keep
+    // that byte-level behavior unchanged; V3 candidates are validated through
+    // validate_plain_proof_for_certificate before their official wire form is
+    // emitted.
+    validate_plain_proof(*this, CertificateVersion::V2);
     std::vector<std::uint8_t> output;
     output.reserve(4096U);
     append_u32(output, version);
@@ -1697,7 +1950,7 @@ PlainProof PlainProof::deserialize(std::span<const std::uint8_t> bytes)
         word = reader.u32();
     }
     require_no_remaining(reader, "PlainProof");
-    validate_plain_proof(result);
+    validate_plain_proof(result, CertificateVersion::V2);
     const std::vector<std::uint8_t> canonical = result.serialize();
     require(canonical.size() == bytes.size()
                 && std::equal(canonical.begin(), canonical.end(), bytes.begin(), bytes.end()),

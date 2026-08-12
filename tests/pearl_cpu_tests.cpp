@@ -410,6 +410,116 @@ void test_seeded_randomized()
     }
 }
 
+void test_certificate_v3_seed_derivation()
+{
+    const Digest job = repeated_digest(0x11U);
+    const Digest raw_a = repeated_digest(0xAAU);
+    const Digest raw_b = repeated_digest(0xBBU);
+    constexpr std::uint32_t m = 192U;
+    constexpr std::uint32_t n = 320U;
+
+    expect(certificate_version_number(CertificateVersion::V1) == 1U
+               && certificate_version_number(CertificateVersion::V2) == 2U
+               && certificate_version_number(CertificateVersion::V3) == 3U,
+           "certificate version discriminants are canonical");
+    expect(seed_derivation_for(CertificateVersion::V1) == SeedDerivation::Legacy
+               && seed_derivation_for(CertificateVersion::V2) == SeedDerivation::Legacy
+               && seed_derivation_for(CertificateVersion::V3) == SeedDerivation::Salted,
+           "certificate versions dispatch to the expected seed derivations");
+    expect(hex(certificate_v3_domain_key_a())
+               == "8249406ca0ed15169616f692fcf076f892dbdb2a7023b852f0d47719c390017b",
+           "V3 A domain key independently derives from its context string");
+    expect(hex(certificate_v3_domain_key_b())
+               == "11300632ec6301ca2be2af718b3f4d4f1ae9c63988e8cc044844301d71b89aa9",
+           "V3 B domain key independently derives from its context string");
+
+    const BoundRoots bound = bind_commitment_roots(
+        SeedDerivation::Salted, raw_a, raw_b, m, n);
+    expect(hex(bound.bound_a)
+               == "8310b848ff095c9af7256f6a52557cce1dec3f51cd48eb63d494036de6f5e56a",
+           "V3 A root binding vector");
+    expect(hex(bound.bound_b)
+               == "36fd9f94a38303d8b0a8bc2a6b71ac89c8337505afbd6e118f6868e06fc1d48d",
+           "V3 B root binding vector");
+    const CommitmentSeeds v3 = commitment_seeds(CertificateVersion::V3,
+                                                 job,
+                                                 raw_a,
+                                                 raw_b,
+                                                 m,
+                                                 n);
+    expect(hex(v3.b_noise_seed)
+               == "60ed9b73c5a9599b200b6cd563e7f0d5d9a67d2402d85fd4ef966c580080d0e5",
+           "V3 B noise seed official vector");
+    expect(hex(v3.a_noise_seed)
+               == "301784168005ec833ab0aa60006f7fe7faaa95307d8c1fc6819b2ffdd717eccf",
+           "V3 A noise seed official vector");
+
+    const CommitmentSeeds v1 = commitment_seeds(CertificateVersion::V1,
+                                                 job,
+                                                 raw_a,
+                                                 raw_b,
+                                                 m,
+                                                 n);
+    const CommitmentSeeds v2 = commitment_seeds(CertificateVersion::V2,
+                                                 job,
+                                                 raw_a,
+                                                 raw_b,
+                                                 m,
+                                                 n);
+    expect(v1.b_noise_seed == v2.b_noise_seed && v1.a_noise_seed == v2.a_noise_seed,
+           "V1 and V2 retain the historical unsalted chain");
+    expect(hex(v2.b_noise_seed)
+               == "add6f7ea5feebf89c8a77e2ebfa0d82442e7dbb0046dbd48971861d12fcb0177"
+               && hex(v2.a_noise_seed)
+                      == "483b07b6f73105030b9482255f37723f3fed69ae916724ee8291848b8c28794b",
+           "V2 official seed vectors remain unchanged");
+    expect(v3.b_noise_seed != v2.b_noise_seed && v3.a_noise_seed != v2.a_noise_seed,
+           "V3 cannot accidentally use the unsalted V2 path");
+
+    std::array<std::uint8_t, 64U> canonical_message{};
+    std::copy(raw_a.begin(), raw_a.end(), canonical_message.begin());
+    canonical_message[32U] = 0xC0U;
+    expect(blake3_keyed(certificate_v3_domain_key_a(), canonical_message) == bound.bound_a,
+           "V3 A bind message is root plus LE dimension plus 28 zero bytes");
+    std::array<std::uint8_t, 64U> big_endian = canonical_message;
+    big_endian[32U] = 0U;
+    big_endian[35U] = 0xC0U;
+    expect(blake3_keyed(certificate_v3_domain_key_a(), big_endian) != bound.bound_a,
+           "V3 binding rejects big-endian dimensions");
+    std::vector<std::uint8_t> zeroes_27(canonical_message.begin(), canonical_message.end() - 1);
+    std::vector<std::uint8_t> zeroes_29(canonical_message.begin(), canonical_message.end());
+    zeroes_29.push_back(0U);
+    expect(blake3_keyed(certificate_v3_domain_key_a(), zeroes_27) != bound.bound_a
+               && blake3_keyed(certificate_v3_domain_key_a(), zeroes_29) != bound.bound_a,
+           "V3 binding rejects 27- and 29-zero-byte encodings");
+    expect(bind_certificate_v3_root_a(raw_a, n) != bound.bound_a
+               && bind_certificate_v3_root_b(raw_b, m) != bound.bound_b,
+           "V3 binding rejects swapped matrix dimensions");
+    expect(blake3_keyed(certificate_v3_domain_key_b(), canonical_message) != bound.bound_a,
+           "V3 binding rejects swapped A/B salts");
+    expect_error(ErrorCode::InvalidValue,
+                 [&] { (void)bind_certificate_v3_root_a(raw_a, 0x1'0000'0000ULL); },
+                 "V3 rejects dimensions outside canonical u32");
+    expect_error(ErrorCode::InvalidValue,
+                 [] { (void)certificate_version_from_u32(4U); },
+                 "unknown certificate version fails closed");
+
+    MiningConfiguration config = current_config();
+    Digest jackpot{};
+    const std::vector<std::uint8_t> raw_public = serialize_public_data(
+        config, raw_a, raw_b, jackpot, m, n, 0U, 0U);
+    expect(std::equal(raw_public.begin() + static_cast<std::ptrdiff_t>(kMiningConfigBytes),
+                      raw_public.begin() + static_cast<std::ptrdiff_t>(kMiningConfigBytes + kDigestBytes),
+                      raw_a.begin()),
+           "V3 public/wire data carries raw A Merkle roots, not bound roots");
+    expect(hex(proof_commitment(CertificateVersion::V3, std::vector<std::uint8_t>(164U, 0U)))
+               == "4c2ea1578ca06b66619a1e4f812712d69ec21b83261a3a713399da211d0a2e25",
+           "V3 proof commitment includes the V3 LE domain prefix");
+    expect(proof_commitment(CertificateVersion::V3, raw_public)
+               != proof_commitment(CertificateVersion::V2, raw_public),
+           "proof commitment cannot reuse the V2 certificate-version prefix");
+}
+
 void test_transcript_and_plain_proof(bool dump)
 {
     const MiningConfiguration config = current_config();
@@ -538,6 +648,29 @@ void test_transcript_and_plain_proof(bool dump)
                  [&] { (void)PlainProof::deserialize(oversized); },
                  "oversized PlainProof with trailing bytes rejected");
 
+    PlainProof v3_proof = proof;
+    const CommitmentSeeds v3_seeds = commitment_seeds(
+        CertificateVersion::V3, key, hash_a, hash_b, m, n);
+    v3_proof.commitment_b = v3_seeds.b_noise_seed;
+    v3_proof.commitment_a = v3_seeds.a_noise_seed;
+    v3_proof.jackpot = jackpot_hash(v3_proof.transcript.words, v3_seeds.a_noise_seed);
+    validate_plain_proof_for_certificate(v3_proof, CertificateVersion::V3);
+    expect_error(ErrorCode::InvalidValue,
+                 [&] { validate_plain_proof_for_certificate(v3_proof, CertificateVersion::V2); },
+                 "V2 verifier rejects accidentally salted commitments");
+    PlainProof v3_unsalted = v3_proof;
+    v3_unsalted.commitment_b = actual_commitment_b;
+    v3_unsalted.commitment_a = actual_commitment_a;
+    v3_unsalted.jackpot = jackpot_hash(v3_unsalted.transcript.words, actual_commitment_a);
+    expect_error(ErrorCode::InvalidValue,
+                 [&] { validate_plain_proof_for_certificate(v3_unsalted, CertificateVersion::V3); },
+                 "V3 verifier rejects accidentally unsalted commitments");
+    PlainProof v3_bound_root_wire = v3_proof;
+    v3_bound_root_wire.hash_a = bind_certificate_v3_root_a(hash_a, m);
+    expect_error(ErrorCode::InvalidValue,
+                 [&] { validate_plain_proof_for_certificate(v3_bound_root_wire, CertificateVersion::V3); },
+                 "V3 verifier rejects bound roots on the raw-root wire fields");
+
     if (dump) {
         std::cout << "header=" << hex(std::span<const std::uint8_t>(serialize_header(header))) << '\n';
         std::cout << "config=" << hex(std::span<const std::uint8_t>(config.to_bytes())) << '\n';
@@ -575,6 +708,7 @@ int main(int argc, char** argv)
         test_gemm_and_overflow();
         test_noise_and_merkle(dump);
         test_seeded_randomized();
+        test_certificate_v3_seed_derivation();
         test_transcript_and_plain_proof(dump);
         std::cout << "pearl CPU golden tests passed (" << assertions << " assertions)\n";
         return 0;

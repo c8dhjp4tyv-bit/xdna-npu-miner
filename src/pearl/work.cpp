@@ -31,6 +31,16 @@ PearlJob GatewayJobProvider::fetch()
     return result;
 }
 
+void GatewayJobProvider::assert_current(const MiningJobIdentity& expected)
+{
+    const MiningJob current = client_.get_mining_info();
+    if (mining_job_identity(current) != expected) {
+        throw WorkError(
+            WorkErrorCode::StaleWork,
+            "candidate discarded: gateway job identity changed (job_id/header/target/certificate version)");
+    }
+}
+
 PearlWorkUnit DeterministicFixtureWorkProvider::fetch(const PearlJob& job)
 {
     MiningConfiguration config;

@@ -171,18 +171,28 @@ int main(int argc, char** argv)
             return values;
         }());
         const Digest hash_b = merkle_root(full_bt.raw_bytes(), key);
-        const CommitmentSeeds seeds = commitment_seeds(key, hash_a, hash_b);
+        const CommitmentSeeds seeds = commitment_seeds(
+            CertificateVersion::V2, key, hash_a, hash_b, full_a.rows(), full_b.cols());
         const std::vector<std::size_t> row_indices(rows.begin(), rows.end());
         const std::vector<std::size_t> column_indices(columns.begin(), columns.end());
         const NoiseMatrices noise = generate_noise(
             2048U, 128U, seeds, row_indices, column_indices);
         Digest target{};
         target.fill(0xFFU);
+        MiningJob job;
+        const auto header_bytes = serialize_header(header);
+        job.incomplete_header_bytes.assign(header_bytes.begin(), header_bytes.end());
+        job.target = target;
+        job.target_decimal = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
+        job.certificate_version = CertificateVersion::V2;
+        job.job_id = "p5-v2-fixture";
+        const CandidateBinding binding = make_candidate_binding(
+            job, header, full_a.rows(), full_b.cols());
         const ComputePipelineResult result = pipeline.run(
             selected_a, selected_b, noise, 128U, seeds.a_noise_seed, target);
         const PlainProof proof = build_plain_proof(
-            header, config, full_a, full_b, 0U, 0U, result, target);
-        verify_plain_proof_candidate(proof);
+            binding, header, config, full_a, full_b, 0U, 0U, result);
+        verify_plain_proof_candidate(proof, binding);
         const std::vector<std::uint8_t> serialized = proof.serialize();
         write_evidence(options, executor, result, serialized.size());
         std::cout << "device=" << executor.capability().device_name << '\n'
