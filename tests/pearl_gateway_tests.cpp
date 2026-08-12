@@ -1,4 +1,5 @@
 #include "pearl/gateway.hpp"
+#include "pearl/work.hpp"
 
 #include <algorithm>
 #include <array>
@@ -112,11 +113,13 @@ public:
     explicit UnixResponder(std::string path,
                            bool malformed = false,
                            std::string certificate_version = "1",
-                           bool omit_certificate_version = false)
+                           bool omit_certificate_version = false,
+                           bool change_second_job = false)
         : path_(std::move(path)),
           malformed_(malformed),
           certificate_version_(std::move(certificate_version)),
-          omit_certificate_version_(omit_certificate_version)
+          omit_certificate_version_(omit_certificate_version),
+          change_second_job_(change_second_job)
     {
         listener_ = socket(AF_UNIX, SOCK_STREAM, 0);
         if (listener_ < 0) {
@@ -174,7 +177,10 @@ private:
                 response = "not-json\n";
             } else if (line.find("getMiningInfo") != std::string::npos) {
                 saw_get_ = true;
-                const std::vector<std::uint8_t> header(kHeaderBytes, 0U);
+                std::vector<std::uint8_t> header(kHeaderBytes, 0U);
+                if (change_second_job_ && request == 1U) {
+                    header[0] = 1U;
+                }
                 const std::string certificate_field = omit_certificate_version_
                     ? std::string{}
                     : ",\"cert_version\":" + certificate_version_;
@@ -198,6 +204,7 @@ private:
     bool malformed_ = false;
     std::string certificate_version_;
     bool omit_certificate_version_ = false;
+    bool change_second_job_ = false;
     int listener_ = -1;
     std::thread thread_;
     std::atomic<bool> saw_get_{false};
@@ -286,6 +293,23 @@ int main()
             missing_cert_seen = error.code() == GatewayErrorCode::MalformedResponse;
         }
         expect(missing_cert_seen, "missing certificate version is rejected");
+
+        const std::string stale_path = "/tmp/pearl-gateway-stale-"
+            + std::to_string(getpid()) + ".sock";
+        UnixResponder stale(stale_path, false, "3", false, true);
+        GatewayClientConfig stale_config = config;
+        stale_config.endpoint.unix_path = stale_path;
+        GatewayClient stale_client(stale_config);
+        GatewayJobProvider stale_provider(stale_client);
+        const PearlJob stale_candidate_job = stale_provider.fetch();
+        bool stale_work_seen = false;
+        try {
+            stale_provider.assert_current(mining_job_identity(stale_candidate_job.gateway_job));
+        } catch (const WorkError& error) {
+            stale_work_seen = error.code() == WorkErrorCode::StaleWork;
+        }
+        expect(stale_work_seen,
+               "gateway refresh discards a candidate whose immutable header identity changed");
 
         GatewayClientConfig unsafe = config;
         unsafe.endpoint.transport = GatewayTransport::LoopbackTcp;

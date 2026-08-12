@@ -648,8 +648,8 @@ int run_live_dry_candidate(const Options& options,
             // changed, the completed candidate is discarded without any wire
             // submission and work restarts from the new immutable job.
             jobs.assert_current(binding.job);
-        } catch (const GatewayError& error) {
-            if (error.code() != GatewayErrorCode::StaleJob) throw;
+        } catch (const WorkError& error) {
+            if (error.code() != WorkErrorCode::StaleWork) throw;
             ++stale_candidates_dropped;
             print_status(options,
                          "STALE_CANDIDATE_DROPPED",
@@ -844,7 +844,11 @@ int run_gateway_mode(const Options& options, bool mine)
         (void)external_work.fetch(job);
         return 0;
     } catch (const WorkError& error) {
-        print_status(options, "WORK_PROVIDER_UNAVAILABLE", error.what());
+        print_status(options,
+                     error.code() == WorkErrorCode::StaleWork
+                         ? "STALE_JOB"
+                         : "WORK_PROVIDER_UNAVAILABLE",
+                     error.what());
         return 1;
     } catch (const GatewayError& error) {
         print_status(options, gateway_error_code_name(error.code()), error.what());

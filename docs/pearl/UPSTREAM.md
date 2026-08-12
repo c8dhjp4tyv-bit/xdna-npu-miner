@@ -57,6 +57,17 @@ is required.
 mainnet preparation must therefore verify connected peers speak version 2 and
 must never substitute a 1.3.x node.
 
+### Current gateway logging safety note
+
+At this pinned source, `miner/pearl-gateway/src/pearl_gateway/pearl_client.py`
+has an INFO-level initialization message that includes its node RPC user and
+password. The shared `miner-utils` logging configuration honors
+`PEARL_LOG_LEVEL`; use `PEARL_LOG_LEVEL=ERROR` (and no gateway `--debug`) for
+any future local mainnet gateway process so that INFO message is suppressed.
+Do not use durable credentials in a default-INFO gateway process, retain such
+logs, or commit them. This is an upstream operational constraint, not a change
+to consensus or wire behavior.
+
 ## One-shot implementation audit update (2026-08-11)
 
 The pinned official repository still resolves to master

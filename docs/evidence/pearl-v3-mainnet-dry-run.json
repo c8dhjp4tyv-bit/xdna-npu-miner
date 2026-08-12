@@ -35,15 +35,16 @@
     "requiredcertversion": null,
     "gateway_getMiningInfo": "NOT_STARTED",
     "reason_gateway_not_started": "MAINNET_PAYOUT_ADDRESS_NOT_CONFIGURED; no public mainnet payout address was supplied or invented",
+    "future_gateway_log_safety": "Set PEARL_LOG_LEVEL=ERROR and do not enable debug; current official gateway has an INFO initialization message containing node RPC credentials.",
     "payout_address_state": "MAINNET_PAYOUT_ADDRESS_NOT_CONFIGURED"
   },
   "miner_dry_run": {
     "implementation": "PASS: --dry-run --network mainnet constructs a real-gateway-bound physical XDNA candidate, CPU verifies it, fresh-checks immutable job identity, and never calls submitPlainProof",
     "live_execution": "NOT_RUN: current mainnet template and authorized gateway job unavailable",
     "result": "MAINNET_DRY_RUN_PENDING",
-    "stale_job_unit_coverage": "PASS: header, target, certificate version, and job ID each invalidate candidate identity",
+    "stale_job_unit_coverage": "PASS: a two-response gateway refresh detects a changed header and discards the candidate; separate identity tests cover header, target, certificate version, and job ID changes",
     "live_stale_candidates_dropped": null,
-    "cpu_fallbacks": 0
+    "cpu_fallbacks": null
   },
   "next_condition": "Allow the current official node to finish syncing, then configure only a public mainnet payout address before starting the official gateway and executing the no-submit dry-run."
 }

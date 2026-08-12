@@ -68,7 +68,8 @@ sufficient capacity. No live `getblocktemplate`/`requiredcertversion` is
 available until the node is current. No public mainnet payout address was
 provided, none was invented, no mainnet gateway was started, and no mainnet
 PlainProof/block/mining submission occurred. Therefore live mainnet dry-run
-and live stale-drop count remain pending; static identity coverage is PASS.
+and live stale-drop count remain pending; a two-response gateway-refresh test
+and static identity coverage are PASS.
 
 New evidence is `docs/evidence/pearl-v3-upstream-audit.json`,
 `pearl-v3-cpu-vectors.json`, `pearl-v3-xdna-differential.json`,
@@ -85,6 +86,12 @@ address; start the current official gateway locally; run the bounded
 `--dry-run --network mainnet` path with submission disabled; record the actual
 template/gateway certificate version and stale-drop result. Only after an
 explicit new authorization may a bounded mainnet submission run be considered.
+
+Before any future official gateway start, set `PEARL_LOG_LEVEL=ERROR` and do
+not use gateway debug mode: the audited current gateway source has an INFO
+initialization message that includes the node RPC credentials. This suppresses
+the message while retaining error logging; still use transient credentials and
+delete temporary logs after the bounded run.
 
 ## Active Pearl P7 checkpoint (2026-08-11)
 

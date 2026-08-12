@@ -79,6 +79,13 @@ credentials. Without that public address, record
 still safe. No sustained mining or mainnet proof/block submission belongs in a
 dry-run.
 
+The current official gateway source has an INFO message that includes node RPC
+credentials. Before a future local mainnet gateway start, set
+`PEARL_LOG_LEVEL=ERROR` and do not use `--debug`, so that source message is
+suppressed. Use transient local credentials and remove only the temporary
+runtime/log directory afterward; never place credentials in a command history,
+repository file, or evidence record.
+
 Node RPC credentials, when a future node adapter is used, come from
 `PEARL_NODE_RPC_USER` and `PEARL_NODE_RPC_PASSWORD`. They are never logged.
 `config.example.toml` contains placeholders only.
