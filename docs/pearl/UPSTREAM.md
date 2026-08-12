@@ -1,5 +1,62 @@
 # Pearl (PRL) P0 Upstream, Protocol, and License Record
 
+## Current Certificate V3 compatibility update (2026-08-12)
+
+This section is a new record and does not revise the historical Certificate V2
+evidence below. At shot start, a fresh official fetch resolved `master` to
+`bfd064717de4af0e8471bdc24ca4a28aa6278227`, exactly the requested current
+revision. It is Pearl `1.4.2`; it is four commits ahead of the historical P7
+pin `fe22b6a2b831d95b2f56564808f39d2f498f34a5`.
+
+The compatibility review is machine-readable in
+`docs/evidence/pearl-v3-upstream-audit.json`. Every consensus-relevant field
+was resolved before implementation: no field remains `UNKNOWN`. The current
+official runtime observed for the new SIMNET proof was `pearld 1.4.2`
+(`SHA-256 be2b06f5d2782b737785cbab115480c206092a3db3f7bb2a1f9b4b5bf4a4cbbf`),
+`pearl-gateway 0.1.0`, and `py-pearl-mining 0.3.0` in a CPU-only Python 3.12.13
+environment. The official CUDA/vLLM miner was neither installed nor started.
+
+### V3 consensus facts
+
+Commit `fc5ca65a1df0fad0140e74c3b52e71c4a0f99e90` introduces Certificate V3
+salted noise seeds. Commit `fadd42af05ad6b6a5b69ee29913fcf2e60eea4c0` sets
+the current mainnet `SaltedSeedForkHeight` to 99000. That height is protocol
+context only: the miner never chooses a certificate version from height. It
+requires `cert_version` from gateway `getMiningInfo` (and treats the node
+template's `requiredcertversion` as authoritative where available), stores it
+in immutable job identity, and supports only 1, 2, and 3.
+
+For V3, raw keyed Merkle roots remain on the proof/share wire. The CPU binds
+them only for seed derivation:
+
+```text
+key_A = BLAKE3("pearl/cert-v3/noise-seed/A")
+key_B = BLAKE3("pearl/cert-v3/noise-seed/B")
+bound_A = keyed_BLAKE3(key_A, raw_hash_A || m_le32 || 28 zero bytes)
+bound_B = keyed_BLAKE3(key_B, raw_hash_B || n_le32 || 28 zero bytes)
+b_noise_seed = BLAKE3(job_key || bound_B)
+a_noise_seed = BLAKE3(b_noise_seed || bound_A)
+```
+
+Each binding input is exactly 64 bytes. The independently derived domain-key
+digests and canonical V3 vector corpus are recorded in
+`docs/evidence/pearl-v3-cpu-vectors.json`; the reference test rejects wrong
+endianness, dimension/salt swaps, 27/29-byte padding, and both accidental
+V2-salted and V3-unsalted paths. The current proof commitment domain is
+`SHA256d(cert_version_le32 || public_data)`, so V3 uses a `3` prefix rather
+than inheriting V2's prefix.
+
+The current `PlainProof` Rust/bincode layout, base64 field, and gateway
+submission schema remain compatible with the V2 layout. `cert_version` is a
+mandatory `MiningJob` field. Certificate V3 retains raw Merkle roots on that
+wire; substituting bound roots is invalid. The project’s historical local P1
+envelope is deliberately not sent for V3: an audited official-wire serializer
+is required.
+
+`bfd0647` also raises the minimum peer protocol version to 2. Read-only
+mainnet preparation must therefore verify connected peers speak version 2 and
+must never substitute a 1.3.x node.
+
 ## One-shot implementation audit update (2026-08-11)
 
 The pinned official repository still resolves to master

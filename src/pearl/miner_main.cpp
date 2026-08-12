@@ -45,6 +45,7 @@ struct Options {
     bool gateway_tcp = false;
     std::string node_url;
     std::string mining_address;
+    std::string network = "unknown";
     std::string device = "0";
     std::size_t batch = 1U;
     unsigned columns = 1U;
@@ -53,6 +54,8 @@ struct Options {
     std::uint64_t max_runtime_seconds = 0U;
     bool fixture_work = false;
     bool official_simnet_e2e = false;
+    std::filesystem::path official_wire_output;
+    bool skip_official_submit = false;
     std::filesystem::path artifact_dir;
     std::size_t benchmark_iterations = 100U;
 };
@@ -125,7 +128,7 @@ void apply_config_value(Options& options, std::string key, std::string value)
     else if (key == "log_level") options.log_level = value;
     else if (key == "max_runtime") options.max_runtime_seconds = std::stoull(value);
     else if (key == "artifact_dir") options.artifact_dir = value;
-    else if (key == "network") { /* accepted for forward-compatible config files */ }
+    else if (key == "network") options.network = value;
 }
 
 void load_config_file(Options& options, const std::string& path)
@@ -180,9 +183,12 @@ void parse_options(int argc, char** argv, Options& options)
         else if (argument == "--max-runtime") options.max_runtime_seconds = std::stoull(require_value(index, argc, argv, "--max-runtime"));
         else if (argument == "--fixture-work") options.fixture_work = true;
         else if (argument == "--official-simnet-e2e") options.official_simnet_e2e = true;
+        else if (argument == "--official-wire-output") {
+            options.official_wire_output = require_value(index, argc, argv, "--official-wire-output");
+        } else if (argument == "--skip-official-submit") options.skip_official_submit = true;
         else if (argument == "--artifact-dir") options.artifact_dir = require_value(index, argc, argv, "--artifact-dir");
         else if (argument == "--benchmark-iterations") options.benchmark_iterations = std::stoull(require_value(index, argc, argv, "--benchmark-iterations"));
-        else if (argument == "--network") { ++index; }
+        else if (argument == "--network") options.network = require_value(index, argc, argv, "--network");
         else if (argument == "--version" || argument == "-h") { /* handled above */ }
         else throw std::runtime_error("unknown option: " + std::string(argument));
     }
@@ -206,11 +212,12 @@ void print_help()
               << "  --dry-run              acquire/verify work without submitting\n"
               << "  --mine                 explicit live mode; requires a public address\n\n"
               << "Configuration: --gateway-unix PATH | --gateway-host HOST --gateway-port N\n"
-              << "  --node-url URL --mining-address ADDRESS --device SELECTOR\n"
+              << "  --node-url URL --mining-address ADDRESS --network NAME --device SELECTOR\n"
               << "  --batch N --columns 1|2|4 --log-level LEVEL --json-status\n"
               << "  --max-runtime SECONDS --config FILE --artifact-dir DIR\n"
               << "  --fixture-work (local deterministic dry-run only; never implied live work)\n"
               << "  --official-simnet-e2e (opt-in dense P7 path; use only with --mine)\n\n"
+              << "  --official-wire-output PATH --skip-official-submit (capture a SIMNET proof only)\n\n"
               << "Secrets: node RPC credentials are read only from PEARL_NODE_RPC_USER and\n"
               << "PEARL_NODE_RPC_PASSWORD; they are never printed.\n";
 }
@@ -431,6 +438,35 @@ void print_status(const Options& options, std::string_view state, std::string_vi
     return std::mt19937_64(seed);
 }
 
+void capture_official_wire(const Options& options,
+                           std::span<const std::uint8_t> official_wire,
+                           const MiningJob& job)
+{
+    if (options.official_wire_output.empty()) return;
+    if (!options.official_wire_output.parent_path().empty()) {
+        std::filesystem::create_directories(options.official_wire_output.parent_path());
+    }
+    std::ofstream wire(options.official_wire_output, std::ios::binary | std::ios::trunc);
+    if (!wire) {
+        throw std::runtime_error("cannot create --official-wire-output");
+    }
+    wire.write(reinterpret_cast<const char*>(official_wire.data()),
+               static_cast<std::streamsize>(official_wire.size()));
+    if (!wire) {
+        throw std::runtime_error("cannot write --official-wire-output");
+    }
+    const std::filesystem::path header_path = options.official_wire_output.string() + ".header";
+    std::ofstream header(header_path, std::ios::binary | std::ios::trunc);
+    if (!header) {
+        throw std::runtime_error("cannot create captured official header");
+    }
+    header.write(reinterpret_cast<const char*>(job.incomplete_header_bytes.data()),
+                 static_cast<std::streamsize>(job.incomplete_header_bytes.size()));
+    if (!header) {
+        throw std::runtime_error("cannot write captured official header");
+    }
+}
+
 int run_official_simnet_e2e(const Options& options,
                             GatewayClient& client)
 {
@@ -519,11 +555,21 @@ int run_official_simnet_e2e(const Options& options,
             result);
         verify_plain_proof_candidate(proof, binding);
         const std::vector<std::uint8_t> official_wire = serialize_official_plain_proof(proof, binding);
+        capture_official_wire(options, official_wire, job.gateway_job);
         print_status(options,
                      "OFFICIAL_PLAINPROOF_CPU_VERIFIED",
                      "attempt=" + std::to_string(attempts)
                          + " official_wire_bytes=" + std::to_string(official_wire.size())
                          + " cpu_fallbacks=0");
+        if (options.skip_official_submit) {
+            print_status(options,
+                         "OFFICIAL_PLAINPROOF_CAPTURED_NO_SUBMIT",
+                         "attempt=" + std::to_string(attempts)
+                             + " cert_version="
+                             + std::to_string(certificate_version_number(certificate_version))
+                             + " submission=skipped");
+            return 0;
+        }
         jobs.assert_current(binding.job);
         const SubmissionResult submission = client.submit_official_plain_proof(
             official_wire, job.gateway_job);
@@ -539,6 +585,99 @@ int run_official_simnet_e2e(const Options& options,
                  "OFFICIAL_E2E_BLOCKED",
                  "physical XDNA found no consensus-valid jackpot before max_runtime="
                      + std::to_string(max_runtime) + "s attempts=" + std::to_string(attempts));
+    return 1;
+}
+
+// A non-submitting path for a real gateway job.  It intentionally proves the
+// versioned seed, physical dense computation, CPU verification, candidate
+// construction, and stale-template boundary without pretending to perform an
+// official useful-work submission.  There is no submitPlainProof call here.
+int run_live_dry_candidate(const Options& options,
+                           GatewayJobProvider& jobs)
+{
+    constexpr std::uint32_t kRows = 16U;
+    constexpr std::uint32_t kColumns = 256U;
+    constexpr std::uint32_t kCommon = 2048U;
+    constexpr std::uint32_t kRank = 128U;
+    constexpr std::size_t kMaxStaleRetries = 3U;
+
+    const MiningConfiguration config = fixture_config();
+    const std::vector<std::uint32_t> a_rows = config.rows_pattern.indices_with_offset(0U);
+    const std::vector<std::uint32_t> b_columns = config.cols_pattern.indices_with_offset(0U);
+    const std::vector<std::size_t> a_opening_rows(a_rows.begin(), a_rows.end());
+    const std::vector<std::size_t> b_opening_rows(b_columns.begin(), b_columns.end());
+    XdnaMatmulExecutor executor(artifact_for(options), options.device);
+    ComputePipeline pipeline(executor);
+    std::size_t stale_candidates_dropped = 0U;
+
+    for (std::size_t attempt = 1U; attempt <= kMaxStaleRetries; ++attempt) {
+        const PearlJob job = jobs.fetch();
+        const CandidateBinding binding = make_candidate_binding(
+            job.gateway_job, job.header, kRows, kColumns);
+        std::mt19937_64 generator = seed_official_e2e_generator(job.gateway_job);
+        const Int8Matrix full_a = random_matrix_for_official_e2e(kRows, kCommon, generator);
+        const Int8Matrix full_b = random_matrix_for_official_e2e(kCommon, kColumns, generator);
+        const Int8Matrix selected_a = select_rows_for_official_e2e(full_a, a_rows);
+        const Int8Matrix selected_b = select_columns_for_official_e2e(full_b, b_columns);
+        const Int8Matrix full_bt = transpose_for_official_e2e(full_b);
+        const Digest key = job_key(job.header, config);
+        const Digest hash_a = merkle_root(full_a.raw_bytes(), key);
+        const Digest hash_b = merkle_root(full_bt.raw_bytes(), key);
+        const CommitmentSeeds seeds = commitment_seeds(job.gateway_job.certificate_version,
+                                                       key,
+                                                       hash_a,
+                                                       hash_b,
+                                                       kRows,
+                                                       kColumns);
+        const NoiseMatrices noise = generate_noise(
+            kCommon, kRank, seeds, a_opening_rows, b_opening_rows);
+        const ComputePipelineResult result = pipeline.run(
+            selected_a,
+            selected_b,
+            noise,
+            kRank,
+            seeds.a_noise_seed,
+            job.gateway_job.target);
+        const PlainProof proof = build_plain_proof(
+            binding, job.header, config, full_a, full_b, 0U, 0U, result);
+        verify_plain_proof_candidate(proof, binding);
+        const std::vector<std::uint8_t> official_wire = serialize_official_plain_proof(proof, binding);
+
+        try {
+            // This is the real refresh boundary: if any job identity field
+            // changed, the completed candidate is discarded without any wire
+            // submission and work restarts from the new immutable job.
+            jobs.assert_current(binding.job);
+        } catch (const GatewayError& error) {
+            if (error.code() != GatewayErrorCode::StaleJob) throw;
+            ++stale_candidates_dropped;
+            print_status(options,
+                         "STALE_CANDIDATE_DROPPED",
+                         "attempt=" + std::to_string(attempt)
+                             + " stale_candidates_dropped="
+                             + std::to_string(stale_candidates_dropped));
+            continue;
+        }
+
+        const std::string state = options.network == "mainnet"
+            ? "MAINNET_DRY_RUN_PASS"
+            : "LIVE_DRY_RUN_PASS";
+        print_status(options,
+                     state,
+                     "job_id=" + job.gateway_job.job_id
+                         + " cert_version=" + std::to_string(
+                             certificate_version_number(job.gateway_job.certificate_version))
+                         + " target_hit=" + (result.meets_target ? "true" : "false")
+                         + " official_wire_bytes=" + std::to_string(official_wire.size())
+                         + " stale_candidates_dropped=" + std::to_string(stale_candidates_dropped)
+                         + " submission=skipped cpu_fallbacks=0");
+        return 0;
+    }
+
+    print_status(options,
+                 "DRY_RUN_STALE_JOB_EXHAUSTED",
+                 "stale_candidates_dropped=" + std::to_string(stale_candidates_dropped)
+                     + " submission=skipped");
     return 1;
 }
 
@@ -695,8 +834,11 @@ int run_gateway_mode(const Options& options, bool mine)
             return run_official_simnet_e2e(options, client);
         }
         GatewayJobProvider jobs(client);
+        if (!mine) {
+            return run_live_dry_candidate(options, jobs);
+        }
         const PearlJob job = jobs.fetch();
-        print_status(options, mine ? "JOB_ACQUIRED_LIVE_MODE" : "JOB_ACQUIRED_DRY_RUN",
+        print_status(options, "JOB_ACQUIRED_LIVE_MODE",
                      "job_id=" + job.gateway_job.job_id + " target=" + job.gateway_job.target_decimal);
         ExternalPearlUsefulWorkProvider external_work;
         (void)external_work.fetch(job);

@@ -31,6 +31,28 @@ SIMNET path. Mainnet payout configuration and pool/Stratum support remain
 unavailable boundaries and are not implied by this result. P10 passed its
 exact 1,800-second physical run; P11 is the completed operator-delivery gate.
 
+## Current Certificate V3 upgrade snapshot (2026-08-12)
+
+This is a new compatibility gate, not a rewrite of the historical V2/P0–P11
+evidence above. Official Pearl `bfd064717de4af0e8471bdc24ca4a28aa6278227`
+(1.4.2) has been audited from the historical V2 pin. Certificate V3 CPU
+vectors, negative vectors, V2 byte-for-byte regression, physical XDNA
+differential (100 deterministic + 32 randomized cases), and a new official
+V3 SIMNET accepted block are separately recorded under `pearl-v3-*` evidence.
+
+| Upgrade gate | Status | Evidence |
+|---|---|---|
+| Upstream consensus/wire audit | PASS | `pearl-v3-upstream-audit.json` |
+| V3 CPU oracle, bindings, and V2 regression | PASS | `pearl-v3-cpu-vectors.json` |
+| V3 physical RyzenAI-npu1 differential | PASS | `pearl-v3-xdna-differential.json` |
+| Current official V3 SIMNET interoperability | PASS | `pearl-v3-simnet-e2e.json` |
+| Current mainnet node/gateway dry-run | IN PROGRESS — node sync / public payout configuration boundary | `pearl-v3-mainnet-dry-run.json` |
+
+The V3 execution gate may not claim mainnet readiness until the read-only
+current mainnet node has a usable template and an authorized gateway
+configuration is available. Lack of a public payout address is an operation
+configuration boundary, not a protocol compatibility PASS.
+
 ## P0 — Upstream, protocol, license, and XDNA feasibility baseline
 
 **Status: COMPLETE — documentation/evidence only (2026-08-10).**

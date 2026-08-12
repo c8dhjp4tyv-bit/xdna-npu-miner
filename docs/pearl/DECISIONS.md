@@ -1,5 +1,28 @@
 # Pearl One-Shot Decisions
 
+## Certificate V3 upgrade decisions (2026-08-12)
+
+- Certificate version is a mandatory immutable job field. The miner supports
+  only V1, V2, and V3; unknown values fail closed and never fall back to the
+  nearest older derivation. Header, target, job ID, certificate version, and
+  matrix dimensions are all candidate-binding fields.
+- V3 root binding and salted BLAKE3 execute on the CPU. This is deliberate:
+  they are small control-adjacent operations, while the repeated dense
+  signed-int8 GEMM remains the physically measured RyzenAI-npu1/AIE2 work.
+  No salted BLAKE3 XDNA port is justified without measured benefit.
+- V3 uses bound roots only to derive noise seeds. Raw keyed Merkle roots stay
+  in `PlainProof` and on the official wire. The project-owned historical P1
+  envelope is prohibited for V3 gateway submission; only the separately
+  audited official serializer is allowed.
+- `--dry-run` has a hard no-submit boundary. It can construct/verify a
+  real-gateway-bound physical candidate and refresh-check its immutable
+  identity, but it does not call `submitPlainProof`. Mainnet gateway use is
+  deferred until an operator configures only a public mainnet payout address;
+  no address, seed, or credential is invented or recorded.
+- Current mainnet preparation uses the official 1.4.2 node, loopback RPC, and
+  verifies minimum peer protocol version 2. Old 1.3.x node components are not
+  a mainnet compatibility substitute.
+
 - P7 uses a dedicated official-wire adapter. The project-owned P1 PlainProof
   envelope remains for local evidence, while the pinned gateway receives the
   official Rust/bincode field order and `Option::None` dense-proof tag. The

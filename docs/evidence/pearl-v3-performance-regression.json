@@ -1,0 +1,13 @@
+{
+  "schema": "pearl-v3-performance-regression/v1",
+  "status": "PASS",
+  "certificate_versions": [2, 3],
+  "hardware": {"device": "RyzenAI-npu1", "architecture": "aie2", "bdf": "0000:06:00.1", "xrt": "2.26.0"},
+  "workload": {"tile": "4x64x8", "rank": 128, "K": 2048, "batch": 1, "columns": 4, "warmup": 8, "candidate_iterations": 3, "seed_iterations": 1000},
+  "v2": {"seed_derivation_ns_per_candidate": 608.444, "candidate_latency_ns": 2.90938e+08, "candidate_throughput_per_s": 3.43715, "proof_bytes": 139736, "mismatches": 0},
+  "v3": {"seed_derivation_ns_per_candidate": 2412.53, "candidate_latency_ns": 2.84544e+08, "candidate_throughput_per_s": 3.5144, "official_wire_bytes": 140065, "mismatches": 0},
+  "overhead": {"seed_derivation_ns": 1804.08, "total_candidate_ns": -6.39462e+06, "total_candidate_percent": -2.19793},
+  "cpu_fallbacks": 0,
+  "npu_telemetry": null,
+  "power_watts": null
+}

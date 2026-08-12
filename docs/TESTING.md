@@ -6,6 +6,15 @@ M3 verifies one physical BPP9000 K1 recurrent tick; M4 verifies repeated ticks,
 window scoring, full score reduction, and candidate lifecycle behavior against
 the exact M1 oracle. Performance remains outside M4.
 
+## Current Pearl V3 test state
+
+Historical Pearl Certificate V2 evidence remains immutable. The current Pearl
+1.4.2 / Certificate V3 suite adds CPU root-binding/seed vectors, negative
+vectors, V2 regression, a 132-case physical XDNA differential, a bounded V3
+stability run, current official SIMNET acceptance, and a no-submit mainnet
+dry-run boundary. Its evidence lives in `docs/evidence/pearl-v3-*.json` and
+does not change Qubic test claims below.
+
 ## Pearl P1 CPU-golden testing boundary
 
 Pearl is a separate clean-room track. P0 remains recorded in

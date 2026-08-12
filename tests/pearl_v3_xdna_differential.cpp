@@ -3,6 +3,7 @@
 #include "xdna/errors.hpp"
 
 #include <array>
+#include <chrono>
 #include <cstdint>
 #include <cstdlib>
 #include <filesystem>
@@ -23,6 +24,7 @@ struct Options {
     std::string selector = "0";
     std::size_t deterministic_cases = 100U;
     std::size_t randomized_cases = 32U;
+    std::uint64_t minimum_duration_seconds = 0U;
     std::filesystem::path evidence;
 };
 
@@ -147,11 +149,15 @@ void parse_options(int argc, char** argv, Options& options)
         } else if (argument == "--randomized-cases") {
             options.randomized_cases = static_cast<std::size_t>(
                 std::stoull(require_value("--randomized-cases")));
+        } else if (argument == "--minimum-duration-seconds") {
+            options.minimum_duration_seconds = std::stoull(
+                require_value("--minimum-duration-seconds"));
         } else if (argument == "--evidence") options.evidence = require_value("--evidence");
         else if (argument == "--help") {
             std::cout << "usage: pearl_v3_xdna_differential --xclbin PATH --insts PATH "
                          "--manifest PATH [--selector DEVICE] [--deterministic-cases N] "
-                         "[--randomized-cases N] [--evidence PATH]\n";
+                         "[--randomized-cases N] [--minimum-duration-seconds N] "
+                         "[--evidence PATH]\n";
             std::exit(0);
         } else throw std::runtime_error("unknown argument: " + std::string(argument));
     }
@@ -168,7 +174,8 @@ void write_evidence(const Options& options,
                     std::size_t seed_mismatches,
                     std::size_t transcript_mismatches,
                     std::size_t jackpot_mismatches,
-                    std::size_t runtime_failures)
+                    std::size_t runtime_failures,
+                    std::uint64_t elapsed_ms)
 {
     if (options.evidence.empty()) return;
     if (!options.evidence.parent_path().empty()) {
@@ -179,15 +186,18 @@ void write_evidence(const Options& options,
     const auto& capability = executor.capability();
     const auto& counters = executor.counters();
     const std::size_t requested = options.deterministic_cases + options.randomized_cases;
-    const bool pass = completed == requested && arithmetic_mismatches == 0U
+    const bool pass = completed >= requested && arithmetic_mismatches == 0U
         && seed_mismatches == 0U && transcript_mismatches == 0U
-        && jackpot_mismatches == 0U && runtime_failures == 0U;
+        && jackpot_mismatches == 0U && runtime_failures == 0U
+        && elapsed_ms >= options.minimum_duration_seconds * 1000U;
     output << "{\n"
            << "  \"schema\": \"pearl-v3-xdna-differential/v1\",\n"
            << "  \"status\": \"" << (pass ? "PASS" : "FAIL") << "\",\n"
            << "  \"certificate_version\": 3,\n"
            << "  \"workload\": {\"deterministic_cases\": " << options.deterministic_cases
            << ", \"randomized_cases\": " << options.randomized_cases
+           << ", \"minimum_duration_seconds\": " << options.minimum_duration_seconds
+           << ", \"elapsed_ms\": " << elapsed_ms
            << ", \"completed\": " << completed << "},\n"
            << "  \"target\": {\"device\": \"" << json_escape(capability.device_name)
            << "\", \"architecture\": \"" << json_escape(capability.architecture)
@@ -227,6 +237,7 @@ int main(int argc, char** argv)
         Digest target{};
         target.fill(0xFFU);
         const std::size_t requested = options.deterministic_cases + options.randomized_cases;
+        const auto began = std::chrono::steady_clock::now();
         std::uint64_t state = 0x504541524C563342ULL;
         std::size_t completed = 0U;
         std::size_t arithmetic_mismatches = 0U;
@@ -235,8 +246,14 @@ int main(int argc, char** argv)
         std::size_t jackpot_mismatches = 0U;
         std::size_t runtime_failures = 0U;
 
-        for (std::size_t case_index = 0U; case_index < requested; ++case_index) {
-            const bool randomized = case_index >= options.deterministic_cases;
+        for (std::size_t case_index = 0U;
+             case_index < requested
+                 || std::chrono::duration_cast<std::chrono::seconds>(
+                        std::chrono::steady_clock::now() - began).count()
+                     < static_cast<std::int64_t>(options.minimum_duration_seconds);
+             ++case_index) {
+            const bool randomized = case_index >= options.deterministic_cases
+                && case_index < requested;
             IncompleteBlockHeader header;
             header.version = 1U;
             header.timestamp = static_cast<std::uint32_t>(123U + case_index);
@@ -302,6 +319,9 @@ int main(int argc, char** argv)
                 break;
             }
         }
+        const std::uint64_t elapsed_ms = static_cast<std::uint64_t>(
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - began).count());
         write_evidence(options,
                        executor,
                        completed,
@@ -309,7 +329,8 @@ int main(int argc, char** argv)
                        seed_mismatches,
                        transcript_mismatches,
                        jackpot_mismatches,
-                       runtime_failures);
+                       runtime_failures,
+                       elapsed_ms);
         std::cout << "certificate_version=3\n"
                   << "requested_cases=" << requested << '\n'
                   << "deterministic_cases=" << options.deterministic_cases << '\n'
@@ -320,11 +341,13 @@ int main(int argc, char** argv)
                   << "transcript_mismatches=" << transcript_mismatches << '\n'
                   << "jackpot_mismatches=" << jackpot_mismatches << '\n'
                   << "runtime_failures=" << runtime_failures << '\n'
+                  << "elapsed_ms=" << elapsed_ms << '\n'
                   << "cpu_fallbacks=0\n"
                   << "physical_xrt=true\n";
-        return completed == requested && arithmetic_mismatches == 0U
+        return completed >= requested && arithmetic_mismatches == 0U
                 && seed_mismatches == 0U && transcript_mismatches == 0U
                 && jackpot_mismatches == 0U && runtime_failures == 0U
+                && elapsed_ms >= options.minimum_duration_seconds * 1000U
             ? 0 : 1;
     } catch (const xdna::runtime::RuntimeError& error) {
         std::cerr << xdna::runtime::error_code_name(error.code()) << ": " << error.what() << '\n';

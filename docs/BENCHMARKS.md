@@ -236,3 +236,20 @@ benchmark. P7 interoperability is a correctness result: one bounded
 physical-XDNA search found an official-accepted proof on attempt 21, with no
 hashrate, power, energy, or profitability number claimed. P10 is an
 endurance/correctness result, not a throughput benchmark.
+
+## Pearl Certificate V3 regression measurement (2026-08-12)
+
+This is a new matched, bounded measurement; it does not replace the historical
+P8/P9 benchmark. On the same four-column `RyzenAI-npu1` AIE2 artifact, batch
+one, `K=2048`, rank 128, and three candidate repetitions, V2 measured
+290.938 ms/candidate (3.43715 candidates/s) and V3 measured 284.544
+ms/candidate (3.51440 candidates/s). The run is a small sample, so the
+observed -2.20% total difference is measurement variation rather than an
+optimization claim. V3 seed derivation itself measured 2.413 µs/candidate
+versus V2's 0.608 µs, an added 1.804 µs that is negligible relative to dense
+candidate latency. Both versions had zero mismatches and zero CPU fallbacks.
+
+The full workload, warm-up, repetition count, latencies, hardware, null power
+and telemetry fields, and correctness result are in
+`docs/evidence/pearl-v3-performance-regression.json`. No profitability,
+PRL/day, or mainnet earnings claim follows from this measurement.

@@ -451,7 +451,12 @@ MiningJobIdentity mining_job_identity(const MiningJob& job)
 
 bool same_mining_job_identity(const MiningJob& left, const MiningJob& right) noexcept
 {
-    return mining_job_identity(left) == mining_job_identity(right);
+    // Do not call mining_job_identity() here: materializing its value copies
+    // the header and job id, which can allocate and would violate noexcept.
+    return left.job_id == right.job_id
+        && left.incomplete_header_bytes == right.incomplete_header_bytes
+        && left.target == right.target
+        && left.certificate_version == right.certificate_version;
 }
 
 GatewayError::GatewayError(GatewayErrorCode code, const std::string& message)
@@ -543,6 +548,10 @@ MiningJob GatewayClient::get_mining_info()
 SubmissionResult GatewayClient::submit_plain_proof(const PlainProof& proof,
                                                    const MiningJob& job)
 {
+    if (job.certificate_version == CertificateVersion::V3) {
+        throw GatewayError(GatewayErrorCode::InvalidCandidate,
+                           "Certificate V3 requires the audited official PlainProof serializer");
+    }
     const std::vector<std::uint8_t> serialized = proof.serialize();
     const std::string plain_proof = base64_encode(serialized);
     const std::string header = base64_encode(job.incomplete_header_bytes);

@@ -1,5 +1,55 @@
 # Pearl Testing
 
+## Certificate V3 upgrade verification (2026-08-12)
+
+The V3 upgrade is an additive test record; the historical V2/P7 records below
+remain unchanged. Run the CPU oracle first, then the physical differential,
+then the current official SIMNET gate. Do not attempt mainnet preparation
+until the SIMNET V3 block is accepted.
+
+```bash
+cmake -S . -B build
+cmake --build build --target pearl_cpu_tests pearl_gateway_tests pearl_work_tests \
+  pearl_v3_xdna_differential pearl-xdna-miner -j2
+./build/pearl_cpu_tests
+./build/pearl_gateway_tests
+./build/pearl_work_tests
+./build/pearl-xdna-miner --self-test
+./build/pearl_v3_xdna_differential \
+  --xclbin build/pearl-xdna-gemm-p2-c4/pearl_p2_gemm.xclbin \
+  --insts build/pearl-xdna-gemm-p2-c4/pearl_p2_gemm.insts \
+  --manifest build/pearl-xdna-gemm-p2-c4/pearl_p2_gemm.manifest \
+  --selector 0 --deterministic-cases 100 --randomized-cases 32 \
+  --evidence docs/evidence/pearl-v3-xdna-differential.json
+```
+
+The CPU corpus verifies independently derived V3 domain keys, 64-byte
+root/dimension bindings, V3 seeds, proof-commitment version domain, official
+raw-root behavior, and all rejection cases. V2 vectors remain byte-identical.
+The physical record requires 100 deterministic and 32 randomized V3 cases
+with zero arithmetic, seed, transcript, or jackpot mismatches and zero CPU
+fallbacks. A five-minute physical V3 stability record is separate from the
+historical P10 endurance evidence because the AIE2 kernel itself did not
+change.
+
+For the current official runtime, build external Pearl `bfd0647` / 1.4.2 and
+use CPU-only `py-pearl-mining 0.3.0` plus `pearl-gateway 0.1.0`; do not launch
+the CUDA/vLLM miner. The required current SIMNET path is:
+
+```text
+official getMiningInfo (cert_version 3)
+-> V3 salted seeds -> physical XDNA -> CPU verification
+-> official PlainProof verifier -> official gateway -> pearld accepted block
+```
+
+For mainnet, bind the node RPC to loopback, use transient strong local
+credentials, and run no submission. The miner must be explicitly invoked as
+`--dry-run --network mainnet`; it reports `MAINNET_DRY_RUN_PASS` only after a
+real gateway job was parsed, a physical candidate was verified, and its fresh
+identity check passed. With no configured public mainnet payout address, do
+not start the gateway or fabricate an address; record
+`MAINNET_PAYOUT_ADDRESS_NOT_CONFIGURED` and continue node-only sync checks.
+
 Run CPU, gateway/work contracts, full CTest, physical P2/P3/P5 differentials,
 P8/P9 benchmarks, CLI modes, the P10 endurance harness, and the official P7
 SIMNET gate in that order. Every XDNA record includes exact CPU parity,

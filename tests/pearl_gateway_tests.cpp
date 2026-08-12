@@ -237,6 +237,16 @@ int main()
         expect(job.target == max_target, "256-bit decimal target decoded");
         (void)client.submit_plain_proof(make_fixture_proof(), job);
         expect(responder.saw_get() && responder.saw_submit(), "both gateway methods framed");
+        MiningJob v3_job = job;
+        v3_job.certificate_version = CertificateVersion::V3;
+        bool legacy_v3_rejected = false;
+        try {
+            (void)client.submit_plain_proof(make_fixture_proof(), v3_job);
+        } catch (const GatewayError& error) {
+            legacy_v3_rejected = error.code() == GatewayErrorCode::InvalidCandidate;
+        }
+        expect(legacy_v3_rejected,
+               "V3 cannot silently use the historical project PlainProof envelope");
 
         const std::string malformed_path = "/tmp/pearl-gateway-malformed-" + std::to_string(getpid()) + ".sock";
         UnixResponder malformed(malformed_path, true);

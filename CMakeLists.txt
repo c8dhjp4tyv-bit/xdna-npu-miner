@@ -753,6 +753,14 @@ if(XRT_INCLUDE_DIR AND XRT_COREUTIL_LIBRARY)
     install(TARGETS pearl-xdna-miner RUNTIME DESTINATION bin)
     add_test(NAME pearl_cli_help COMMAND pearl-xdna-miner --help)
     add_test(NAME pearl_cli_version COMMAND pearl-xdna-miner --version)
+    set_tests_properties(pearl_cli_help PROPERTIES
+        PASS_REGULAR_EXPRESSION "--network NAME")
+    set_tests_properties(pearl_cli_version PROPERTIES
+        PASS_REGULAR_EXPRESSION "supported-certificates: 1,2,3")
+    add_test(NAME pearl_cli_network_parse
+        COMMAND pearl-xdna-miner --version --network mainnet)
+    set_tests_properties(pearl_cli_network_parse PROPERTIES
+        PASS_REGULAR_EXPRESSION "pearl-tested-sha: bfd064717de4af0e8471bdc24ca4a28aa6278227")
     add_test(NAME pearl_cli_hardware_info COMMAND pearl-xdna-miner --hardware-info)
 
     add_executable(pearl_endurance

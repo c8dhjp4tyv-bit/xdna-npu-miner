@@ -4,9 +4,11 @@
 
 Pearl is the active target and P2–P11 were advanced in one continuous shot
 with sequential gates. The physical P2/P3/P5/P8/P9/P10 paths and the safe P11
-CLI are implemented; P7 now passes an independently installed official Pearl
-gateway/ZK prover and local SIMNET node with a physical-XDNA PlainProof.
-Mainnet payout, pool protocol, and profitability remain unclaimed. No live
+CLI are implemented. Historical P7 passes the official Pearl 1.3.1 / V2
+SIMNET path; the current upgrade separately passes Pearl 1.4.2 / Certificate
+V3 with a physical-XDNA accepted SIMNET block. Mainnet payout, pool protocol,
+and profitability remain unclaimed. Read-only current-mainnet preparation is
+only a dry-run safety gate and does not submit a proof or block. No live
 credentials or fabricated matrices are recorded.
 
 The Pearl implementation boundary is documented in
@@ -27,9 +29,11 @@ architecture, upstream/license record, milestones, and handoff are in
 [`docs/evidence/pearl-p0.json`](evidence/pearl-p0.json).
 
 Pearl P0's feasibility gate was `UNKNOWN_NEEDS_EXPERIMENT`; P1 established the
-trusted CPU oracle, P2–P6 and P8–P11 have evidence-backed results, and P7 is
-blocked by unavailable official runtime components. No Pearl profitability or
-live-network acceptance claim is made.
+trusted CPU oracle, P2–P6 and P8–P11 have evidence-backed results, historical
+P7 V2 and the new V3 SIMNET gates have accepted-block evidence. The current
+V3 mainnet operation gate remains read-only and conditional on sync plus an
+operator-supplied public payout address. No Pearl profitability or sustained
+live-network mining claim is made.
 
 ## M0 status and scope
 

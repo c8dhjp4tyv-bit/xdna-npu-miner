@@ -1,0 +1,68 @@
+{
+  "schema": "pearl-v3-simnet-e2e/v1",
+  "status": "PASS",
+  "date": "2026-08-12",
+  "official_source": {
+    "repository": "https://github.com/pearl-research-labs/pearl",
+    "sha": "bfd064717de4af0e8471bdc24ca4a28aa6278227",
+    "version": "1.4.2"
+  },
+  "official_runtime": {
+    "pearld_sha256": "be2b06f5d2782b737785cbab115480c206092a3db3f7bb2a1f9b4b5bf4a4cbbf",
+    "pearld_version": "1.4.2",
+    "pearl_gateway_version": "0.1.0",
+    "py_pearl_mining_version": "0.3.0",
+    "python": "3.12.13",
+    "rust": "1.97.1",
+    "go": "1.27rc2",
+    "torch": "2.11.0+cpu",
+    "official_cuda_or_vllm_miner_started": false
+  },
+  "network": "simnet",
+  "get_mining_info": {
+    "source": "official pearl-gateway getMiningInfo",
+    "certificate_version": 3,
+    "incomplete_header_bytes": 76,
+    "target_decimal": "6901746346790563787434755862277025452451108972170386555162524223799296",
+    "job_identity_bound_fields": [
+      "job_id",
+      "incomplete_header_bytes",
+      "target",
+      "cert_version",
+      "m",
+      "n"
+    ]
+  },
+  "candidate": {
+    "certificate_version": 3,
+    "seed_derivation": "salted V3 raw roots -> dimension-bound roots -> BLAKE3 seed chain",
+    "xdna_device": "RyzenAI-npu1",
+    "architecture": "AIE2",
+    "physical_xrt": true,
+    "candidate_attempt": 36,
+    "cpu_verification": "PASS",
+    "cpu_fallbacks": 0,
+    "plainproof_official_wire_bytes": 140225
+  },
+  "official_verification": {
+    "captured_non_submitted_v3_proof": true,
+    "capture_attempt": 14,
+    "official_wire_sha256": "7a589c9307b7fa93c1b6227d0c084929798fdababedca1515635da40f4aa4c9d",
+    "incomplete_header_sha256": "97a04805f1211bf8447d065ca729daf5a0074f00feee11f91502d1e14c8b3a12",
+    "method": "py_pearl_mining.verify_plain_proof_for_cert_version(CERT_VERSION_ZK_V3, header, proof)",
+    "result": "PASS"
+  },
+  "submission": {
+    "method": "official pearl-gateway submitPlainProof",
+    "gateway_result": "submitted",
+    "pearld_result": "accepted",
+    "height_before": 0,
+    "height_after": 1,
+    "block_hash": "65550ba8d19aceeba9b4b0bd73fefb13a3aeab491f6282c3933e08b9a801fd1c"
+  },
+  "safety": {
+    "mainnet_submission": false,
+    "credentials_recorded": false,
+    "temporary_simnet_runtime_removed": true
+  }
+}

@@ -10,9 +10,11 @@ Pearl protocol, matrix, proof, network, and license decisions remain
 independent. P2-P11 were delivered in one continuous shot with separate
 gates. The Pearl boundary keeps networking, canonical verification, ZK proof
 generation, and submission on the CPU, with XDNA1 limited to explicitly
-verified compute buffers. P7 now passes the pinned official local SIMNET
-gateway/prover/node acceptance path; mainnet and pool support remain separate
-unavailable boundaries. See `docs/evidence/pearl-p7-e2e.json`.
+verified compute buffers. Historical P7 passes the pinned V2 SIMNET path; the
+current V3 path passes a separate Pearl 1.4.2 SIMNET acceptance gate with
+salted root/dimension seed derivation. Mainnet preparation remains read-only,
+does not submit work, and is gated on real sync plus an operator-supplied
+public payout address. See `docs/evidence/pearl-v3-simnet-e2e.json`.
 
 ## M0 architecture status
 

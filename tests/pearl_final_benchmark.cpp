@@ -26,8 +26,10 @@ using Clock = std::chrono::steady_clock;
 struct Options {
     std::filesystem::path artifact_dir;
     std::filesystem::path evidence;
+    std::filesystem::path v3_evidence;
     std::size_t raw_iterations = 100U;
     std::size_t candidate_iterations = 2U;
+    std::size_t seed_iterations = 1000U;
 };
 
 [[nodiscard]] std::string json_escape(std::string_view value)
@@ -115,16 +117,19 @@ void parse_options(int argc, char** argv, Options& options)
         };
         if (argument == "--artifact-dir") options.artifact_dir = require_value("--artifact-dir");
         else if (argument == "--evidence") options.evidence = require_value("--evidence");
+        else if (argument == "--v3-evidence") options.v3_evidence = require_value("--v3-evidence");
         else if (argument == "--raw-iterations") options.raw_iterations = std::stoull(require_value("--raw-iterations"));
         else if (argument == "--candidate-iterations") options.candidate_iterations = std::stoull(require_value("--candidate-iterations"));
+        else if (argument == "--seed-iterations") options.seed_iterations = std::stoull(require_value("--seed-iterations"));
         else if (argument == "--help") {
             std::cout << "usage: pearl_final_benchmark --artifact-dir DIR [--raw-iterations N] "
-                         "[--candidate-iterations N] [--evidence PATH]\n";
+                         "[--candidate-iterations N] [--seed-iterations N] [--evidence PATH] "
+                         "[--v3-evidence PATH]\n";
             std::exit(0);
         } else throw std::runtime_error("unknown argument: " + std::string(argument));
     }
     if (options.artifact_dir.empty() || options.raw_iterations == 0U
-        || options.candidate_iterations == 0U) {
+        || options.candidate_iterations == 0U || options.seed_iterations == 0U) {
         throw std::runtime_error("artifact directory and positive iteration counts are required");
     }
 }
@@ -210,6 +215,43 @@ int main(int argc, char** argv)
         const CandidateBinding binding = make_candidate_binding(
             job, header, full_a.rows(), full_b.cols());
 
+        // Keep the V3 measurement separate from the historical P9 record.
+        // The same matrices, physical artifact, warm-up, and candidate loop
+        // are used so the only consensus-path delta is the salted seed.
+        Digest seed_accumulator{};
+        const auto v2_seed_begin = Clock::now();
+        for (std::size_t iteration = 0U; iteration < options.seed_iterations; ++iteration) {
+            const CommitmentSeeds measured = commitment_seeds(
+                CertificateVersion::V2, key, hash_a, hash_b, full_a.rows(), full_b.cols());
+            seed_accumulator[iteration % seed_accumulator.size()] ^= measured.a_noise_seed[0U];
+        }
+        const auto v2_seed_end = Clock::now();
+        const std::uint64_t v2_seed_ns = static_cast<std::uint64_t>(
+            std::chrono::duration_cast<std::chrono::nanoseconds>(v2_seed_end - v2_seed_begin).count());
+        const auto v3_seed_begin = Clock::now();
+        for (std::size_t iteration = 0U; iteration < options.seed_iterations; ++iteration) {
+            const CommitmentSeeds measured = commitment_seeds(
+                CertificateVersion::V3, key, hash_a, hash_b, full_a.rows(), full_b.cols());
+            seed_accumulator[iteration % seed_accumulator.size()] ^= measured.a_noise_seed[0U];
+        }
+        const auto v3_seed_end = Clock::now();
+        const std::uint64_t v3_seed_ns = static_cast<std::uint64_t>(
+            std::chrono::duration_cast<std::chrono::nanoseconds>(v3_seed_end - v3_seed_begin).count());
+        // Retain an observable data dependency so an optimizing compiler
+        // cannot remove the seed calls from the timing loops.
+        if (seed_accumulator == Digest{}) {
+            throw std::runtime_error("seed timing accumulator unexpectedly zero");
+        }
+        const CommitmentSeeds v3_seeds = commitment_seeds(
+            CertificateVersion::V3, key, hash_a, hash_b, full_a.rows(), full_b.cols());
+        const NoiseMatrices v3_noise = generate_noise(
+            2048U, 128U, v3_seeds, row_indices, column_indices);
+        MiningJob v3_job = job;
+        v3_job.certificate_version = CertificateVersion::V3;
+        v3_job.job_id = "v3-performance-fixture";
+        const CandidateBinding v3_binding = make_candidate_binding(
+            v3_job, header, full_a.rows(), full_b.cols());
+
         std::uint64_t candidate_ns = 0U;
         std::size_t candidate_mismatches = 0U;
         std::size_t proof_bytes = 0U;
@@ -227,12 +269,31 @@ int main(int argc, char** argv)
             if (!result.meets_target) ++candidate_mismatches;
         }
 
+        std::uint64_t v3_candidate_ns = 0U;
+        std::size_t v3_candidate_mismatches = 0U;
+        std::size_t v3_proof_bytes = 0U;
+        for (std::size_t iteration = 0U; iteration < options.candidate_iterations; ++iteration) {
+            const auto begin = Clock::now();
+            const ComputePipelineResult result = pipeline.run(
+                selected_a, selected_b, v3_noise, 128U, v3_seeds.a_noise_seed, target);
+            const PlainProof proof = build_plain_proof(
+                v3_binding, header, config, full_a, full_b, 0U, 0U, result);
+            verify_plain_proof_candidate(proof, v3_binding);
+            v3_proof_bytes = serialize_official_plain_proof(proof, v3_binding).size();
+            const auto end = Clock::now();
+            v3_candidate_ns += static_cast<std::uint64_t>(
+                std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count());
+            if (!result.meets_target) ++v3_candidate_mismatches;
+        }
+
         struct rusage usage{};
         (void)getrusage(RUSAGE_SELF, &usage);
         const double raw_throughput = static_cast<double>(options.raw_iterations)
             / (static_cast<double>(raw_ns) / 1'000'000'000.0);
         const double candidate_throughput = static_cast<double>(options.candidate_iterations)
             / (static_cast<double>(candidate_ns) / 1'000'000'000.0);
+        const double v3_candidate_throughput = static_cast<double>(options.candidate_iterations)
+            / (static_cast<double>(v3_candidate_ns) / 1'000'000'000.0);
         const auto& capability = executor.capability();
         const std::string kernel_release = [] {
             struct utsname name{};
@@ -288,12 +349,65 @@ int main(int argc, char** argv)
                    << "  \"gateway_overhead\": \"not measured; no official local gateway was running\"\n"
                    << "}\n";
         }
+        if (!options.v3_evidence.empty()) {
+            if (!options.v3_evidence.parent_path().empty()) {
+                std::filesystem::create_directories(options.v3_evidence.parent_path());
+            }
+            std::ofstream output(options.v3_evidence);
+            if (!output) throw std::runtime_error("cannot write V3 performance evidence");
+            const double v2_seed_per_candidate = static_cast<double>(v2_seed_ns)
+                / static_cast<double>(options.seed_iterations);
+            const double v3_seed_per_candidate = static_cast<double>(v3_seed_ns)
+                / static_cast<double>(options.seed_iterations);
+            const double v2_candidate_latency = static_cast<double>(candidate_ns)
+                / static_cast<double>(options.candidate_iterations);
+            const double v3_candidate_latency = static_cast<double>(v3_candidate_ns)
+                / static_cast<double>(options.candidate_iterations);
+            const double total_overhead = v3_candidate_latency - v2_candidate_latency;
+            const double total_overhead_percent = v2_candidate_latency == 0.0 ? 0.0
+                : total_overhead * 100.0 / v2_candidate_latency;
+            output << "{\n"
+                   << "  \"schema\": \"pearl-v3-performance-regression/v1\",\n"
+                   << "  \"status\": \""
+                   << ((candidate_mismatches == 0U && v3_candidate_mismatches == 0U)
+                       ? "PASS" : "FAIL") << "\",\n"
+                   << "  \"certificate_versions\": [2, 3],\n"
+                   << "  \"hardware\": {\"device\": \""
+                   << json_escape(capability.device_name) << "\", \"architecture\": \""
+                   << json_escape(capability.architecture) << "\", \"bdf\": \""
+                   << json_escape(capability.bdf) << "\", \"xrt\": \""
+                   << json_escape(capability.xrt_version) << "\"},\n"
+                   << "  \"workload\": {\"tile\": \"4x64x8\", \"rank\": 128, \"K\": 2048, "
+                      "\"batch\": 1, \"columns\": 4, \"warmup\": 8, "
+                      "\"candidate_iterations\": " << options.candidate_iterations
+                   << ", \"seed_iterations\": " << options.seed_iterations << "},\n"
+                   << "  \"v2\": {\"seed_derivation_ns_per_candidate\": "
+                   << v2_seed_per_candidate << ", \"candidate_latency_ns\": "
+                   << v2_candidate_latency << ", \"candidate_throughput_per_s\": "
+                   << candidate_throughput << ", \"proof_bytes\": " << proof_bytes
+                   << ", \"mismatches\": " << candidate_mismatches << "},\n"
+                   << "  \"v3\": {\"seed_derivation_ns_per_candidate\": "
+                   << v3_seed_per_candidate << ", \"candidate_latency_ns\": "
+                   << v3_candidate_latency << ", \"candidate_throughput_per_s\": "
+                   << v3_candidate_throughput << ", \"official_wire_bytes\": "
+                   << v3_proof_bytes << ", \"mismatches\": " << v3_candidate_mismatches << "},\n"
+                   << "  \"overhead\": {\"seed_derivation_ns\": "
+                   << (v3_seed_per_candidate - v2_seed_per_candidate)
+                   << ", \"total_candidate_ns\": " << total_overhead
+                   << ", \"total_candidate_percent\": " << total_overhead_percent << "},\n"
+                   << "  \"cpu_fallbacks\": 0,\n"
+                   << "  \"npu_telemetry\": null,\n"
+                   << "  \"power_watts\": null\n"
+                   << "}\n";
+        }
         std::cout << "device=" << capability.device_name << '\n'
                   << "raw_throughput_dispatches_per_s=" << raw_throughput << '\n'
                   << "candidate_throughput_per_s=" << candidate_throughput << '\n'
                   << "candidate_mismatches=" << candidate_mismatches << '\n'
+                  << "v3_candidate_throughput_per_s=" << v3_candidate_throughput << '\n'
+                  << "v3_candidate_mismatches=" << v3_candidate_mismatches << '\n'
                   << "cpu_fallbacks=0\n";
-        return candidate_mismatches == 0U ? 0 : 1;
+        return candidate_mismatches == 0U && v3_candidate_mismatches == 0U ? 0 : 1;
     } catch (const xdna::runtime::RuntimeError& error) {
         std::cerr << xdna::runtime::error_code_name(error.code())
                   << ": " << error.what() << '\n';

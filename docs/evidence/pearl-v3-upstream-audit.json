@@ -1,0 +1,102 @@
+{
+  "schema": "pearl-v3-upstream-audit/v1",
+  "audit_date": "2026-08-12",
+  "official_repository": "https://github.com/pearl-research-labs/pearl",
+  "previous_verified_sha": "fe22b6a2b831d95b2f56564808f39d2f498f34a5",
+  "requested_sha": "bfd064717de4af0e8471bdc24ca4a28aa6278227",
+  "fetched_master_sha": "bfd064717de4af0e8471bdc24ca4a28aa6278227",
+  "master_advanced_after_requested_sha": false,
+  "version": "1.4.2",
+  "commits_since_previous_pin": [
+    {
+      "sha": "fc5ca65a1df0fad0140e74c3b52e71c4a0f99e90",
+      "subject": "feat(consensus): salted noise-seed hardfork (#280)",
+      "classification": "CONSENSUS_REQUIRES_CHANGE"
+    },
+    {
+      "sha": "fadd42af05ad6b6a5b69ee29913fcf2e60eea4c0",
+      "subject": "fix(chaincfg): delay mainnet salted seed fork height by 100 blocks (#282)",
+      "classification": "CONSENSUS_CONFIGURATION_REQUIRES_CHANGE"
+    },
+    {
+      "sha": "950adc85",
+      "subject": "chore: bump pearl-desktop-wallet to 2.0.5 and ignore .omo dir (#284)",
+      "classification": "NOT_RELEVANT"
+    },
+    {
+      "sha": "bfd064717de4af0e8471bdc24ca4a28aa6278227",
+      "subject": "feat: raise minimum peer protocol version and add checkpoints (#283)",
+      "classification": "NETWORK_COMPATIBILITY_REQUIRES_CHANGE"
+    }
+  ],
+  "compatibility_matrix": [
+    {
+      "area": "V1/V2/V3 certificate-version dispatch",
+      "official_paths": ["zk-pow/src/ffi/plain_proof.rs", "node/wire/certificate.go"],
+      "status": "REQUIRES_CHANGE",
+      "resolution": "Gateway jobs are mandatory-version parsed and custom candidates bind an explicit supported version 1, 2, or 3."
+    },
+    {
+      "area": "salted dense noise-seed derivation",
+      "official_paths": ["zk-pow/src/api/seed.rs", "zk-pow/src/api/proof_utils.rs", "zk-pow/src/ffi/mine.rs"],
+      "status": "REQUIRES_CHANGE",
+      "resolution": "V3 uses independently derived context keys, raw-root dimension binding, then the unchanged BLAKE3 seed chain."
+    },
+    {
+      "area": "miner-base candidate verification",
+      "official_paths": ["miner/miner-base/src/miner_base/async_loop_manager.py", "miner/miner-base/src/miner_base/commitment_hash.py"],
+      "status": "REQUIRES_CHANGE",
+      "resolution": "Custom candidate verification dispatches by immutable job certificate version before official wire serialization."
+    },
+    {
+      "area": "gateway getMiningInfo and submitPlainProof schema",
+      "official_paths": ["miner/pearl-gateway/src/pearl_gateway/comm/dataclasses.py", "miner/pearl-gateway/src/pearl_gateway/miner_rpc/schemas.py"],
+      "status": "REQUIRES_CHANGE",
+      "resolution": "cert_version is mandatory, unknown values fail closed, and the same job identity is rechecked before submit."
+    },
+    {
+      "area": "PlainProof bincode, JSON, and base64 wire payload",
+      "official_paths": ["zk-pow/src/ffi/plain_proof.rs", "py-pearl-mining/src/lib.rs", "miner/pearl-gateway/src/pearl_gateway/miner_rpc/server.py"],
+      "status": "COMPATIBLE",
+      "resolution": "V3 retains the V2 PlainProof layout; raw Merkle roots remain on wire and cert_version remains in MiningJob."
+    },
+    {
+      "area": "certificate serialization",
+      "official_paths": ["node/wire/certificate.go", "node/wire/certificate_v2.go", "node/wire/certificate_v3.go"],
+      "status": "COMPATIBLE",
+      "resolution": "V3 has the V2 variable-public-data certificate layout, selected by an on-wire u32 version."
+    },
+    {
+      "area": "proof commitment",
+      "official_paths": ["node/wire/certificate.go", "miner/pearl-gateway/src/pearl_gateway/blockchain_utils/zk_certificate.py"],
+      "status": "REQUIRES_CHANGE",
+      "resolution": "The commitment domain is SHA256d(cert_version_le32 || public_data); V3 uses prefix 3, not the V2 prefix."
+    },
+    {
+      "area": "target and rank penalty",
+      "official_paths": ["node/blockchain/solve.go", "node/zkpow/verify.go", "zk-pow/src/api/proof_utils.rs"],
+      "status": "COMPATIBLE",
+      "resolution": "No V3 arithmetic change was found; current template target remains immutable job state."
+    },
+    {
+      "area": "network fork selection",
+      "official_paths": ["node/chaincfg/params.go", "node/mining/mining.go", "node/rpcserver.go"],
+      "status": "REQUIRES_CHANGE",
+      "resolution": "Mainnet SaltedSeedForkHeight is 99000, but the miner trusts requiredcertversion/cert_version from the live template rather than inferring height."
+    },
+    {
+      "area": "peer protocol compatibility",
+      "official_paths": ["node/wire/protocol.go", "node/peer/peer.go"],
+      "status": "REQUIRES_CHANGE",
+      "resolution": "The official V1.4.2 node requires minimum peer protocol version 2; read-only mainnet preparation verifies connected peers report version 2."
+    },
+    {
+      "area": "MoE routing seed fold",
+      "official_paths": ["zk-pow/src/api/proof_utils.rs", "miner/vllm-miner/src/vllm_miner/moe_gemm_operators.py"],
+      "status": "NOT_RELEVANT",
+      "resolution": "This custom miner's verified execution path is dense-only; no MoE route is claimed or implemented."
+    }
+  ],
+  "unresolved_consensus_fields": [],
+  "result": "PASS"
+}

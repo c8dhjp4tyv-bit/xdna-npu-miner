@@ -1,0 +1,9 @@
+{
+  "schema": "pearl-v3-xdna-differential/v1",
+  "status": "PASS",
+  "certificate_version": 3,
+  "workload": {"deterministic_cases": 1, "randomized_cases": 0, "minimum_duration_seconds": 300, "elapsed_ms": 301048, "completed": 102},
+  "target": {"device": "RyzenAI-npu1", "architecture": "aie2", "bdf": "0000:06:00.1", "xrt": "2.26.0"},
+  "results": {"arithmetic_mismatches": 0, "seed_mismatches": 0, "transcript_mismatches": 0, "jackpot_mismatches": 0, "runtime_failures": 0, "cpu_fallbacks": 0},
+  "physical_xrt": {"dispatches": 26112, "h2d_syncs": 78336, "d2h_syncs": 26112, "silent_cpu_fallback": false}
+}

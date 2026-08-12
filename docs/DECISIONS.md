@@ -2,6 +2,21 @@
 
 Record material decisions here so later agents do not silently reverse them.
 
+## D-047 — Certificate V3 is selected by live job version, not height
+
+**Status:** Accepted for `feat/pearl-v3-mainnet-ready` (2026-08-12)
+
+Pearl 1.4.2 adds Certificate V3 salted noise seeds. The miner obtains the
+mandatory `cert_version` from the official job/template, binds it with header,
+target, job ID, and dimensions, then dispatches V1/V2 legacy or V3 salted CPU
+seed derivation explicitly. Mainnet `SaltedSeedForkHeight=99000` is recorded
+as upstream context but is never used as a local selector. Unknown versions
+fail closed. Raw roots remain on wire; bound roots are seed-only.
+
+Reason: a height-based inference can submit a candidate constructed under the
+wrong consensus rule during a template/fork transition. The live job is the
+authority, while the XDNA kernel remains unchanged and physically verified.
+
 ## D-045 — P7 official SIMNET uses an isolated runtime and separate wire adapter
 
 **Status:** Accepted for `fix/pearl-p7-official-simnet` (2026-08-11)

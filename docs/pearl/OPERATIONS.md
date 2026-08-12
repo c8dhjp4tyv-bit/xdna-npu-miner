@@ -37,6 +37,11 @@ not a CPU fallback: the host output BO is poisoned before every XRT dispatch.
 returns nonzero for a physical failure. `--benchmark` is exact P2 GEMM work,
 not a profitability or hashrate estimate.
 
+On the current V3 binary, a passing self-test also emits
+`V2_REFERENCE_PASS` and `V3_REFERENCE_PASS`. `--version` reports supported
+certificate versions `1,2,3`, the project commit, tested Pearl revision, and
+observed XRT version.
+
 ## Gateway, dry-run, and mine
 
 The pinned Pearl gateway is newline-delimited JSON-RPC, using either
@@ -47,17 +52,32 @@ The pinned Pearl gateway is newline-delimited JSON-RPC, using either
 ./build/pearl-xdna-miner --dry-run --json-status
 ./build/pearl-xdna-miner --dry-run --fixture-work \
   --artifact-dir build/pearl-xdna-gemm-p2-c4 --json-status
+./build/pearl-xdna-miner --dry-run --network mainnet \
+  --gateway-unix /PATH/TO/LOCAL/GATEWAY.sock \
+  --artifact-dir build/pearl-xdna-gemm-p2-c4 --json-status
 ./build/pearl-xdna-miner --mine \
   --mining-address PUBLIC_TAPROOT_ADDRESS \
   --artifact-dir build/pearl-xdna-gemm-p2-c4
 ```
 
-The normal dry-run acquires current gateway work and stops before submission.
+The normal dry-run acquires a current gateway job, requires its explicit
+certificate version, runs a physical dense candidate, CPU-verifies it,
+serializes an official wire payload locally, fresh-checks the complete job
+identity, and stops before submission. It contains no `submitPlainProof` call.
 The fixture mode is deterministic local verification only; it never contacts
 or submits to a gateway. The current official gateway's A/B tensors come from
 its external useful-work/inference provider. That provider is intentionally an
 explicit unavailable boundary in this repository, not a source for fabricated
 live matrices.
+
+For current mainnet preparation, run a 1.4.2 official node with RPC bound to
+loopback and strong transient local credentials. Do not start a gateway unless
+the operator has configured a real **public mainnet** mining payout address.
+Never use the SIMNET address, invent an address, pass a seed, or commit
+credentials. Without that public address, record
+`MAINNET_PAYOUT_ADDRESS_NOT_CONFIGURED`; node-only sync and template checks are
+still safe. No sustained mining or mainnet proof/block submission belongs in a
+dry-run.
 
 Node RPC credentials, when a future node adapter is used, come from
 `PEARL_NODE_RPC_USER` and `PEARL_NODE_RPC_PASSWORD`. They are never logged.
@@ -77,9 +97,11 @@ or hidden resource consumption is installed by this project.
 
 ## Current external limits
 
-The physical Hawk Point XDNA1 path is verified. No official Pearl node or
-gateway process is installed in the current workspace, so live gateway,
-official prover, and local/simnet block acceptance remain externally blocked.
-The P1 PlainProof is the repository-owned pre-prover envelope; the official
-gateway/prover may own certificate/ZK generation where the pinned hot-component
-license boundary is unresolved.
+The physical Hawk Point XDNA1 V3 path and a current official 1.4.2 SIMNET
+accepted block are verified; see `docs/evidence/pearl-v3-simnet-e2e.json`.
+The P1 PlainProof remains a repository-owned local envelope. V3 gateway
+submission uses the separately audited official wire serializer, while the
+official gateway/prover continues to own certificate/ZK generation at the
+unclear-license boundary. A live mainnet gateway dry-run remains contingent on
+current node sync and an operator-configured public payout address; it is not
+implied by the SIMNET result.

@@ -12,6 +12,53 @@ result. Gateway/node transport and supervisor/CLI code remain CPU-side. The
 official useful-work tensor source and ZK/certificate runtime are explicit
 external components, not silent synthetic substitutes.
 
+## Certificate V3 execution boundary (current)
+
+The current verified compatibility baseline is Pearl 1.4.2 / Certificate V3.
+Certificate version is immutable job state, not a height heuristic. The
+gateway parser requires `cert_version`, accepts only 1, 2, or 3, and binds
+every candidate to this complete identity:
+
+```text
+job id + incomplete header bytes + target + cert_version + A(m) + B(n)
+```
+
+A refresh changing any member invalidates the completed candidate before the
+submission boundary. An unknown future version fails closed with
+`UNSUPPORTED_CERTIFICATE_VERSION_<n>`; it cannot silently reuse V3 logic.
+
+```mermaid
+flowchart TD
+    J["Official job: header, target, cert_version"] --> I["Immutable candidate identity"]
+    I --> R["Raw keyed Merkle roots: hash_a, hash_b"]
+    R --> D{"Certificate version"}
+    D -->|V1/V2| L["Historical legacy seed derivation"]
+    D -->|V3| S["CPU: bind raw roots to m/n with V3 domain keys"]
+    S --> N["CPU: salted BLAKE3 noise seeds"]
+    L --> N
+    N --> X["Physical RyzenAI-npu1 AIE2 dense GEMM"]
+    X --> C["CPU differential verification, transcript, jackpot"]
+    C --> P["Raw-root PlainProof and official wire serializer"]
+    P --> F["Fresh identity check"]
+    F --> G["Official gateway only when explicit submission is enabled"]
+    F -. changed job .-> Q["Discard stale candidate"]
+```
+
+For V3 the host derives the two 32-byte domain keys from their context strings
+and constructs exactly `raw_root(32) || dimension_le32(4) || zero(28)` before
+keyed BLAKE3. Those bound roots are seed inputs only; `PlainProof` retains raw
+Merkle roots. Salted BLAKE3 remains on the CPU because it is small,
+control-adjacent work and moving it to XDNA would not improve the verified
+dense pipeline. The signed-int8 GEMM arithmetic, four-column artifact, and
+CPU oracle comparison remain unchanged.
+
+`--dry-run --network mainnet` contains no `submitPlainProof` call. If an
+authorized current gateway supplies a job, it constructs and CPU-verifies a
+physical-XDNA candidate, serializes the official wire locally, refresh-checks
+the job, and reports `MAINNET_DRY_RUN_PASS` only when no identity changed. It
+retries stale jobs by discarding them. A public mainnet payout address is
+operational configuration and is never invented by the miner.
+
 ## Boundary
 
 Pearl is a separate research track. The existing Qubic runtime and its
