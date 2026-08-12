@@ -5,7 +5,9 @@
   "official_behavioral_reference": {
     "repository": "https://github.com/pearl-research-labs/pearl",
     "sha": "bfd064717de4af0e8471bdc24ca4a28aa6278227",
-    "path": "zk-pow/src/api/seed.rs"
+    "path": "zk-pow/src/api/seed.rs",
+    "pinned_test": "commitment_hash_pinned_vectors",
+    "crosscheck": "The current official Salted dense vector uses job_key=0x11*32, hash_a=0xaa*32, hash_b=0xbb*32, m=192, n=320 and exactly matches both V3 noise seeds below. The clean-room implementation was compared behaviorally; upstream implementation code was not copied."
   },
   "domain_keys": [
     {

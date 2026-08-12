@@ -20,7 +20,9 @@
     "v3_physical_xdna": "PASS",
     "v3_simnet_plainproof_verification": "PASS",
     "v3_simnet_accepted_block": "PASS",
-    "mainnet_dry_run": "PENDING"
+    "mainnet_node_sync": "PENDING: bounded loopback-only sync reached height 50000 of peer-reported 99306",
+    "mainnet_requiredcertversion": "NOT_AVAILABLE: no current mainnet template",
+    "mainnet_dry_run": "PENDING: MAINNET_PAYOUT_ADDRESS_NOT_CONFIGURED"
   },
   "evidence": [
     "pearl-v3-upstream-audit.json",

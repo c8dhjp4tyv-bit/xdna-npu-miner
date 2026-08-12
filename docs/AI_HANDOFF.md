@@ -3,7 +3,7 @@
 ## Active Pearl Certificate V3 / mainnet-readiness checkpoint (2026-08-12)
 
 **Current milestone:** Pearl 1.4.2 Certificate V3 upgrade and safe mainnet
-readiness. **Status:** IN PROGRESS —
+readiness. **Status:** BLOCKED —
 `FULL_PROJECT_PASS_V3_MAINNET_SYNC_PENDING`. **Branch:**
 `feat/pearl-v3-mainnet-ready`. The required clean starting project SHA was
 `c845eee8c1e6cf687559ad4d5d2391fb859f2451`; do not rewrite the historical
@@ -54,22 +54,24 @@ Verification already recorded:
   official V3 proof verification passed, and gateway/node accepted block
   `65550ba8d19aceeba9b4b0bd73fefb13a3aeab491f6282c3933e08b9a801fd1c` at
   height 1 with zero CPU fallbacks;
-- locked Cargo build, Debug CTest 14/14, and Release CTest 14/14 passed before
-  the final documentation checkpoint. Rerun the real checks after any further
-  code change.
+- locked Cargo build, Debug CTest 14/14, Release CTest 14/14, and physical
+  `--self-test` all passed after the stale-job implementation change; only
+  evidence/documentation updates remain in this checkpoint.
 
-Mainnet safety/current state: an official current `pearld` runs only as a
+Mainnet safety/current state: an official current `pearld` ran only as a
 loopback, no-listen, temporary read-only validation node using strong transient
-credentials that are not recorded. It peers with version-2 peers and verified
-the height-10,000 checkpoint, but it remains in initial sync toward the
-peer-reported height 99,306. Its first `/tmp` runtime reached that filesystem's
-quota and was removed; the resumed temporary workspace-volume runtime has
-sufficient capacity. No live `getblocktemplate`/`requiredcertversion` is
-available until the node is current. No public mainnet payout address was
-provided, none was invented, no mainnet gateway was started, and no mainnet
-PlainProof/block/mining submission occurred. Therefore live mainnet dry-run
-and live stale-drop count remain pending; a two-response gateway-refresh test
-and static identity coverage are PASS.
+credentials that are not recorded. It connected to eight version-2 peers and
+reached height 50,000 (block
+`608f32e5390b2ae964c986a53e1be10ba4a640f3ccecf96d6b7838e06cb517ff`) of the
+peer-reported 99,306 before the bounded observation ended. Its first `/tmp`
+runtime reached that filesystem's quota and was removed; the resumed
+workspace-volume runtime was also stopped and removed after recording the
+state. The node did not become current, so no live
+`getblocktemplate`/`requiredcertversion` is available. No public mainnet
+payout address was provided, none was invented, no mainnet gateway was
+started, and no mainnet PlainProof/block/mining submission occurred. Therefore
+live mainnet dry-run and live stale-drop count remain pending; a two-response
+gateway-refresh test and static identity coverage are PASS.
 
 New evidence is `docs/evidence/pearl-v3-upstream-audit.json`,
 `pearl-v3-cpu-vectors.json`, `pearl-v3-xdna-differential.json`,
@@ -80,9 +82,9 @@ New evidence is `docs/evidence/pearl-v3-upstream-audit.json`,
 Do not redo the historical V2/P7 block proof, fabricate a current template,
 infer a live certificate version from fork height, use a SIMNET address on
 mainnet, start the official CUDA/vLLM miner, log credentials, or submit any
-mainnet proof/block. The next exact task is: let the official 1.4.2 mainnet
-node finish syncing; obtain/configure only a public Pearl mainnet payout
-address; start the current official gateway locally; run the bounded
+mainnet proof/block. The next exact task is: resume the official 1.4.2 mainnet
+node to full sync; obtain/configure only a public Pearl mainnet payout address;
+start the current official gateway locally; run the bounded
 `--dry-run --network mainnet` path with submission disabled; record the actual
 template/gateway certificate version and stale-drop result. Only after an
 explicit new authorization may a bounded mainnet submission run be considered.

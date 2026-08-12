@@ -46,7 +46,7 @@ V3 SIMNET accepted block are separately recorded under `pearl-v3-*` evidence.
 | V3 CPU oracle, bindings, and V2 regression | PASS | `pearl-v3-cpu-vectors.json` |
 | V3 physical RyzenAI-npu1 differential | PASS | `pearl-v3-xdna-differential.json` |
 | Current official V3 SIMNET interoperability | PASS | `pearl-v3-simnet-e2e.json` |
-| Current mainnet node/gateway dry-run | IN PROGRESS — node sync / public payout configuration boundary | `pearl-v3-mainnet-dry-run.json` |
+| Current mainnet node/gateway dry-run | BLOCKED — bounded read-only sync reached 50,000/99,306; public payout configuration is absent | `pearl-v3-mainnet-dry-run.json` |
 
 The V3 execution gate may not claim mainnet readiness until the read-only
 current mainnet node has a usable template and an authorized gateway

@@ -28,7 +28,7 @@
     "cpu_fallbacks": 0
   },
   "blocking_conditions": [
-    "Current official mainnet node has not yet completed initial synchronization, so no live requiredcertversion/template is available.",
+    "Current official mainnet node reached height 50000 of the peer-reported 99306 during a bounded loopback-only sync, but did not complete initial synchronization; no live requiredcertversion/template is available.",
     "No public Pearl mainnet payout address is configured; none was invented and the official mainnet gateway was not started."
   ]
 }

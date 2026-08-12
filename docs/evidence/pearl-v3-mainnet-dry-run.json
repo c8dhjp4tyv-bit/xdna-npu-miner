@@ -18,20 +18,22 @@
     "wallet_seed_exposed": false,
     "mainnet_block_submitted": false,
     "mainnet_plainproof_submitted": false,
-    "mainnet_mining_started": false
+    "mainnet_mining_started": false,
+    "temporary_runtime_removed": true
   },
   "sync_observation": {
     "peer_count": 8,
     "peer_protocol_versions": [2],
     "peer_reported_tip_height": 99306,
-    "verified_height_reached": 10000,
+    "verified_height_reached": 50000,
     "verified_block_hash_at_height_10000": "a3c196fb1c3f7837bbebd69b98fc451d88d48083af98c318c78486d7f1888490",
-    "sync_state": "initial sync incomplete; node not yet current",
+    "verified_block_hash_at_height_50000": "608f32e5390b2ae964c986a53e1be10ba4a640f3ccecf96d6b7838e06cb517ff",
+    "sync_state": "initial sync incomplete after the bounded read-only observation; node stopped at height 50000 of peer-reported height 99306",
     "initial_temporary_runtime": "removed after its /tmp filesystem quota was exhausted",
-    "current_runtime": "temporary workspace-volume runtime with sufficient capacity"
+    "workspace_volume_runtime": "used for the resumed sync and removed after the height-50000 observation"
   },
   "template_and_gateway": {
-    "getblocktemplate": "NOT_AVAILABLE: official node correctly withholds templates until current",
+    "getblocktemplate": "NOT_AVAILABLE: official node correctly withheld templates while it was not current; no template was fabricated after shutdown",
     "requiredcertversion": null,
     "gateway_getMiningInfo": "NOT_STARTED",
     "reason_gateway_not_started": "MAINNET_PAYOUT_ADDRESS_NOT_CONFIGURED; no public mainnet payout address was supplied or invented",
@@ -46,5 +48,5 @@
     "live_stale_candidates_dropped": null,
     "cpu_fallbacks": null
   },
-  "next_condition": "Allow the current official node to finish syncing, then configure only a public mainnet payout address before starting the official gateway and executing the no-submit dry-run."
+  "next_condition": "Resume the current official node to full sync, then configure only a public mainnet payout address before starting the official gateway and executing the no-submit dry-run."
 }
