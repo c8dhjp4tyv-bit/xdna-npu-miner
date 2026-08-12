@@ -1,5 +1,91 @@
 # AI Handoff
 
+## Active Pearl Certificate V3 / mainnet-readiness checkpoint (2026-08-12)
+
+**Current milestone:** Pearl 1.4.2 Certificate V3 upgrade and safe mainnet
+readiness. **Status:** IN PROGRESS —
+`FULL_PROJECT_PASS_V3_MAINNET_SYNC_PENDING`. **Branch:**
+`feat/pearl-v3-mainnet-ready`. The required clean starting project SHA was
+`c845eee8c1e6cf687559ad4d5d2391fb859f2451`; do not rewrite the historical
+P0–P11/P7 evidence or branches.
+
+The current official Pearl source was freshly fetched at
+`bfd064717de4af0e8471bdc24ca4a28aa6278227` (1.4.2), exactly the requested
+head and four commits after the historical V2 pin
+`fe22b6a2b831d95b2f56564808f39d2f498f34a5`. The source audit is PASS with no
+unresolved consensus fields. It records the V3 root-binding/salted-seed
+change, `SaltedSeedForkHeight=99000` as context only, the V3 proof commitment
+domain, unchanged raw-root PlainProof wire, and minimum peer protocol 2.
+
+Completed implementation work:
+
+- clean-room explicit `CertificateVersion`/`SeedDerivation` dispatch for V1,
+  V2, and V3; V3 derives the two domain keys from context strings, binds raw
+  roots to little-endian `m`/`n` in exact 64-byte messages, then uses the
+  salted seed chain; raw roots remain on wire;
+- mandatory gateway `cert_version`, exact fail-closed
+  `UNSUPPORTED_CERTIFICATE_VERSION_<n>`, and immutable job identity over job
+  ID/header/target/certificate version/dimensions; changed work is discarded;
+- V3 candidate validation and official wire serialization, with the
+  historical local P1 envelope forbidden for V3 gateway use;
+- version report and self-test now expose tested Pearl SHA, certificate
+  support `1,2,3`, V2/V3 vectors, and physical XDNA status;
+- no-submit `--dry-run --network mainnet` path: real gateway job -> versioned
+  CPU seeds -> physical XDNA -> CPU verification -> official local wire ->
+  immutable freshness check, with no `submitPlainProof` call;
+- bounded same-probe XRT identity retry removes a transient startup snapshot
+  race while retaining fail-closed hardware checks.
+
+Verification already recorded:
+
+- CPU corpus: `pearl_cpu_tests` PASS, 67,789 assertions; V2 byte-identical
+  regression and V3 key/bound-root/seed/proof-commitment vectors PASS;
+- physical V3 differential: 100 deterministic + 32 randomized cases on
+  `RyzenAI-npu1`/AIE2/XRT 2.26.0, zero arithmetic/seed/transcript/jackpot
+  mismatches and zero CPU fallbacks; separate 301-second V3 stability run
+  completed 102 cases with zero failures/fallbacks;
+- historical P2/P3/P5 physical regressions rerun after the runtime-safe probe
+  update: 100/100 GEMM, 8/8 pipeline cases, and 256 candidate dispatches all
+  passed with zero mismatches/fallbacks;
+- current official SIMNET: `pearld 1.4.2` SHA-256
+  `be2b06f5d2782b737785cbab115480c206092a3db3f7bb2a1f9b4b5bf4a4cbbf`,
+  `pearl-gateway 0.1.0`, `py-pearl-mining 0.3.0`, Python 3.12.13,
+  CPU-only Torch; no CUDA/vLLM miner. `getMiningInfo` reported cert version 3,
+  official V3 proof verification passed, and gateway/node accepted block
+  `65550ba8d19aceeba9b4b0bd73fefb13a3aeab491f6282c3933e08b9a801fd1c` at
+  height 1 with zero CPU fallbacks;
+- locked Cargo build, Debug CTest 14/14, and Release CTest 14/14 passed before
+  the final documentation checkpoint. Rerun the real checks after any further
+  code change.
+
+Mainnet safety/current state: an official current `pearld` runs only as a
+loopback, no-listen, temporary read-only validation node using strong transient
+credentials that are not recorded. It peers with version-2 peers and verified
+the height-10,000 checkpoint, but it remains in initial sync toward the
+peer-reported height 99,306. Its first `/tmp` runtime reached that filesystem's
+quota and was removed; the resumed temporary workspace-volume runtime has
+sufficient capacity. No live `getblocktemplate`/`requiredcertversion` is
+available until the node is current. No public mainnet payout address was
+provided, none was invented, no mainnet gateway was started, and no mainnet
+PlainProof/block/mining submission occurred. Therefore live mainnet dry-run
+and live stale-drop count remain pending; static identity coverage is PASS.
+
+New evidence is `docs/evidence/pearl-v3-upstream-audit.json`,
+`pearl-v3-cpu-vectors.json`, `pearl-v3-xdna-differential.json`,
+`pearl-v3-stability.json`, `pearl-v3-performance-regression.json`,
+`pearl-v3-simnet-e2e.json`, `pearl-v3-mainnet-dry-run.json`,
+`pearl-current-status.json`, and `pearl-v3-upgrade-final.json`.
+
+Do not redo the historical V2/P7 block proof, fabricate a current template,
+infer a live certificate version from fork height, use a SIMNET address on
+mainnet, start the official CUDA/vLLM miner, log credentials, or submit any
+mainnet proof/block. The next exact task is: let the official 1.4.2 mainnet
+node finish syncing; obtain/configure only a public Pearl mainnet payout
+address; start the current official gateway locally; run the bounded
+`--dry-run --network mainnet` path with submission disabled; record the actual
+template/gateway certificate version and stale-drop result. Only after an
+explicit new authorization may a bounded mainnet submission run be considered.
+
 ## Active Pearl P7 checkpoint (2026-08-11)
 
 The active target is Pearl (PRL) on `fix/pearl-p7-official-simnet`; all Qubic

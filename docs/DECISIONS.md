@@ -17,6 +17,20 @@ Reason: a height-based inference can submit a candidate constructed under the
 wrong consensus rule during a template/fork transition. The live job is the
 authority, while the XDNA kernel remains unchanged and physically verified.
 
+## D-048 — Retry transient XRT identity snapshots but preserve fail-closed hardware proof
+
+**Status:** Accepted for `feat/pearl-v3-mainnet-ready` (2026-08-12)
+
+`xrt-smi examine` can briefly return an incomplete device snapshot while the
+XRT service is initializing. The runtime retries the same authoritative probe
+at most three times with short bounded delays before classifying the device as
+`FIRMWARE_UNAVAILABLE_OR_UNKNOWN`. It never reuses a prior firmware/
+architecture report or infers missing information.
+
+Reason: this removes a transient diagnostic race observed during the V3
+physical regression without weakening generation, firmware, architecture, or
+CPU/NPU correctness checks.
+
 ## D-045 — P7 official SIMNET uses an isolated runtime and separate wire adapter
 
 **Status:** Accepted for `fix/pearl-p7-official-simnet` (2026-08-11)

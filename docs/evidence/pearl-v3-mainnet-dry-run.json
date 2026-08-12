@@ -1,0 +1,49 @@
+{
+  "schema": "pearl-v3-mainnet-dry-run/v1",
+  "status": "MAINNET_SYNC_PENDING",
+  "date": "2026-08-12",
+  "network": "mainnet",
+  "official_runtime": {
+    "pearl_sha": "bfd064717de4af0e8471bdc24ca4a28aa6278227",
+    "pearld_version": "1.4.2",
+    "pearld_sha256": "be2b06f5d2782b737785cbab115480c206092a3db3f7bb2a1f9b4b5bf4a4cbbf",
+    "minimum_peer_protocol_observed": 2
+  },
+  "node_safety": {
+    "rpc_binding": "127.0.0.1 only",
+    "rpc_credentials": "strong transient values, rotated during the run, not recorded",
+    "tls": "disabled only for the isolated loopback-only temporary validation process",
+    "listen_for_inbound_peers": false,
+    "wallet_seed_generated": false,
+    "wallet_seed_exposed": false,
+    "mainnet_block_submitted": false,
+    "mainnet_plainproof_submitted": false,
+    "mainnet_mining_started": false
+  },
+  "sync_observation": {
+    "peer_count": 8,
+    "peer_protocol_versions": [2],
+    "peer_reported_tip_height": 99306,
+    "verified_height_reached": 10000,
+    "verified_block_hash_at_height_10000": "a3c196fb1c3f7837bbebd69b98fc451d88d48083af98c318c78486d7f1888490",
+    "sync_state": "initial sync incomplete; node not yet current",
+    "initial_temporary_runtime": "removed after its /tmp filesystem quota was exhausted",
+    "current_runtime": "temporary workspace-volume runtime with sufficient capacity"
+  },
+  "template_and_gateway": {
+    "getblocktemplate": "NOT_AVAILABLE: official node correctly withholds templates until current",
+    "requiredcertversion": null,
+    "gateway_getMiningInfo": "NOT_STARTED",
+    "reason_gateway_not_started": "MAINNET_PAYOUT_ADDRESS_NOT_CONFIGURED; no public mainnet payout address was supplied or invented",
+    "payout_address_state": "MAINNET_PAYOUT_ADDRESS_NOT_CONFIGURED"
+  },
+  "miner_dry_run": {
+    "implementation": "PASS: --dry-run --network mainnet constructs a real-gateway-bound physical XDNA candidate, CPU verifies it, fresh-checks immutable job identity, and never calls submitPlainProof",
+    "live_execution": "NOT_RUN: current mainnet template and authorized gateway job unavailable",
+    "result": "MAINNET_DRY_RUN_PENDING",
+    "stale_job_unit_coverage": "PASS: header, target, certificate version, and job ID each invalidate candidate identity",
+    "live_stale_candidates_dropped": null,
+    "cpu_fallbacks": 0
+  },
+  "next_condition": "Allow the current official node to finish syncing, then configure only a public mainnet payout address before starting the official gateway and executing the no-submit dry-run."
+}

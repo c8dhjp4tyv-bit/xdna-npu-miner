@@ -1,0 +1,34 @@
+{
+  "schema": "pearl-current-status/v1",
+  "date": "2026-08-12",
+  "historical_verified_baseline": {
+    "pearl_version": "1.3.1",
+    "certificate_version": 2,
+    "simnet_accepted_block": "8ab73f1fad05d5a2f1d767d5b8cda3f2a0aa0f79615f7913d8da884693bef7c5",
+    "evidence": "docs/evidence/pearl-p7-e2e.json"
+  },
+  "current_verified_baseline": {
+    "pearl_version": "1.4.2",
+    "pearl_sha": "bfd064717de4af0e8471bdc24ca4a28aa6278227",
+    "certificate_version": 3,
+    "simnet_accepted_block": "65550ba8d19aceeba9b4b0bd73fefb13a3aeab491f6282c3933e08b9a801fd1c",
+    "evidence": "docs/evidence/pearl-v3-simnet-e2e.json"
+  },
+  "overall_status": "FULL_PROJECT_PASS_V3",
+  "mainnet_readiness": "MAINNET_SYNC_PENDING",
+  "mainnet_operation": "AWAITING_PUBLIC_PAYOUT_ADDRESS",
+  "mainnet_submission": false,
+  "mainnet_mining": false,
+  "supported_certificate_versions": [1, 2, 3],
+  "correctness": {
+    "v2_regression": "PASS",
+    "v3_cpu_vectors": "PASS",
+    "v3_physical_xdna": "PASS",
+    "mismatches": 0,
+    "cpu_fallbacks": 0
+  },
+  "blocking_conditions": [
+    "Current official mainnet node has not yet completed initial synchronization, so no live requiredcertversion/template is available.",
+    "No public Pearl mainnet payout address is configured; none was invented and the official mainnet gateway was not started."
+  ]
+}

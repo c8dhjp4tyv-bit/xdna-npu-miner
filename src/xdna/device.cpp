@@ -2,11 +2,13 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cctype>
 #include <cstdio>
 #include <filesystem>
 #include <sstream>
 #include <string_view>
+#include <thread>
 
 #include "xrt/xrt_device.h"
 
@@ -66,18 +68,33 @@ namespace {
         std::filesystem::exists("/opt/xilinx/xrt/bin/xrt-smi")
         ? "/opt/xilinx/xrt/bin/xrt-smi examine 2>/dev/null"
         : "xrt-smi examine 2>/dev/null";
-    FILE* pipe = popen(command, "r");
-    if (pipe == nullptr) {
-        return {};
-    }
+    std::string last_output;
+    // xrt-smi can occasionally return an incomplete snapshot while the XRT
+    // service is initializing.  Retry the *same authoritative probe* a small
+    // bounded number of times; do not infer firmware or architecture from a
+    // prior result.
+    for (unsigned attempt = 0U; attempt < 3U; ++attempt) {
+        FILE* pipe = popen(command, "r");
+        if (pipe == nullptr) {
+            return {};
+        }
 
-    std::string output;
-    std::array<char, 512U> buffer{};
-    while (fgets(buffer.data(), static_cast<int>(buffer.size()), pipe) != nullptr) {
-        output.append(buffer.data());
+        std::string output;
+        std::array<char, 512U> buffer{};
+        while (fgets(buffer.data(), static_cast<int>(buffer.size()), pipe) != nullptr) {
+            output.append(buffer.data());
+        }
+        (void)pclose(pipe);
+        if (output.find("NPU Firmware Version") != std::string::npos
+            && output.find("Architecture") != std::string::npos) {
+            return output;
+        }
+        last_output = std::move(output);
+        if (attempt + 1U < 3U) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
     }
-    (void)pclose(pipe);
-    return output;
+    return last_output;
 }
 
 [[nodiscard]] std::string device_node_for_accel()

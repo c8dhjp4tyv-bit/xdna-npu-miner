@@ -1,0 +1,35 @@
+{
+  "schema": "pearl-v3-upgrade-final/v1",
+  "status": "FULL_PROJECT_PASS_V3_MAINNET_SYNC_PENDING",
+  "date": "2026-08-12",
+  "project": {
+    "starting_sha": "c845eee8c1e6cf687559ad4d5d2391fb859f2451",
+    "branch": "feat/pearl-v3-mainnet-ready"
+  },
+  "upstream": {
+    "previous_sha": "fe22b6a2b831d95b2f56564808f39d2f498f34a5",
+    "verified_sha": "bfd064717de4af0e8471bdc24ca4a28aa6278227",
+    "version": "1.4.2",
+    "audit": "PASS"
+  },
+  "certificate_support": [1, 2, 3],
+  "verification": {
+    "v3_bound_root_vectors": "PASS",
+    "v3_seed_vectors": "PASS",
+    "v2_regression": "PASS",
+    "v3_physical_xdna": "PASS",
+    "v3_simnet_plainproof_verification": "PASS",
+    "v3_simnet_accepted_block": "PASS",
+    "mainnet_dry_run": "PENDING"
+  },
+  "evidence": [
+    "pearl-v3-upstream-audit.json",
+    "pearl-v3-cpu-vectors.json",
+    "pearl-v3-xdna-differential.json",
+    "pearl-v3-stability.json",
+    "pearl-v3-performance-regression.json",
+    "pearl-v3-simnet-e2e.json",
+    "pearl-v3-mainnet-dry-run.json",
+    "pearl-current-status.json"
+  ]
+}
